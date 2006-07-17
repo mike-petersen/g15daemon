@@ -473,7 +473,7 @@ void *lcd_client_thread(void *display) {
         goto exitthread;
 
     /* we will in the future handle txt buffers gracefully but for now we just hangup */
-    if(tmpbuf[0]=='G'){
+    if(tmpbuf[0]=='G') {
         while(!leaving) {
             int retval = g15_recv(client_sock,(char *)tmpbuf,6880);
             if(retval!=6880){
@@ -481,6 +481,31 @@ void *lcd_client_thread(void *display) {
             }
             pthread_mutex_lock(&lcdlist_mutex);
             memcpy(client_lcd->buf,tmpbuf,6880);
+            client_lcd->ident = random();
+            pthread_mutex_unlock(&lcdlist_mutex);
+        }
+    }
+    else if (tmpbuf[0]=='W'){ /* wbmp buffer - we ignore the header and assume (stupidly) that it's 160x43 pixels */
+        while(!leaving) {
+            int retval = g15_recv(client_sock,(char*)tmpbuf,865);
+            int i,y,x;
+
+            if((retval!=865)||tmpbuf[0]||tmpbuf[1]) { /* with WBMP the 1st 2 bytes are always zero */
+                break;
+            }
+
+            pthread_mutex_lock(&lcdlist_mutex);
+            x=0;
+            for(i=5;i<865;i++)
+            {
+                for(y=0;y<8;y++)
+                    if(tmpbuf[i] & (0x80 >> y)) {
+                        client_lcd->buf[x+y]=0;
+                    } else {
+                        client_lcd->buf[x+y]=1;
+                    }
+                x+=8;
+            }
             client_lcd->ident = random();
             pthread_mutex_unlock(&lcdlist_mutex);
         }
