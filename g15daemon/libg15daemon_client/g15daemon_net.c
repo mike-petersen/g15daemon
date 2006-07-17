@@ -63,7 +63,9 @@ int new_g15_screen(int screentype)
         return -1;
     if(screentype == G15_TEXTBUF) /* txt buffer - not supported yet */
         g15_send(g15screen_fd,"TBUF",4);
-    else
+    else if(screentype == G15_WBMPBUF) /* wbmp buffer */
+        g15_send(g15screen_fd,"WBUF",4);
+    else 
         g15_send(g15screen_fd,"GBUF",4);
     
     return g15screen_fd;
