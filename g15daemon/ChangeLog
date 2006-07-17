@@ -24,3 +24,5 @@
 
 Version 1.0-pre0
 - Initial release
+1.0 svn
+- Add crude WBMP support and Perl bindings.
