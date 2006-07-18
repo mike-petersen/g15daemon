@@ -1,14 +1,21 @@
 package G15Daemon;
+use base 'Exporter';
 use warnings;
 use strict;
 
-use Inline C =>
-      DATA => 
-      LIBS => '-lg15daemon_client';
+our @EXPORT = qw( $g15wbmp $g15pbuf $g15txt );
 
-our $VERSION = '0.1';
+use Inline C =>
+        DATA => 
+        LIBS => '-lg15daemon_client';
+
+our $VERSION = '0.2';
 our $WIDTH = '160';
 our $HEIGHT = '43';
+
+our $g15pbuf = '0';
+our $g15txt = '1';
+our $g15wbmp = '2';
 
 sub apiversion {
   my $self = shift;
@@ -22,28 +29,35 @@ sub height {
   return $HEIGHT;
 }
 
-sub newscreen {
+sub new
+{
+  my ($class, $screentype) = @_;
+  my $sock = g15newscreen ($screentype);
+  my $self = {socket => $sock};
+  bless $self, $_[0];
+}
+
+sub DESTROY {
   my $self = shift;
-  my ($screentype) = @_;
-  return g15newscreen($screentype);
+  return g15closescreen($self->{socket});
 }
 
 sub closescreen {
   my $self = shift;
-  my ($gsockfd) = @_;
-  return g15closescreen($gsockfd);
+  return g15closescreen($self->{socket});
 }
 
 sub send {
   my $self = shift;
-  my ($sockfd, $buffer, $len) = @_;
-  return g15send($sockfd, $buffer, $len);
+  my ($buffer) = @_;
+  my $len = length($buffer);
+  return g15send($self->{socket}, $buffer, $len);
 }
 
 sub recv{
   my $self = shift;
-  my ($sockfd, $buffer, $len) = @_;
-  return g15recv($sockfd, $buffer, $len);
+  my ($buffer, $len) = @_;
+  return g15recv($self->{socket}, $buffer, $len);
 }
 
 1;
@@ -66,7 +80,9 @@ int g15closescreen(int sockfd) {
 }
 
 int g15send(int sockfd, char *buf, unsigned int len) {
-  return g15_send(sockfd, buf, len);
+  int retval = g15_send(sockfd, buf, len);
+  memset(buf,0,len);
+  return retval;
 }
 
 char * g15recv(int sockfd, char *buf, unsigned int len) {
