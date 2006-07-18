@@ -60,7 +60,7 @@ rm -rf $RPM_BUILD_ROOT
 %files 
 %defattr(-, root, root)
 
-%doc AUTHORS COPYING LICENSE NEWS README
+%doc AUTHORS COPYING LICENSE NEWS README contrib lang-bindings
 %{prefix}/lib/*.so
 %{prefix}/lib/*.so.*
 %{prefix}/sbin/*
@@ -68,8 +68,7 @@ rm -rf $RPM_BUILD_ROOT
 %files devel
 %defattr(-, root, root)
 
-%doc AUTHORS COPYING LICENSE NEWS README
+%doc AUTHORS COPYING LICENSE NEWS README contrib lang-bindings
 
 %{prefix}/lib/libg15daemon_client.*
 %{prefix}/include/*
-%{prefix}/bin/*
