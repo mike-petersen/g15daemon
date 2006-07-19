@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <libdaemon/daemon.h>
 
+#include <config.h>
 #include "libg15.h"
 #include "g15daemon.h"
 #include "logo.h"
@@ -229,7 +230,7 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
         daemon_retval_send(0);
-
+        daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         FD_ZERO(&fds);
         FD_SET(fd=daemon_signal_fd(),&fds);
     

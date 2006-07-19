@@ -29,11 +29,17 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <config.h>
+
 #include "g15daemon_client.h" 
 
 #define G15SERVER_PORT 15550
 #define G15SERVER_ADDR "127.0.0.1"
 int leaving = 0;
+
+const char *g15daemon_version () {
+  return VERSION;
+}
 
 int new_g15_screen(int screentype)
 {

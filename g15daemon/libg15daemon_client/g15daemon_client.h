@@ -22,16 +22,17 @@
     Client screens can be cycled through by pressing the 'L1' key.
 */
 
-
 #define G15_WIDTH 160
 #define G15_HEIGHT 43
 
 #define G15_BUFSIZE 6880
-#define G15DAEMON_VERSION 1.2
+#define G15DAEMON_VERSION g15daemon_version()
 
 #define G15_PIXELBUF 0
 #define G15_TEXTBUF 1
 #define G15_WBMPBUF 2
+
+const char *g15daemon_version();
 
 /* open a new connection to the g15daemon.  returns an fd to be used with g15_send & g15_recv */
 /* screentype should be either 0 (graphic/pixelbuffer) or 1 (textbuffer). only Graphic buffers are
