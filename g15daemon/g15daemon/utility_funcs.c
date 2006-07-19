@@ -485,18 +485,40 @@ void *lcd_client_thread(void *display) {
             pthread_mutex_unlock(&lcdlist_mutex);
         }
     }
-    else if (tmpbuf[0]=='W'){ /* wbmp buffer - we ignore the header and assume (stupidly) that it's 160x43 pixels */
+    else if (tmpbuf[0]=='W'){ /* wbmp buffer - we assume (stupidly) that it's 160 pixels wide */
         while(!leaving) {
-            int retval = g15_recv(client_sock,(char*)tmpbuf,865);
             int i,y,x;
+            unsigned int width, height, buflen,header=4;
 
-            if((retval!=865)||tmpbuf[0]||tmpbuf[1]) { /* with WBMP the 1st 2 bytes are always zero */
-                break;
+            int retval = g15_recv(client_sock,(char*)tmpbuf, 865);
+            if(!retval)
+              break;
+
+            if (tmpbuf[2] & 1) {
+              width = ((unsigned char)tmpbuf[2] ^ 1) | (unsigned char)tmpbuf[3];
+              height = tmpbuf[4];
+              header = 5;
+            } else {
+              width = tmpbuf[2];
+              height = tmpbuf[3];
+              header = 4;
             }
+            
+            buflen = (width/8)*height;
 
+            if(buflen>860){ /* grab the remainder of the image and discard excess bytes */
+              /*  retval=g15_recv(client_sock,(char*)tmpbuf+865,buflen-860);  */
+              retval=g15_recv(client_sock,NULL,buflen-860); 
+              buflen = 860;
+            }
+            
+            if(width!=160) /* FIXME - we ought to scale images I suppose */
+              goto exitthread;
+              
             pthread_mutex_lock(&lcdlist_mutex);
             x=0;
-            for(i=5;i<865;i++)
+            
+            for(i=5;i<buflen+header;i++)
             {
                 for(y=0;y<8;y++)
                     if(tmpbuf[i] & (0x80 >> y)) {
