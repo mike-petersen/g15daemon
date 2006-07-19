@@ -3,19 +3,23 @@ use base 'Exporter';
 use warnings;
 use strict;
 
+use 5.008007;
+our $VERSION = '0.2';
+
+require Exporter;
+
 our @EXPORT = qw( $g15wbmp $g15pbuf $g15txt );
 
 use Inline C =>
         DATA => 
         LIBS => '-lg15daemon_client';
 
-our $VERSION = '0.2';
 our $WIDTH = '160';
 our $HEIGHT = '43';
 
-our $g15pbuf = '0';
-our $g15txt = '1';
-our $g15wbmp = '2';
+*g15pbuf = \0;
+*g15txt = \1;
+*g15wbmp = \2;
 
 sub apiversion {
   my $self = shift;
@@ -23,9 +27,11 @@ sub apiversion {
 }
 
 sub width {
+  my $self = shift;
   return $WIDTH;
 }
 sub height {
+  my $self = shift;
   return $HEIGHT;
 }
 
@@ -90,3 +96,4 @@ char * g15recv(int sockfd, char *buf, unsigned int len) {
   return buf;
 }
 
+__END__
