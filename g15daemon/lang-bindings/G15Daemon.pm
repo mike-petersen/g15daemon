@@ -68,7 +68,7 @@ __C__
 #include <g15daemon_client.h>
 
 SV* g15version() {
-  return newSVpvf("%f\n", G15DAEMON_VERSION);
+  return newSVpvf("%s\n", G15DAEMON_VERSION);
 }
 
 int g15newscreen (int screentype) {
