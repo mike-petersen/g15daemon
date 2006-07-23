@@ -448,7 +448,7 @@ void *lcd_client_thread(void *display) {
         goto exitthread;
     }
     /* check for requested buffer type.. we only handle pixel buffers atm */
-    if(g15_recv(client_sock,tmpbuf,4)<4)
+    if(g15_recv(client_sock,(char*)tmpbuf,4)<4)
         goto exitthread;
 
     /* we will in the future handle txt buffers gracefully but for now we just hangup */
