@@ -49,7 +49,7 @@
 typedef struct lcd_s
 {
     int lcd_type;
-    unsigned char buf[7040];
+    unsigned char buf[1048];
     int max_x;
     int max_y;
     int connection;
@@ -89,17 +89,17 @@ lcd_t * create_lcd ();
 void quit_lcd (lcd_t * lcd);
 void write_buf_to_g15(lcd_t *lcd);
 
-void setpixel (lcd_t * lcd, int x1, int y1, int color);
+void setpixel (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int color);
 void cls (lcd_t * lcd, int color);
-void line (lcd_t * lcd, int x1, int y1, int x2, int y2, int color);
-void rectangle (lcd_t * lcd, int x1, int y1, int x2, int y2, int filled, int color);
+void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color);
+void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int color);
 void circle (lcd_t * lcd, int x, int y, int r, int filled, int color);
 void roundrectangle (lcd_t * lcd, int x1, int y1, int x2, int y2, int filled, int color, int type);
 void draw_bitmap_char (lcd_t * lcd, unsigned char chr, int x, int y, int color, int doublesize, int bold);
 void draw_bitmap_str (lcd_t * lcd, char *str, int x, int y, int color, int size, int bold);
 void lcd_printf(lcd_t *lcd, int x, int y, const char *fmt, ...);
 void draw_bar (lcd_t * lcd, int x1, int y1, int x2, int y2, int color, int num, int max);
-void draw_bignum (lcd_t * lcd, int x1, int y1, int x2, int y2, int color, int num);
+void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color, int num);
 void lcdclock(lcd_t *lcd);
 /* utility functions in utility_func.c */
 void pthread_sleep(int seconds);

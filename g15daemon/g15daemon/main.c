@@ -74,7 +74,7 @@ static void *lcd_draw_thread(void *lcdlist){
     static long int lastlcd = 1;
     
     lcd_t *displaying = displaylist->tail->lcd;
-    cls(displaying,WHITE);
+    memset(displaying->buf,0,1024);
     
     writePixmapToLCD(logo_data);
     pthread_sleep(2);

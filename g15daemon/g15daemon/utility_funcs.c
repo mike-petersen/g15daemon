@@ -71,58 +71,40 @@ void quit_lcd (lcd_t * lcd) {
 
 
 /* set a pixel in a libg15 buffer */
-static void set_g15_pixel(unsigned char *g15buffer, unsigned int x, unsigned int y, unsigned char val)
+void setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
 {
     unsigned int curr_row = y;
     unsigned int curr_col = x;
-    
+
     unsigned int pixel_offset = curr_row * LCD_WIDTH + curr_col;
     unsigned int byte_offset = pixel_offset / 8;
     unsigned int bit_offset = 7-(pixel_offset % 8);
 
     if (val)
-        g15buffer[byte_offset] = g15buffer[byte_offset] | 1 << bit_offset;
+        lcd->buf[byte_offset] = lcd->buf[byte_offset] | 1 << bit_offset;
     else
-        g15buffer[byte_offset] = g15buffer[byte_offset]  &  ~(1 << bit_offset);
-
+        lcd->buf[byte_offset] = lcd->buf[byte_offset]  &  ~(1 << bit_offset);
 }
+
+void convert_buf(lcd_t *lcd, unsigned char * orig_buf)
+{
+  unsigned int x,y;
+  for(x=0;x<160;x++)
+    for(y=0;y<43;y++)
+      setpixel(lcd,x,y,orig_buf[x+(y*160)]);
+}
+                                         
 
 /* convert our 1byte-per-pixel buffer into a libg15 buffer - FIXME we should be writing directly into a libg15buffer 
     to save copying 
 */
 void write_buf_to_g15(lcd_t *lcd)
 {
-    int x,y;
-    unsigned char g15buffer[7040];
-
-    for(x=0;x<LCD_WIDTH;x++)
-        for(y=0;y<LCD_HEIGHT;y++)
-            set_g15_pixel(g15buffer, x, y, lcd->buf[(y*LCD_WIDTH)+x]);
-
     pthread_mutex_lock(&g15lib_mutex);
-    writePixmapToLCD(g15buffer);
+    writePixmapToLCD(lcd->buf);
     pthread_mutex_unlock(&g15lib_mutex);
     return;
 }
-
-void setpixel (lcd_t * lcd, int x1, int y1, int colour) {
-
-    if(lcd->buf==NULL) return;
-
-    if (x1 < 0)
-        return;
-    if (x1 > lcd->max_x - 1)
-        return;
-    if (y1 < 0)
-        return;
-    if (y1 > lcd->max_y - 1)
-        return;
-
-    lcd->buf[x1 + (LCD_WIDTH * y1)] = colour;
-
-    return;
-}
-
 
 static int abs2 (int value) {
 
@@ -132,12 +114,7 @@ static int abs2 (int value) {
         return value;
 }
 
-
-void cls (lcd_t * lcd, int colour) {
-    memset (lcd->buf, colour, lcd->max_x * lcd->max_y);
-}
-
-void line (lcd_t * lcd, int x1, int y1, int x2, int y2, int colour) {
+void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour) {
 
     int d, sx, sy, dx, dy;
     unsigned int ax, ay;
@@ -198,7 +175,7 @@ void line (lcd_t * lcd, int x1, int y1, int x2, int y2, int colour) {
 }
 
 
-void rectangle (lcd_t * lcd, int x1, int y1, int x2, int y2, int filled, int colour) {
+void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour) {
 
     int y;
 
@@ -215,14 +192,14 @@ void rectangle (lcd_t * lcd, int x1, int y1, int x2, int y2, int filled, int col
         {
             for (y = y1; y <= y2; y++)
             {
-                memset (lcd->buf + x1 + (lcd->max_x * y), colour, x2 - x1);
+                line(lcd,x1,y,x2,y,colour);
             }
         }
     }
 }
 
 
-void draw_bignum (lcd_t * lcd, int x1, int y1, int x2, int y2, int colour, int num) {
+void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour, int num) {
     x1 += 2;
     x2 -= 2;
 
@@ -424,7 +401,7 @@ void lcdclock(lcd_t *lcd)
     time_t currtime = time(NULL);
     
     if(lcd->ident < currtime - 60) {	
-        cls(lcd,WHITE);
+        memset(lcd->buf,0,1024);
         memset(buf,0,10);
         strftime(buf,6,"%H:%M",localtime(&currtime));
 
@@ -441,8 +418,8 @@ void lcdclock(lcd_t *lcd)
         for (col=0;col<len;col++) 
         {
             draw_bignum (lcd, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, LCD_HEIGHT, BLACK, buf[col]);
+
         }
-    
         lcd->ident = currtime;
     }
 }
@@ -465,7 +442,7 @@ void *lcd_client_thread(void *display) {
 
     int client_sock = client_lcd->connection;
     char helo[]=SERV_HELO;
-    char *tmpbuf=g15_xmalloc(6880);
+    unsigned char *tmpbuf=g15_xmalloc(6880);
            
     if(g15_send(client_sock, (char*)helo, strlen(SERV_HELO))<0){
         goto exitthread;
@@ -481,8 +458,9 @@ void *lcd_client_thread(void *display) {
             if(retval!=6880){
                 break;
             }
-            pthread_mutex_lock(&lcdlist_mutex);
-            memcpy(client_lcd->buf,tmpbuf,6880);
+           pthread_mutex_lock(&lcdlist_mutex);
+            memset(client_lcd->buf,0,1024);      
+            convert_buf(client_lcd,tmpbuf);
             client_lcd->ident = random();
             pthread_mutex_unlock(&lcdlist_mutex);
         }
@@ -515,17 +493,7 @@ void *lcd_client_thread(void *display) {
               goto exitthread;
               
             pthread_mutex_lock(&lcdlist_mutex);
-            x=0;
-            for(i=5;i<buflen+header;i++)
-            {
-                for(y=0;y<8;y++)
-                    if(tmpbuf[i] & (0x80 >> y)) {
-                        client_lcd->buf[x+y]=0;
-                    } else {
-                        client_lcd->buf[x+y]=1;
-                    }
-                x+=8;
-            }
+            memcpy(client_lcd->buf,tmpbuf+header,buflen+header);
             client_lcd->ident = random();
             pthread_mutex_unlock(&lcdlist_mutex);
         }
@@ -581,6 +549,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
 
         }
         
+        pthread_detach(client_connection);
     }
     return 0;
 }

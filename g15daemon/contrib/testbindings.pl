@@ -1,8 +1,8 @@
 use G15Daemon;
 
 use GD;
-#use GD::Graph::lines;
-use GD::Graph::bars;
+use GD::Graph::lines;
+#use GD::Graph::bars;
 
 # simple demo. creates two screens (selectable via L1 button) and 
 # displays some text & a border on one, and a graph on the other..
@@ -32,8 +32,8 @@ my $height = $lcdintro->height();
 $im = new GD::Image ($width, $height);
 
 # allocate some colors - these are the only valid ones for the G15
-$white = $im->colorAllocate (0, 0, 0);
-$black = $im->colorAllocate (255, 255, 255);
+$black = $im->colorAllocate (0, 0, 0);
+$white = $im->colorAllocate (255, 255, 255);
 
 # fill with black
 $im->fill(1,1,$black);
@@ -52,12 +52,12 @@ $im->fill(145,12,$white);
 $im->string(gdSmallFont,30,15,"G15Daemon & GDlib",$black);
 
 #convert the buffer to WBMP format..
-my $wbmpdata = $im->wbmp ($black);
+my $wbmpdata = $im->wbmp ($white);
 #send it to the daemon....
 $lcdintro->send($wbmpdata);
 
 # create a graph, and send it on the other connection.
-my $graph = GD::Graph::bars->new(160, 44);
+my $graph = GD::Graph::lines->new(160, 44);
 $graph->set(
 #         x_label           => 'X Label',
 #         y_label           => 'Y label',
