@@ -95,23 +95,13 @@ void convert_buf(lcd_t *lcd, unsigned char * orig_buf)
 }
                                          
 
-/* convert our 1byte-per-pixel buffer into a libg15 buffer - FIXME we should be writing directly into a libg15buffer 
-    to save copying 
-*/
+/* wrap the libg15 function */
 void write_buf_to_g15(lcd_t *lcd)
 {
     pthread_mutex_lock(&g15lib_mutex);
     writePixmapToLCD(lcd->buf);
     pthread_mutex_unlock(&g15lib_mutex);
     return;
-}
-
-static int abs2 (int value) {
-
-    if (value < 0)
-        return -value;
-    else
-        return value;
 }
 
 void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour) {
@@ -125,14 +115,14 @@ void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsig
     y2 = y2 - 1;
 
     dx = x2 - x1;
-    ax = abs2 (dx) << 1;
+    ax = abs (dx) << 1;
     if (dx < 0)
         sx = -1;
     else
         sx = 1;
 
     dy = y2 - y1;
-    ay = abs2 (dy) << 1;
+    ay = abs (dy) << 1;
     if (dy < 0)
         sy = -1;
     else
@@ -539,7 +529,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
         memset(&attr,0,sizeof(pthread_attr_t));
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-        pthread_attr_setstacksize(&attr,256*1024); // set stack to 768k - dont need 8Mb - this is probably rather excessive also
+        pthread_attr_setstacksize(&attr,256*1024); /* set stack to 768k - dont need 8Mb - this is probably rather excessive also */
         if (pthread_create(&client_connection, &attr, lcd_client_thread, clientnode) != 0) {
             daemon_log(LOG_WARNING,"Couldnt create client thread.");
             if (close(conn_s) < 0 ) {
