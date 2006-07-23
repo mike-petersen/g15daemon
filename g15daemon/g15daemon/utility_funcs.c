@@ -59,7 +59,6 @@ void *g15_xmalloc(size_t size) {
 lcd_t * create_lcd () {
 
     lcd_t *lcd = g15_xmalloc (sizeof (lcd_t));
-    
     lcd->max_x = LCD_WIDTH;
     lcd->max_y = LCD_HEIGHT;
 
@@ -67,7 +66,6 @@ lcd_t * create_lcd () {
 }
 
 void quit_lcd (lcd_t * lcd) {
-    
     free (lcd);
 }
 
@@ -461,10 +459,14 @@ void *lcd_client_thread(void *display) {
 
     lcdnode_t *g15node = display;
     lcd_t *client_lcd = g15node->lcd;
+    int retval;
+    int i,y,x;
+    unsigned int width, height, buflen,header=4;
+
     int client_sock = client_lcd->connection;
     char helo[]=SERV_HELO;
     char *tmpbuf=g15_xmalloc(6880);
-    
+           
     if(g15_send(client_sock, (char*)helo, strlen(SERV_HELO))<0){
         goto exitthread;
     }
@@ -475,7 +477,7 @@ void *lcd_client_thread(void *display) {
     /* we will in the future handle txt buffers gracefully but for now we just hangup */
     if(tmpbuf[0]=='G') {
         while(!leaving) {
-            int retval = g15_recv(client_sock,(char *)tmpbuf,6880);
+            retval = g15_recv(client_sock,(char *)tmpbuf,6880);
             if(retval!=6880){
                 break;
             }
@@ -487,10 +489,7 @@ void *lcd_client_thread(void *display) {
     }
     else if (tmpbuf[0]=='W'){ /* wbmp buffer - we assume (stupidly) that it's 160 pixels wide */
         while(!leaving) {
-            int i,y,x;
-            unsigned int width, height, buflen,header=4;
-
-            int retval = g15_recv(client_sock,(char*)tmpbuf, 865);
+            retval = g15_recv(client_sock,(char*)tmpbuf, 865);
             if(!retval)
               break;
 
@@ -517,7 +516,6 @@ void *lcd_client_thread(void *display) {
               
             pthread_mutex_lock(&lcdlist_mutex);
             x=0;
-            
             for(i=5;i<buflen+header;i++)
             {
                 for(y=0;y<8;y++)
@@ -536,7 +534,7 @@ exitthread:
     close(client_sock);
     free(tmpbuf);
     lcdnode_remove(display);
-    return NULL;
+    pthread_exit(NULL);
 }
 
 /* poll the listening socket for connections, spawning new threads as needed to handle clients */
@@ -573,14 +571,16 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
         memset(&attr,0,sizeof(pthread_attr_t));
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-
+        pthread_attr_setstacksize(&attr,256*1024); // set stack to 768k - dont need 8Mb - this is probably rather excessive also
         if (pthread_create(&client_connection, &attr, lcd_client_thread, clientnode) != 0) {
             daemon_log(LOG_WARNING,"Couldnt create client thread.");
             if (close(conn_s) < 0 ) {
                 daemon_log(LOG_WARNING, "error calling close()\n");
                 return -1;
             }
+
         }
+        
     }
     return 0;
 }

@@ -48,9 +48,9 @@ static void *keyboard_watch_thread(void *lcdlist){
     
     static unsigned int lastkeypresses = 0;
     unsigned int keypresses = 0;
+    int retval = 0;
     
     while (!leaving) {
-        int retval = 0;
         
         pthread_mutex_lock(&g15lib_mutex);
           retval = getPressedKeys(&keypresses, 100);
@@ -179,7 +179,8 @@ int main (int argc, char *argv[])
         int fd;
         fd_set fds;
         lcdlist_t *lcdlist;
-        
+        pthread_attr_t attr;
+            
         if(daemon_pid_file_create() !=0){
             daemon_log(LOG_ERR,"Couldnt create PID File! Exiting");
             daemon_retval_send(1);   
@@ -213,18 +214,23 @@ int main (int argc, char *argv[])
         /* initialise the linked list */
         lcdlist = lcdlist_init();
         pthread_mutex_init(&g15lib_mutex, NULL);
-        
-        if (pthread_create(&keyboard_thread, NULL, keyboard_watch_thread, lcdlist) != 0) {
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
+
+        if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Couldnt create keyboard listener thread.  Exiting");
             daemon_retval_send(5);
             goto exitnow;
         }
-        if (pthread_create(&lcd_thread, NULL, lcd_draw_thread, lcdlist) != 0) {
+        pthread_attr_setstacksize(&attr,128*1024); 
+
+        if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Couldnt create display thread.  Exiting");
             daemon_retval_send(5);
             goto exitnow;
         }
-        if (pthread_create(&server_thread, NULL, lcdserver_thread, lcdlist) != 0) {
+
+        if (pthread_create(&server_thread, &attr, lcdserver_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Couldnt create lcdserver thread.  Exiting");
             daemon_retval_send(5);
             goto exitnow;
