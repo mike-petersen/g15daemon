@@ -36,7 +36,7 @@
 #include <sys/socket.h>
 #include <libdaemon/daemon.h>
 #include "g15daemon.h"
-#include "libg15.h"
+#include <libg15.h>
 
 extern int leaving;
 unsigned int connected_clients = 0;

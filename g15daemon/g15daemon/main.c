@@ -35,7 +35,7 @@
 #include <libdaemon/daemon.h>
 
 #include <config.h>
-#include "libg15.h"
+#include <libg15.h>
 #include "g15daemon.h"
 #include "logo.h"
 

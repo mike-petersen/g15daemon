@@ -35,7 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "libg15.h"
+#include <libg15.h>
 #include "g15daemon.h"
 
 static int uinp_fd = -1;
