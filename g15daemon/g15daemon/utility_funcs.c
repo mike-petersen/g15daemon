@@ -294,12 +294,12 @@ lcdnode_t *lcdnode_add(lcdlist_t **display_list) {
     pthread_mutex_lock(&lcdlist_mutex);
     
     new = g15_xmalloc(sizeof(lcdnode_t));
-    new->prev = (*display_list)->current->prev;
-    new->next = (*display_list)->current; 
+    new->prev = (*display_list)->current;
+    new->next = NULL; 
     new->lcd = create_lcd();
     new->last_priority = NULL;
     
-    (*display_list)->current->prev=new;
+    (*display_list)->current->next=new;
     (*display_list)->current = new;
     (*display_list)->head = new;
     (*display_list)->head->list = *display_list;
