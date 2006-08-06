@@ -294,13 +294,14 @@ lcdnode_t *lcdnode_add(lcdlist_t **display_list) {
     pthread_mutex_lock(&lcdlist_mutex);
     
     new = g15_xmalloc(sizeof(lcdnode_t));
-    new->prev = (*display_list)->current;
-    new->next = NULL; 
+    new->prev = (*display_list)->head;
+    new->next = (*display_list)->tail; 
     new->lcd = create_lcd();
     new->last_priority = NULL;
     
-    (*display_list)->current->next=new;
+    (*display_list)->head->next=new;
     (*display_list)->current = new;
+    
     (*display_list)->head = new;
     (*display_list)->head->list = *display_list;
     
@@ -324,12 +325,18 @@ void lcdnode_remove (lcdnode_t *oldnode) {
     quit_lcd(oldnode->lcd);
     
     if((*display_list)->current == oldnode) {
-        (*display_list)->current = oldnode->prev;
-    	(*display_list)->current->lcd->state_changed = 1;
+        if((*display_list)->current!=(*display_list)->head){
+            (*display_list)->current = oldnode->next;
+        } else {
+            (*display_list)->current = oldnode->prev;
+        }
+    	
+        (*display_list)->current->lcd->state_changed = 1;
     }
     
-    if(oldnode->next!=NULL){
+    if((*display_list)->head!=oldnode){
         (*next)->prev = oldnode->prev;
+        (*prev)->next = oldnode->next;
     }else{
         (*prev)->next = NULL;
         (*display_list)->head = oldnode->prev;

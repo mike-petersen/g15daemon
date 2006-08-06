@@ -138,8 +138,10 @@ int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
                         if(lcdnode->list->current == lcdnode->last_priority){
                             lcdnode->list->current = lcdnode->list->current->prev;
                         } else{
-                            if(lcdnode->last_priority != NULL)
+                            if(lcdnode->last_priority != NULL) {
                             	lcdnode->list->current = lcdnode->last_priority;
+                                lcdnode->last_priority = NULL;
+                            }
                             else
                                 lcdnode->list->current = lcdnode->list->current->prev;
                         }
