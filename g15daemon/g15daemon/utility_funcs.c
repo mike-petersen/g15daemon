@@ -330,7 +330,6 @@ void lcdnode_remove (lcdnode_t *oldnode) {
         } else {
             (*display_list)->current = oldnode->prev;
         }
-    	
         (*display_list)->current->lcd->state_changed = 1;
     }
     
@@ -338,7 +337,7 @@ void lcdnode_remove (lcdnode_t *oldnode) {
         (*next)->prev = oldnode->prev;
         (*prev)->next = oldnode->next;
     }else{
-        (*prev)->next = NULL;
+        (*prev)->next = (*display_list)->tail;
         (*display_list)->head = oldnode->prev;
     }
 
