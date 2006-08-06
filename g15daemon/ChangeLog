@@ -45,4 +45,5 @@ allow clients use of all 'L' keys.
 - Added libG15Render client support.
 - Added ability for hidden lcd clients to bring themselves to the foreground
 - clients change only their own backlight/mkey led status
-
+1.2.1 06/08/2006
+- Fix bug which could cause client screens to be lost under certain circumstances.
