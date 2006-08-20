@@ -19711,8 +19711,8 @@ _ACEOF
   LIBS="-ldaemon $LIBS"
 
 else
-  { { echo "$as_me:$LINENO: error: \"libdaemon not found. please install it\"" >&5
-echo "$as_me: error: \"libdaemon not found. please install it\"" >&2;}
+  { { echo "$as_me:$LINENO: error: \"libdaemon (or its devel package) not found. please install it\"" >&5
+echo "$as_me: error: \"libdaemon (or its devel package) not found. please install it\"" >&2;}
    { (exit 1); exit 1; }; }
 fi
 
@@ -19789,8 +19789,8 @@ _ACEOF
   LIBS="-lg15 $LIBS"
 
 else
-  { { echo "$as_me:$LINENO: error: \"libg15 not found. please install it\"" >&5
-echo "$as_me: error: \"libg15 not found. please install it\"" >&2;}
+  { { echo "$as_me:$LINENO: error: \"libg15 (or its devel package) not found. please install it\"" >&5
+echo "$as_me: error: \"libg15 (or its devel package) not found. please install it\"" >&2;}
    { (exit 1); exit 1; }; }
 fi
 
