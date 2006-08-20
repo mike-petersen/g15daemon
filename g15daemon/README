@@ -24,6 +24,9 @@ make
 make install
 
 [RUNNING THE DAEMON]
+G15daemon must be run by the superuser, root, as it writes to system logs. 
+There is a sample init script in the contrib directory that could be used to
+run the daemon on system startup.
 
 to run :
 g15daemon
