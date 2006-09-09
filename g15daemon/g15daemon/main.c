@@ -68,7 +68,7 @@ static void *keyboard_watch_thread(void *lcdlist){
                 lastkeypresses = keypresses;
             }
         }
-        pthread_msleep(100);
+        pthread_msleep(40);
     }
     return NULL;
 }
@@ -110,7 +110,7 @@ static void *lcd_draw_thread(void *lcdlist){
             
         pthread_mutex_unlock(&lcdlist_mutex);
         
-        pthread_msleep(200);
+        pthread_msleep(100);
     }
     return NULL;
 }
