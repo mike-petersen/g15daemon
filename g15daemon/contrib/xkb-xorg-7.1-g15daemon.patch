@@ -1,44 +1,4 @@
-diff -ur xkb-orig/rules/base xkb/rules/base
---- xkb-orig/rules/base	2006-08-31 23:34:45.000000000 +0930
-+++ xkb/rules/base	2006-10-24 09:58:16.000000000 +0930
-@@ -47,7 +47,8 @@
-               qtronix \
-               samsung4500 samsung4510 \
-               sk1300 sk2500 sk6200 sk7100 sp_inet \
--              sven symplon toshiba_s3000 trust trustda yahoo
-+              sven symplon toshiba_s3000 trust trustda yahoo \
-+              g15daemon
- 
- // all layouts with 3rd and 4th groups
- ! $threelevellayouts = al az \
-diff -ur xkb-orig/rules/base.lst xkb/rules/base.lst
---- xkb-orig/rules/base.lst	2006-08-31 23:34:45.000000000 +0930
-+++ xkb/rules/base.lst	2006-10-24 09:59:05.000000000 +0930
-@@ -114,6 +114,7 @@
-   power_g5        Power G5
-   silvercrest     SILVERCREST Multimedia Wireless Keyboard
-   emachines       Laptop/notebook eMachines m68xx
-+  g15daemon	  Logitech G15 keyboard support via G15Daemon
- 
- ! layout
-   us              U.S. English
-diff -ur xkb-orig/rules/base.xml xkb/rules/base.xml
---- xkb-orig/rules/base.xml	2006-08-31 23:34:45.000000000 +0930
-+++ xkb/rules/base.xml	2006-10-24 10:00:06.000000000 +0930
-@@ -2815,6 +2815,12 @@
-     </model>
-     <model>
-       <configItem>
-+        <name>g15daemon</name>
-+        <description>Logitech G15 keyboard support via G15Daemon</description>
-+      </configItem>
-+    </model>
-+    <model>
-+      <configItem>
-         <name>yahoo</name>
-         <description>Yahoo! Internet Keyboard</description>
-         <description xml:lang="af">Yahoo! Internetsleutelbord</description>
-diff -ur xkb-orig/rules/xorg xkb/rules/xorg
+diff -x 'base*' -ur xkb-orig/rules/xorg xkb/rules/xorg
 --- xkb-orig/rules/xorg	2006-08-31 23:34:45.000000000 +0930
 +++ xkb/rules/xorg	2006-10-24 09:58:16.000000000 +0930
 @@ -47,7 +47,8 @@
@@ -51,7 +11,7 @@ diff -ur xkb-orig/rules/xorg xkb/rules/xorg
  
  // all layouts with 3rd and 4th groups
  ! $threelevellayouts = al az \
-diff -ur xkb-orig/rules/xorg.lst xkb/rules/xorg.lst
+diff -x 'base*' -ur xkb-orig/rules/xorg.lst xkb/rules/xorg.lst
 --- xkb-orig/rules/xorg.lst	2006-08-31 23:34:45.000000000 +0930
 +++ xkb/rules/xorg.lst	2006-10-24 09:59:05.000000000 +0930
 @@ -114,6 +114,7 @@
@@ -62,7 +22,7 @@ diff -ur xkb-orig/rules/xorg.lst xkb/rules/xorg.lst
  
  ! layout
    us              U.S. English
-diff -ur xkb-orig/rules/xorg.xml xkb/rules/xorg.xml
+diff -x 'base*' -ur xkb-orig/rules/xorg.xml xkb/rules/xorg.xml
 --- xkb-orig/rules/xorg.xml	2006-08-31 23:34:45.000000000 +0930
 +++ xkb/rules/xorg.xml	2006-10-24 10:00:06.000000000 +0930
 @@ -2815,6 +2815,12 @@
@@ -78,7 +38,7 @@ diff -ur xkb-orig/rules/xorg.xml xkb/rules/xorg.xml
          <name>yahoo</name>
          <description>Yahoo! Internet Keyboard</description>
          <description xml:lang="af">Yahoo! Internetsleutelbord</description>
-diff -ur xkb-orig/symbols/inet xkb/symbols/inet
+diff -x 'base*' -ur xkb-orig/symbols/inet xkb/symbols/inet
 --- xkb-orig/symbols/inet	2006-08-31 23:34:55.000000000 +0930
 +++ xkb/symbols/inet	2006-10-25 01:31:18.000000000 +0930
 @@ -2028,3 +2028,56 @@
