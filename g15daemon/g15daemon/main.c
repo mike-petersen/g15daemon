@@ -58,7 +58,7 @@ static void *keyboard_watch_thread(void *lcdlist){
     while (!leaving) {
         
         pthread_mutex_lock(&g15lib_mutex);
-          retval = getPressedKeys(&keypresses, 100);
+          retval = getPressedKeys(&keypresses, 40);
         pthread_mutex_unlock(&g15lib_mutex);
         
         if(retval == G15_NO_ERROR){
@@ -68,7 +68,7 @@ static void *keyboard_watch_thread(void *lcdlist){
                 lastkeypresses = keypresses;
             }
         }
-        pthread_msleep(40);
+        pthread_msleep(10);
     }
     return NULL;
 }
@@ -150,7 +150,7 @@ int main (int argc, char *argv[])
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
     pthread_t server_thread;
-    
+
     daemon_pid_file_ident = 
             daemon_log_ident = 
             daemon_ident_from_argv0(argv[0]);
@@ -195,7 +195,7 @@ int main (int argc, char *argv[])
         fd_set fds;
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
-            
+
         if(daemon_pid_file_create() !=0){
             daemon_log(LOG_ERR,"Couldnt create PID File! Exiting");
             daemon_retval_send(1);   
@@ -232,6 +232,9 @@ int main (int argc, char *argv[])
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
+        pthread_attr_setscope(&attr,PTHREAD_SCOPE_SYSTEM);
+        int thread_policy=SCHED_RR;
+        pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Couldnt create keyboard listener thread.  Exiting");
@@ -239,6 +242,10 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
         pthread_attr_setstacksize(&attr,128*1024); 
+        /* all other threads have a lower priority... maybe */
+        pthread_attr_setscope(&attr,PTHREAD_SCOPE_PROCESS);
+        thread_policy=SCHED_OTHER;
+        pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Couldnt create display thread.  Exiting");
