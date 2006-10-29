@@ -30,3 +30,6 @@ Section "InputDevice"
     Option "XkbOptions" "compose:rwin"
 EndSection
 
+>>>> EDIT -> as of 30/10/06, xorg cvs has this patch included.  If you're
+>>>> using a newer version of Xorg or xkeyboard-config, you may not need to use this patch.  The
+>>>> keyboard model included in Xorg is called logitech_g15, not g15daemon.
