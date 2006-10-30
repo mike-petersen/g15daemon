@@ -43,6 +43,7 @@
 int leaving = 0;
 
 unsigned int current_key_state;
+unsigned int cycle_key;
 
 extern unsigned int connected_clients;
 
@@ -164,10 +165,20 @@ int main (int argc, char *argv[])
             daemon_log(LOG_WARNING, "Failed to kill daemon");
     return retval < 0 ? 1 : 0;
     }
+    if (argc >= 2) {
+        printf("G15Daemon version %s\n",VERSION);
+    }
 
     if (argc >= 2 && !strcmp(argv[1], "-h")) {
-        printf("%s -h -k \n\n -k will kill a previous incarnation,\n",argv[0]);
+        printf("%s -h or -k or -s \n\n -k will kill a previous incarnation,\n-h shows this help\n-s changes the screen-switch key from MR to L1\n",argv[0]);
     }
+
+    if (argc >= 2 && !strcmp(argv[1], "-s")) {
+        cycle_key = G15_KEY_L1;
+    }else{
+        cycle_key = G15_KEY_MR;
+    }
+
     
     if ((daemonpid = daemon_pid_file_is_running()) >= 0) {
         printf("%s is already running.  Use \'%s -k\' to kill the daemon before running again.\nExiting now\n",argv[0],argv[0]);

@@ -42,6 +42,7 @@ static int uinp_fd = -1;
 
 extern int leaving;
 extern unsigned int connected_clients;
+extern unsigned int cycle_key;
 
 int g15_init_uinput() {
     
@@ -218,13 +219,15 @@ void g15_uinput_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, u
         g15_uinput_keyup(MKEY_OFFSET+2);
     
     if(!connected_clients) {
+      if(cycle_key != G15_KEY_MR) {
         if((currentkeys & G15_KEY_MR) && !(lastkeys & G15_KEY_MR))
             g15_uinput_keydown(MKEY_OFFSET+3);
         else if(!(currentkeys & G15_KEY_MR) && (lastkeys & G15_KEY_MR))
             g15_uinput_keyup(MKEY_OFFSET+3);
+      }
     }else{
         /* cycle through connected client displays if L1 is pressed */
-        if((currentkeys & G15_KEY_MR) && !(lastkeys & G15_KEY_MR))
+        if((currentkeys & cycle_key) && !(lastkeys & cycle_key))
         {
             pthread_mutex_lock(&lcdlist_mutex);
             lcdnode_t *current_screen = displaylist->current;
@@ -250,11 +253,12 @@ void g15_uinput_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, u
     }
     
     /* 'L' keys...  */
-    
-    if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
-    g15_uinput_keydown(LKEY_OFFSET);
-    else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
-    g15_uinput_keyup(LKEY_OFFSET);
+    if(cycle_key!=G15_KEY_L1) {    
+      if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
+        g15_uinput_keydown(LKEY_OFFSET);
+      else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
+        g15_uinput_keyup(LKEY_OFFSET);
+    }
     
     if((currentkeys & G15_KEY_L2) && !(lastkeys & G15_KEY_L2))
         g15_uinput_keydown(LKEY_OFFSET+1);
