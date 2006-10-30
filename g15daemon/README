@@ -41,6 +41,9 @@ g15daemon -k
    As of version 1.2, the MR key is used for switching between LCD clients,
 	and cannot be used for other purposes if the LCD is being used.
 
+[EDIT] As of 30/10/06 svn, the client switch key can be altered from
+MR to L1 by specifying -s on the g15daemon commandline.
+
 ***
 
 For a number of reasons, by default the keys on the G15 arent usable -

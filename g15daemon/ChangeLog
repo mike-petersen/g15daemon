@@ -51,4 +51,9 @@ allow clients use of all 'L' keys.
 - Vastly improve latency issues when using 'G' keys
 - Documentation updates
 - includes xkb patch for xorg 7.1 for native g15 keyboard layout in X11 (contrib directory)
+1.2.3 30/10/2006
+- improved the Xmodmaprc configuration, it now has parity with the xkb version
+
+1.2svn -> current
+- add cmdline switch to change client switch from MR to L1 (round key below LCD)
 
