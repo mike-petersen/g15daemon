@@ -50,6 +50,15 @@
 #include <config.h>
 #endif
 
+#define CLIENT_CMD_GET_KEYSTATE 'k'
+#define CLIENT_CMD_SWITCH_PRIORITIES 'p'
+#define CLIENT_CMD_IS_FOREGROUND 'v'
+#define CLIENT_CMD_IS_USER_SELECTED 'u'
+#define CLIENT_CMD_BACKLIGHT 0x80
+#define CLIENT_CMD_CONTRAST 0x40
+#define CLIENT_CMD_MKEY_LIGHTS 0x20
+
+
 typedef struct lcd_s
 {
     int lcd_type;

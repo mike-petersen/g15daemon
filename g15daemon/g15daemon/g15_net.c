@@ -37,6 +37,75 @@
 extern int leaving;
 extern unsigned int current_key_state;
 
+static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgbuf, unsigned int len)
+{
+    int msgret;
+    if(msgbuf[0] == CLIENT_CMD_GET_KEYSTATE) 
+    { /* client wants keypresses */
+        if(lcdnode->list->current == lcdnode){
+            /* send the keystate inband back to the client */
+            if((msgret = send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) 
+                daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
+            current_key_state = 0;
+        }
+        else{
+            memset(msgbuf,0,4); /* client isn't currently being displayed.. tell them nothing */
+            msgret=send(sock,(void *)msgbuf,sizeof(current_key_state),0);
+        }
+    } else if(msgbuf[0] == CLIENT_CMD_SWITCH_PRIORITIES) 
+    { /* client wants to switch priorities */
+        pthread_mutex_lock(&lcdlist_mutex);
+        if(lcdnode->list->current != lcdnode){
+            lcdnode->last_priority = lcdnode->list->current;
+            lcdnode->list->current = lcdnode;
+        }
+        else {
+            if(lcdnode->list->current == lcdnode->last_priority){
+                lcdnode->list->current = lcdnode->list->current->prev;
+            } else{
+                if(lcdnode->last_priority != NULL) {
+                    lcdnode->list->current = lcdnode->last_priority;
+                    lcdnode->last_priority = NULL;
+                }
+                else
+                    lcdnode->list->current = lcdnode->list->current->prev;
+            }
+        }
+        pthread_mutex_unlock(&lcdlist_mutex);
+    } else if(msgbuf[0] == CLIENT_CMD_IS_FOREGROUND) 
+    { /* client wants to know if it's currently viewable */
+        pthread_mutex_lock(&lcdlist_mutex);
+        if(lcdnode->list->current == lcdnode){
+            msgbuf[0] = '1';
+        }else{
+            msgbuf[0] = '0';
+        }
+        pthread_mutex_unlock(&lcdlist_mutex);
+        send(sock,msgbuf,1,0);
+    } else if (msgbuf[0] == CLIENT_CMD_IS_USER_SELECTED) 
+    { /* client wants to know if it was set to foreground by the user */
+        pthread_mutex_lock(&lcdlist_mutex);
+        if(lcdnode->lcd->usr_foreground)  /* user manually selected this lcd */
+            msgbuf[0] = '1';
+        else
+            msgbuf[0] = '0';
+        pthread_mutex_unlock(&lcdlist_mutex);
+        send(sock,msgbuf,1,0);
+    } else if (msgbuf[0] & CLIENT_CMD_BACKLIGHT) 
+    { /* client wants to change the backlight */
+        lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
+        lcdnode->lcd->state_changed = 1;
+    } else if (msgbuf[0] & CLIENT_CMD_CONTRAST) 
+    { /* client wants to change the LCD contrast */
+        lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
+        lcdnode->lcd->state_changed = 1;
+    } else if (msgbuf[0] & CLIENT_CMD_MKEY_LIGHTS) 
+    { /* client wants to change the M-key backlights */
+        lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
+        lcdnode->lcd->state_changed = 1;
+    }
+}
+
 /* create and open a socket for listening */
 int init_sockserver(){
     int listening_socket;
@@ -97,6 +166,7 @@ int g15_send(int sock, char *buf, unsigned int len)
     return retval==-1?-1:0;
 } 
 
+
 int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
 {
     int total = 0;
@@ -117,63 +187,7 @@ int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
                 if (msgret < 1) {
                     break;
                 }
-
-                if(msgbuf[0] == 'k') { /* client wants keypresses */
-                    if(lcdnode->list->current == lcdnode){
-                        if((msgret=send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) /* send the keystate inband back to the client */
-                           daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
-                        current_key_state = 0;
-                    }
-                    else{
-                        memset(msgbuf,0,4); /* client isn't currently being displayed.. tell them nothing */
-                        send(sock,(void *)msgbuf,sizeof(current_key_state),0);
-                    }
-                }else if(msgbuf[0] == 'p') { /* client wants to switch priorities */
-                    pthread_mutex_lock(&lcdlist_mutex);
-                    if(lcdnode->list->current != lcdnode){
-                        lcdnode->last_priority = lcdnode->list->current;
-                        lcdnode->list->current = lcdnode;
-                    }
-                    else {
-                        if(lcdnode->list->current == lcdnode->last_priority){
-                            lcdnode->list->current = lcdnode->list->current->prev;
-                        } else{
-                            if(lcdnode->last_priority != NULL) {
-                            	lcdnode->list->current = lcdnode->last_priority;
-                                lcdnode->last_priority = NULL;
-                            }
-                            else
-                                lcdnode->list->current = lcdnode->list->current->prev;
-                        }
-                    }
-                    pthread_mutex_unlock(&lcdlist_mutex);
-                }else if(msgbuf[0] == 'v') { /* client wants to know if it's currently viewable */
-                    pthread_mutex_lock(&lcdlist_mutex);
-                    if(lcdnode->list->current == lcdnode){
-                        msgbuf[0] = '1';
-                    }else{
-                        msgbuf[0] = '0';
-                    }
-                    pthread_mutex_unlock(&lcdlist_mutex);
-                    send(sock,msgbuf,1,0);
-                }else if(msgbuf[0] == 'u') { /* client wants to know if it was set to foreground by the user */
-                	pthread_mutex_lock(&lcdlist_mutex);
-                	if(lcdnode->lcd->usr_foreground)  /* user manually selected this lcd */
-                        msgbuf[0] = '1';
-                    else
-                        msgbuf[0] = '0';
-                    pthread_mutex_unlock(&lcdlist_mutex);
-                    send(sock,msgbuf,1,0);
-                }else if(msgbuf[0] & 0x80) { /* client wants to change the backlight */
-                    lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
-                    lcdnode->lcd->state_changed = 1;
-                }else if(msgbuf[0] & 0x40) { /* client wants to change the LCD contrast */
-                    lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
-                    lcdnode->lcd->state_changed = 1;
-                }else if(msgbuf[0] & 0x20) { /* client wants to change the M-key backlights */
-                    lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
-                    lcdnode->lcd->state_changed = 1;
-                }
+           	process_client_cmds(lcdnode, sock, msgbuf,len);
             }
             else if(pfd[0].revents & POLLIN) {
 
