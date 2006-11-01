@@ -46,6 +46,10 @@
 /* any more than this number of simultaneous clients will be rejected. */
 #define MAX_CLIENTS 10
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 typedef struct lcd_s
 {
     int lcd_type;
@@ -87,9 +91,14 @@ pthread_mutex_t g15lib_mutex;
 #define SERV_HELO "G15 daemon HELLO"
 
 /* uinput & keyboard control */
+#ifdef HAVE_LINUX_UINPUT_H
 int g15_init_uinput();
+void g15_uinput_keyup(unsigned char code);
+void g15_uinput_keydown(unsigned char code);
 void g15_exit_uinput();
-void g15_uinput_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys);
+#endif
+    
+void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys);
 
 /* call create_lcd for every new client, and quit it when done */
 lcd_t * create_lcd ();

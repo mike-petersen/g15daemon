@@ -30,11 +30,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <libdaemon/daemon.h>
-#include <linux/input.h>
-#include <linux/uinput.h>
+#include <config.h>
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifdef HAVE_CONFIG_H
+#ifdef HAVE_LINUX_UINPUT_H
+#include <linux/input.h>
+#include <linux/uinput.h>
+   
 #include <libg15.h>
 #include "g15daemon.h"
 
@@ -42,7 +46,7 @@ static int uinp_fd = -1;
 
 extern int leaving;
 extern unsigned int connected_clients;
-extern unsigned int cycle_key;
+
 
 int g15_init_uinput() {
     
@@ -84,7 +88,7 @@ void g15_exit_uinput(){
 }
 
 
-static void g15_uinput_keydown(unsigned char code)
+void g15_uinput_keydown(unsigned char code)
 {
     struct input_event event;
     memset(&event, 0, sizeof(event));
@@ -96,7 +100,7 @@ static void g15_uinput_keydown(unsigned char code)
     write (uinp_fd, &event, sizeof(event));
 }
 
-static void g15_uinput_keyup(unsigned char code)
+void g15_uinput_keyup(unsigned char code)
 {
     struct input_event event;
     memset(&event, 0, sizeof(event));
@@ -108,176 +112,5 @@ static void g15_uinput_keyup(unsigned char code)
     write (uinp_fd, &event, sizeof(event));
 }
 
-void g15_uinput_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys){
-    
-    /* 'G' keys */
-    if((currentkeys & G15_KEY_G1) && !(lastkeys & G15_KEY_G1))
-        g15_uinput_keydown(GKEY_OFFSET);
-    else if(!(currentkeys & G15_KEY_G1) && (lastkeys & G15_KEY_G1))
-        g15_uinput_keyup(GKEY_OFFSET);
-
-    if((currentkeys & G15_KEY_G2) && !(lastkeys & G15_KEY_G2))
-        g15_uinput_keydown(GKEY_OFFSET+1);
-    else if(!(currentkeys & G15_KEY_G2) && (lastkeys & G15_KEY_G2))
-        g15_uinput_keyup(GKEY_OFFSET+1);
-
-    if((currentkeys & G15_KEY_G3) && !(lastkeys & G15_KEY_G3))
-        g15_uinput_keydown(GKEY_OFFSET+2);
-    else if(!(currentkeys & G15_KEY_G3) && (lastkeys & G15_KEY_G3))
-        g15_uinput_keyup(GKEY_OFFSET+2);
-
-    if((currentkeys & G15_KEY_G4) && !(lastkeys & G15_KEY_G4))
-        g15_uinput_keydown(GKEY_OFFSET+3);
-    else if(!(currentkeys & G15_KEY_G4) && (lastkeys & G15_KEY_G4))
-        g15_uinput_keyup(GKEY_OFFSET+3);
-
-    if((currentkeys & G15_KEY_G5) && !(lastkeys & G15_KEY_G5))
-        g15_uinput_keydown(GKEY_OFFSET+4);
-    else if(!(currentkeys & G15_KEY_G5) && (lastkeys & G15_KEY_G5))
-        g15_uinput_keyup(GKEY_OFFSET+4);
-
-    if((currentkeys & G15_KEY_G6) && !(lastkeys & G15_KEY_G6))
-        g15_uinput_keydown(GKEY_OFFSET+5);
-    else if(!(currentkeys & G15_KEY_G6) && (lastkeys & G15_KEY_G6))
-        g15_uinput_keyup(GKEY_OFFSET+5);
-
-    if((currentkeys & G15_KEY_G7) && !(lastkeys & G15_KEY_G7))
-        g15_uinput_keydown(GKEY_OFFSET+6);
-    else if(!(currentkeys & G15_KEY_G7) && (lastkeys & G15_KEY_G7))
-        g15_uinput_keyup(GKEY_OFFSET+6);
-
-    if((currentkeys & G15_KEY_G8) && !(lastkeys & G15_KEY_G8))
-        g15_uinput_keydown(GKEY_OFFSET+7);
-    else if(!(currentkeys & G15_KEY_G8) && (lastkeys & G15_KEY_G8))
-        g15_uinput_keyup(GKEY_OFFSET+7);
-
-    if((currentkeys & G15_KEY_G9) && !(lastkeys & G15_KEY_G9))
-        g15_uinput_keydown(GKEY_OFFSET+8);
-    else if(!(currentkeys & G15_KEY_G9) && (lastkeys & G15_KEY_G9))
-        g15_uinput_keyup(GKEY_OFFSET+8);
-
-    if((currentkeys & G15_KEY_G10) && !(lastkeys & G15_KEY_G10))
-        g15_uinput_keydown(GKEY_OFFSET+9);
-    else if(!(currentkeys & G15_KEY_G10) && (lastkeys & G15_KEY_G10))
-        g15_uinput_keyup(GKEY_OFFSET+9);
-
-    if((currentkeys & G15_KEY_G11) && !(lastkeys & G15_KEY_G11))
-        g15_uinput_keydown(GKEY_OFFSET+10);
-    else if(!(currentkeys & G15_KEY_G11) && (lastkeys & G15_KEY_G11))
-        g15_uinput_keyup(GKEY_OFFSET+10);
-
-    if((currentkeys & G15_KEY_G12) && !(lastkeys & G15_KEY_G12))
-        g15_uinput_keydown(GKEY_OFFSET+11);
-    else if(!(currentkeys & G15_KEY_G12) && (lastkeys & G15_KEY_G12))
-        g15_uinput_keyup(GKEY_OFFSET+11);
-
-    if((currentkeys & G15_KEY_G13) && !(lastkeys & G15_KEY_G13))
-        g15_uinput_keydown(GKEY_OFFSET+12);
-    else if(!(currentkeys & G15_KEY_G13) && (lastkeys & G15_KEY_G13))
-        g15_uinput_keyup(GKEY_OFFSET+12);
-
-    if((currentkeys & G15_KEY_G14) && !(lastkeys & G15_KEY_G14))
-        g15_uinput_keydown(GKEY_OFFSET+13);
-    else if(!(currentkeys & G15_KEY_G14) && (lastkeys & G15_KEY_G14))
-        g15_uinput_keyup(GKEY_OFFSET+13);
-
-    if((currentkeys & G15_KEY_G15) && !(lastkeys & G15_KEY_G15))
-        g15_uinput_keydown(GKEY_OFFSET+14);
-    else if(!(currentkeys & G15_KEY_G15) && (lastkeys & G15_KEY_G15))
-        g15_uinput_keyup(GKEY_OFFSET+14);
-
-    if((currentkeys & G15_KEY_G16) && !(lastkeys & G15_KEY_G16))
-        g15_uinput_keydown(GKEY_OFFSET+15);
-    else if(!(currentkeys & G15_KEY_G16) && (lastkeys & G15_KEY_G16))
-        g15_uinput_keyup(GKEY_OFFSET+15);
-
-    if((currentkeys & G15_KEY_G17) && !(lastkeys & G15_KEY_G17))
-        g15_uinput_keydown(GKEY_OFFSET+16);
-    else if(!(currentkeys & G15_KEY_G17) && (lastkeys & G15_KEY_G17))
-        g15_uinput_keyup(GKEY_OFFSET+16);
-
-    if((currentkeys & G15_KEY_G18) && !(lastkeys & G15_KEY_G18))
-        g15_uinput_keydown(GKEY_OFFSET+17);
-    else if(!(currentkeys & G15_KEY_G18) && (lastkeys & G15_KEY_G18))
-        g15_uinput_keyup(GKEY_OFFSET+17);
-
-    /* 'M' keys */
-
-    if((currentkeys & G15_KEY_M1) && !(lastkeys & G15_KEY_M1))
-        g15_uinput_keydown(MKEY_OFFSET);
-    else if(!(currentkeys & G15_KEY_M1) && (lastkeys & G15_KEY_M1))
-        g15_uinput_keyup(MKEY_OFFSET);
-
-    if((currentkeys & G15_KEY_M2) && !(lastkeys & G15_KEY_M2))
-        g15_uinput_keydown(MKEY_OFFSET+1);
-    else if(!(currentkeys & G15_KEY_M2) && (lastkeys & G15_KEY_M2))
-        g15_uinput_keyup(MKEY_OFFSET+1);
-
-    if((currentkeys & G15_KEY_M3) && !(lastkeys & G15_KEY_M3))
-        g15_uinput_keydown(MKEY_OFFSET+2);
-    else if(!(currentkeys & G15_KEY_M3) && (lastkeys & G15_KEY_M3))
-        g15_uinput_keyup(MKEY_OFFSET+2);
-    
-    if(!connected_clients) {
-      if(cycle_key != G15_KEY_MR) {
-        if((currentkeys & G15_KEY_MR) && !(lastkeys & G15_KEY_MR))
-            g15_uinput_keydown(MKEY_OFFSET+3);
-        else if(!(currentkeys & G15_KEY_MR) && (lastkeys & G15_KEY_MR))
-            g15_uinput_keyup(MKEY_OFFSET+3);
-      }
-    }else{
-        /* cycle through connected client displays if L1 is pressed */
-        if((currentkeys & cycle_key) && !(lastkeys & cycle_key))
-        {
-            pthread_mutex_lock(&lcdlist_mutex);
-            lcdnode_t *current_screen = displaylist->current;
-        	do
-        	{
-        		displaylist->current->lcd->usr_foreground = 0;
-        		if(displaylist->tail == displaylist->current)
-        			displaylist->current = displaylist->head;
-        		else
-        			displaylist->current = displaylist->current->prev;
-        	} 
-        	while (current_screen != displaylist->current);
-            if(displaylist->tail == displaylist->current) {
-                displaylist->current = displaylist->head;
-            } else {
-                displaylist->current = displaylist->current->prev;
-            }
-            displaylist->current->lcd->usr_foreground = 1;
-            displaylist->current->lcd->state_changed = 1;
-            displaylist->current->last_priority =  displaylist->current;
-            pthread_mutex_unlock(&lcdlist_mutex);
-        }
-    }
-    
-    /* 'L' keys...  */
-    if(cycle_key!=G15_KEY_L1) {    
-      if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
-        g15_uinput_keydown(LKEY_OFFSET);
-      else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
-        g15_uinput_keyup(LKEY_OFFSET);
-    }
-    
-    if((currentkeys & G15_KEY_L2) && !(lastkeys & G15_KEY_L2))
-        g15_uinput_keydown(LKEY_OFFSET+1);
-    else if(!(currentkeys & G15_KEY_L2) && (lastkeys & G15_KEY_L2))
-        g15_uinput_keyup(LKEY_OFFSET+1);
-
-    if((currentkeys & G15_KEY_L3) && !(lastkeys & G15_KEY_L3))
-        g15_uinput_keydown(LKEY_OFFSET+2);
-    else if(!(currentkeys & G15_KEY_L3) && (lastkeys & G15_KEY_L3))
-        g15_uinput_keyup(LKEY_OFFSET+2);
-
-    if((currentkeys & G15_KEY_L4) && !(lastkeys & G15_KEY_L4))
-        g15_uinput_keydown(LKEY_OFFSET+3);
-    else if(!(currentkeys & G15_KEY_L4) && (lastkeys & G15_KEY_L4))
-        g15_uinput_keyup(LKEY_OFFSET+3);
-
-    if((currentkeys & G15_KEY_L5) && !(lastkeys & G15_KEY_L5))
-        g15_uinput_keydown(LKEY_OFFSET+4);
-    else if(!(currentkeys & G15_KEY_L5) && (lastkeys & G15_KEY_L5))
-        g15_uinput_keyup(LKEY_OFFSET+4);
-
-}
+#endif 
+#endif

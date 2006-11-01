@@ -22,7 +22,12 @@ AC_CHECK_LIB([pthread], [pthread_mutex_init])
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h])
+AC_CHECK_HEADERS([ linux/input.h ])
+AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h], [], [], 
+[#if HAVE_LINUX_INPUT_H
+#include <linux/input.h>
+#endif
+])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

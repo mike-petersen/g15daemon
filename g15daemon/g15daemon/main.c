@@ -65,7 +65,7 @@ static void *keyboard_watch_thread(void *lcdlist){
         if(retval == G15_NO_ERROR){
             if(keypresses != lastkeypresses){
                 current_key_state = keypresses;
-                g15_uinput_process_keys(displaylist, keypresses,lastkeypresses);
+                g15_process_keys(displaylist, keypresses,lastkeypresses);
                 lastkeypresses = keypresses;
             }
         }
@@ -223,9 +223,11 @@ int main (int argc, char *argv[])
             daemon_retval_send(2);
             goto exitnow;
         }
-        
+#ifdef HAVE_LINUX_UINPUT_H
         retval = g15_init_uinput();
-        
+#else
+        daemon_log(LOG_WARNING,"Compiled without Uinput support, extra keys will not be available");
+#endif
         if(retval !=0){
             daemon_log(LOG_ERR,"Couldnt setup the UINPUT device. Exiting");
             daemon_retval_send(2);
@@ -300,7 +302,9 @@ int main (int argc, char *argv[])
         pthread_join(server_thread,NULL);
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
+#ifdef HAVE_LINUX_UINPUT_H
         g15_exit_uinput();
+#endif
         /* exitLibG15(); */
         lcdlist_destroy(&lcdlist);
     }

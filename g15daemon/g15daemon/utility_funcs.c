@@ -34,12 +34,199 @@
 #include <unistd.h>
 #include <poll.h>
 #include <sys/socket.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <libdaemon/daemon.h>
 #include "g15daemon.h"
 #include <libg15.h>
 
 extern int leaving;
+extern unsigned int cycle_key;
 unsigned int connected_clients = 0;
+
+#ifdef HAVE_LINUX_UINPUT_H
+    void (*keyup)(unsigned char code) = &g15_uinput_keyup;
+    void (*keydown)(unsigned char code) = &g15_uinput_keydown;
+#else
+    void keyup(unsigned char code) { printf("Extra Keys not supported due to missing Uinput.h\n"); }
+    void keydown(unsigned char code) { printf("Extra Keys not supported due to missing Uinput.h\n"); }
+#endif
+
+void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys){
+    
+
+    /* 'G' keys */
+    if((currentkeys & G15_KEY_G1) && !(lastkeys & G15_KEY_G1))
+        keydown(GKEY_OFFSET);
+    else if(!(currentkeys & G15_KEY_G1) && (lastkeys & G15_KEY_G1))
+        keyup(GKEY_OFFSET);
+
+    if((currentkeys & G15_KEY_G2) && !(lastkeys & G15_KEY_G2))
+        keydown(GKEY_OFFSET+1);
+    else if(!(currentkeys & G15_KEY_G2) && (lastkeys & G15_KEY_G2))
+        keyup(GKEY_OFFSET+1);
+
+    if((currentkeys & G15_KEY_G3) && !(lastkeys & G15_KEY_G3))
+        keydown(GKEY_OFFSET+2);
+    else if(!(currentkeys & G15_KEY_G3) && (lastkeys & G15_KEY_G3))
+        keyup(GKEY_OFFSET+2);
+
+    if((currentkeys & G15_KEY_G4) && !(lastkeys & G15_KEY_G4))
+        keydown(GKEY_OFFSET+3);
+    else if(!(currentkeys & G15_KEY_G4) && (lastkeys & G15_KEY_G4))
+        keyup(GKEY_OFFSET+3);
+
+    if((currentkeys & G15_KEY_G5) && !(lastkeys & G15_KEY_G5))
+        keydown(GKEY_OFFSET+4);
+    else if(!(currentkeys & G15_KEY_G5) && (lastkeys & G15_KEY_G5))
+        keyup(GKEY_OFFSET+4);
+
+    if((currentkeys & G15_KEY_G6) && !(lastkeys & G15_KEY_G6))
+        keydown(GKEY_OFFSET+5);
+    else if(!(currentkeys & G15_KEY_G6) && (lastkeys & G15_KEY_G6))
+        keyup(GKEY_OFFSET+5);
+
+    if((currentkeys & G15_KEY_G7) && !(lastkeys & G15_KEY_G7))
+        keydown(GKEY_OFFSET+6);
+    else if(!(currentkeys & G15_KEY_G7) && (lastkeys & G15_KEY_G7))
+        keyup(GKEY_OFFSET+6);
+
+    if((currentkeys & G15_KEY_G8) && !(lastkeys & G15_KEY_G8))
+        keydown(GKEY_OFFSET+7);
+    else if(!(currentkeys & G15_KEY_G8) && (lastkeys & G15_KEY_G8))
+        keyup(GKEY_OFFSET+7);
+
+    if((currentkeys & G15_KEY_G9) && !(lastkeys & G15_KEY_G9))
+        keydown(GKEY_OFFSET+8);
+    else if(!(currentkeys & G15_KEY_G9) && (lastkeys & G15_KEY_G9))
+        keyup(GKEY_OFFSET+8);
+
+    if((currentkeys & G15_KEY_G10) && !(lastkeys & G15_KEY_G10))
+        keydown(GKEY_OFFSET+9);
+    else if(!(currentkeys & G15_KEY_G10) && (lastkeys & G15_KEY_G10))
+        keyup(GKEY_OFFSET+9);
+
+    if((currentkeys & G15_KEY_G11) && !(lastkeys & G15_KEY_G11))
+        keydown(GKEY_OFFSET+10);
+    else if(!(currentkeys & G15_KEY_G11) && (lastkeys & G15_KEY_G11))
+        keyup(GKEY_OFFSET+10);
+
+    if((currentkeys & G15_KEY_G12) && !(lastkeys & G15_KEY_G12))
+        keydown(GKEY_OFFSET+11);
+    else if(!(currentkeys & G15_KEY_G12) && (lastkeys & G15_KEY_G12))
+        keyup(GKEY_OFFSET+11);
+
+    if((currentkeys & G15_KEY_G13) && !(lastkeys & G15_KEY_G13))
+        keydown(GKEY_OFFSET+12);
+    else if(!(currentkeys & G15_KEY_G13) && (lastkeys & G15_KEY_G13))
+        keyup(GKEY_OFFSET+12);
+
+    if((currentkeys & G15_KEY_G14) && !(lastkeys & G15_KEY_G14))
+        keydown(GKEY_OFFSET+13);
+    else if(!(currentkeys & G15_KEY_G14) && (lastkeys & G15_KEY_G14))
+        keyup(GKEY_OFFSET+13);
+
+    if((currentkeys & G15_KEY_G15) && !(lastkeys & G15_KEY_G15))
+        keydown(GKEY_OFFSET+14);
+    else if(!(currentkeys & G15_KEY_G15) && (lastkeys & G15_KEY_G15))
+        keyup(GKEY_OFFSET+14);
+
+    if((currentkeys & G15_KEY_G16) && !(lastkeys & G15_KEY_G16))
+        keydown(GKEY_OFFSET+15);
+    else if(!(currentkeys & G15_KEY_G16) && (lastkeys & G15_KEY_G16))
+        keyup(GKEY_OFFSET+15);
+
+    if((currentkeys & G15_KEY_G17) && !(lastkeys & G15_KEY_G17))
+        keydown(GKEY_OFFSET+16);
+    else if(!(currentkeys & G15_KEY_G17) && (lastkeys & G15_KEY_G17))
+        keyup(GKEY_OFFSET+16);
+
+    if((currentkeys & G15_KEY_G18) && !(lastkeys & G15_KEY_G18))
+        keydown(GKEY_OFFSET+17);
+    else if(!(currentkeys & G15_KEY_G18) && (lastkeys & G15_KEY_G18))
+        keyup(GKEY_OFFSET+17);
+
+    /* 'M' keys */
+
+    if((currentkeys & G15_KEY_M1) && !(lastkeys & G15_KEY_M1))
+        keydown(MKEY_OFFSET);
+    else if(!(currentkeys & G15_KEY_M1) && (lastkeys & G15_KEY_M1))
+        keyup(MKEY_OFFSET);
+
+    if((currentkeys & G15_KEY_M2) && !(lastkeys & G15_KEY_M2))
+        keydown(MKEY_OFFSET+1);
+    else if(!(currentkeys & G15_KEY_M2) && (lastkeys & G15_KEY_M2))
+        keyup(MKEY_OFFSET+1);
+
+    if((currentkeys & G15_KEY_M3) && !(lastkeys & G15_KEY_M3))
+        keydown(MKEY_OFFSET+2);
+    else if(!(currentkeys & G15_KEY_M3) && (lastkeys & G15_KEY_M3))
+        keyup(MKEY_OFFSET+2);
+    
+    if(!connected_clients) {
+      if(cycle_key != G15_KEY_MR) {
+        if((currentkeys & G15_KEY_MR) && !(lastkeys & G15_KEY_MR))
+            keydown(MKEY_OFFSET+3);
+        else if(!(currentkeys & G15_KEY_MR) && (lastkeys & G15_KEY_MR))
+            keyup(MKEY_OFFSET+3);
+      }
+    }else{
+        /* cycle through connected client displays if L1 is pressed */
+        if((currentkeys & cycle_key) && !(lastkeys & cycle_key))
+        {
+            pthread_mutex_lock(&lcdlist_mutex);
+            lcdnode_t *current_screen = displaylist->current;
+        	do
+        	{
+        		displaylist->current->lcd->usr_foreground = 0;
+        		if(displaylist->tail == displaylist->current)
+        			displaylist->current = displaylist->head;
+        		else
+        			displaylist->current = displaylist->current->prev;
+        	} 
+        	while (current_screen != displaylist->current);
+            if(displaylist->tail == displaylist->current) {
+                displaylist->current = displaylist->head;
+            } else {
+                displaylist->current = displaylist->current->prev;
+            }
+            displaylist->current->lcd->usr_foreground = 1;
+            displaylist->current->lcd->state_changed = 1;
+            displaylist->current->last_priority =  displaylist->current;
+            pthread_mutex_unlock(&lcdlist_mutex);
+        }
+    }
+    
+    /* 'L' keys...  */
+    if(cycle_key!=G15_KEY_L1) {    
+      if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
+        keydown(LKEY_OFFSET);
+      else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
+        keyup(LKEY_OFFSET);
+    }
+    
+    if((currentkeys & G15_KEY_L2) && !(lastkeys & G15_KEY_L2))
+        keydown(LKEY_OFFSET+1);
+    else if(!(currentkeys & G15_KEY_L2) && (lastkeys & G15_KEY_L2))
+        keyup(LKEY_OFFSET+1);
+
+    if((currentkeys & G15_KEY_L3) && !(lastkeys & G15_KEY_L3))
+        keydown(LKEY_OFFSET+2);
+    else if(!(currentkeys & G15_KEY_L3) && (lastkeys & G15_KEY_L3))
+        keyup(LKEY_OFFSET+2);
+
+    if((currentkeys & G15_KEY_L4) && !(lastkeys & G15_KEY_L4))
+        keydown(LKEY_OFFSET+3);
+    else if(!(currentkeys & G15_KEY_L4) && (lastkeys & G15_KEY_L4))
+        keyup(LKEY_OFFSET+3);
+
+    if((currentkeys & G15_KEY_L5) && !(lastkeys & G15_KEY_L5))
+        keydown(LKEY_OFFSET+4);
+    else if(!(currentkeys & G15_KEY_L5) && (lastkeys & G15_KEY_L5))
+        keyup(LKEY_OFFSET+4);
+
+}
 
 /* handy function from xine_utils.c */
 void *g15_xmalloc(size_t size) {
@@ -54,42 +241,6 @@ void *g15_xmalloc(size_t size) {
         return NULL;
     }
     return ptr;
-}
-
-
-lcd_t * create_lcd () {
-
-    lcd_t *lcd = g15_xmalloc (sizeof (lcd_t));
-    lcd->max_x = LCD_WIDTH;
-    lcd->max_y = LCD_HEIGHT;
-    lcd->backlight_state = G15_BRIGHTNESS_MEDIUM;
-    lcd->mkey_state = G15_LED_MR;
-    lcd->contrast_state = G15_CONTRAST_MEDIUM;
-    lcd->state_changed = 1;
-    lcd->usr_foreground = 0; 
-    
-    return (lcd);
-}
-
-void quit_lcd (lcd_t * lcd) {
-    free (lcd);
-}
-
-
-/* set a pixel in a libg15 buffer */
-void setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
-{
-    unsigned int curr_row = y;
-    unsigned int curr_col = x;
-
-    unsigned int pixel_offset = curr_row * LCD_WIDTH + curr_col;
-    unsigned int byte_offset = pixel_offset / 8;
-    unsigned int bit_offset = 7-(pixel_offset % 8);
-
-    if (val)
-        lcd->buf[byte_offset] = lcd->buf[byte_offset] | 1 << bit_offset;
-    else
-        lcd->buf[byte_offset] = lcd->buf[byte_offset]  &  ~(1 << bit_offset);
 }
 
 void convert_buf(lcd_t *lcd, unsigned char * orig_buf)
@@ -110,260 +261,6 @@ void write_buf_to_g15(lcd_t *lcd)
     return;
 }
 
-void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour) {
-
-    int d, sx, sy, dx, dy;
-    unsigned int ax, ay;
-
-    x1 = x1 - 1;
-    y1 = y1 - 1;
-    x2 = x2 - 1;
-    y2 = y2 - 1;
-
-    dx = x2 - x1;
-    ax = abs (dx) << 1;
-    if (dx < 0)
-        sx = -1;
-    else
-        sx = 1;
-
-    dy = y2 - y1;
-    ay = abs (dy) << 1;
-    if (dy < 0)
-        sy = -1;
-    else
-        sy = 1;
-
-    /* set the pixel */
-    setpixel (lcd, x1, y1, colour);
-
-    if (ax > ay)
-    {
-        d = ay - (ax >> 1);
-        while (x1 != x2)
-        {
-            if (d >= 0)
-            {
-                y1 += sy;
-                d -= ax;
-            }
-            x1 += sx;
-            d += ay;
-            setpixel (lcd, x1, y1, colour);
-
-        }
-    }
-    else
-    {
-        d = ax - (ay >> 1);
-        while (y1 != y2)
-        {
-            if (d >= 0)
-            {
-                x1 += sx;
-                d -= ay;
-            }
-            y1 += sy;
-            d += ax;
-            setpixel (lcd, x1, y1, colour);
-        }
-    }
-}
-
-
-void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour) {
-
-    int y;
-
-    if (x1 != x2 && y1 != y2)
-    {
-        if (!filled)
-        {
-            line (lcd, x1, y1, x2, x1, colour);
-            line (lcd, x1, y1, x1, y2, colour);
-            line (lcd, x1, y2, x2, y2, colour);
-            line (lcd, x2, y1, x2, y2, colour);
-        }
-        else
-        {
-            for (y = y1; y <= y2; y++)
-            {
-                line(lcd,x1,y,x2,y,colour);
-            }
-        }
-    }
-}
-
-
-void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour, int num) {
-    x1 += 2;
-    x2 -= 2;
-
-    switch(num){
-        case 45: 
-            rectangle (lcd, x1, y1+((y2/2)-2), x2, y1+((y2/2)+2), 1, BLACK);
-            break;
-        case 46:
-            rectangle (lcd, x2-5, y2-5, x2, y2 , 1, BLACK);
-            break;
-        case 48:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1 +5, y1 +5, x2 -5, y2 - 6, 1, WHITE);
-            break;
-        case 49: 
-            rectangle (lcd, x2-5, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1, x2 -5, y2, 1, WHITE);
-            break;
-        case 50:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2 , y2-6, 1, WHITE);
-            break;
-        case 51:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
-            break;
-        case 52:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2 -5, y2, 1, WHITE);
-            rectangle (lcd, x1+5, y1, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            break;
-        case 53:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
-            break;
-        case 54:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
-            break;
-        case 55:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y2, 1, WHITE);
-            break;
-        case 56:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
-            break;
-        case 57:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2, 1, WHITE);
-            break;
-        case 58: 
-            rectangle (lcd, x2-5, y1+5, x2, y1+10 , 1, BLACK);
-            rectangle (lcd, x2-5, y2-10, x2, y2-5 , 1, BLACK);
-            break;
-
-    }
-}
-
-/* initialise a new displaylist, and add an initial node at the tail (used for the clock) */
-lcdlist_t *lcdlist_init () {
-    
-    lcdlist_t *displaylist = NULL;
-    
-    pthread_mutex_init(&lcdlist_mutex, NULL);
-    pthread_mutex_lock(&lcdlist_mutex);
-    
-    displaylist = g15_xmalloc(sizeof(lcdlist_t));
-    
-    displaylist->head = g15_xmalloc(sizeof(lcdnode_t));
-    
-    displaylist->tail = displaylist->head;
-    displaylist->current = displaylist->head;
-    
-    displaylist->head->lcd = create_lcd();
-    displaylist->head->lcd->mkey_state = 0;
-    
-    displaylist->head->prev = displaylist->head;
-    displaylist->head->next = displaylist->head;
-    displaylist->head->list = displaylist;
-    
-    pthread_mutex_unlock(&lcdlist_mutex);
-    return displaylist;
-}
-
-lcdnode_t *lcdnode_add(lcdlist_t **display_list) {
-    
-    lcdnode_t *new = NULL;
-    
-    pthread_mutex_lock(&lcdlist_mutex);
-    
-    new = g15_xmalloc(sizeof(lcdnode_t));
-    new->prev = (*display_list)->head;
-    new->next = (*display_list)->tail; 
-    new->lcd = create_lcd();
-    new->last_priority = NULL;
-    
-    (*display_list)->head->next=new;
-    (*display_list)->current = new;
-    
-    (*display_list)->head = new;
-    (*display_list)->head->list = *display_list;
-    
-    pthread_mutex_unlock(&lcdlist_mutex);
-    
-    return new;
-}
-
-void lcdnode_remove (lcdnode_t *oldnode) {
-    
-    lcdlist_t **display_list = NULL;
-    lcdnode_t **prev = NULL;
-    lcdnode_t **next = NULL;
-    
-    pthread_mutex_lock(&lcdlist_mutex);
-    
-    display_list = &oldnode->list;
-    prev = &oldnode->prev;
-    next = &oldnode->next;
-    
-    quit_lcd(oldnode->lcd);
-    
-    if((*display_list)->current == oldnode) {
-        if((*display_list)->current!=(*display_list)->head){
-            (*display_list)->current = oldnode->next;
-        } else {
-            (*display_list)->current = oldnode->prev;
-        }
-        (*display_list)->current->lcd->state_changed = 1;
-    }
-    
-    if((*display_list)->head!=oldnode){
-        (*next)->prev = oldnode->prev;
-        (*prev)->next = oldnode->next;
-    }else{
-        (*prev)->next = (*display_list)->tail;
-        (*display_list)->head = oldnode->prev;
-    }
-
-    free(oldnode);
-    
-    pthread_mutex_unlock(&lcdlist_mutex);
-}
-
-void lcdlist_destroy(lcdlist_t **displaylist) {
-    
-    int i = 0;
-    
-    while ((*displaylist)->head != (*displaylist)->tail) {
-        i++;
-        lcdnode_remove((*displaylist)->head);
-    }
-    
-    if(i)
-        daemon_log(LOG_INFO,"removed %i stray client nodes",i);
-    
-    free((*displaylist)->tail->lcd);
-    free((*displaylist)->tail);
-    free(*displaylist);
-    
-    pthread_mutex_destroy(&lcdlist_mutex);
-}
 
 /* Sleep routine (hackish). */
 void pthread_sleep(int seconds) {
