@@ -146,7 +146,7 @@ int main (int argc, char *argv[])
 {
     pid_t daemonpid;
     int retval;
-    
+    int i;
     
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
@@ -156,30 +156,37 @@ int main (int argc, char *argv[])
             daemon_log_ident = 
             daemon_ident_from_argv0(argv[0]);
 
-    if (argc >= 2 && !strcmp(argv[1], "-k")) {
-#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
-    if ((retval = daemon_pid_file_kill_wait(SIGINT, 15)) != 0)
-#else
-    if ((retval = daemon_pid_file_kill(SIGINT)) != 0)
-#endif
-            daemon_log(LOG_WARNING, "Failed to kill daemon");
-    return retval < 0 ? 1 : 0;
-    }
-    if (argc >= 2) {
-        printf("G15Daemon version %s\n",VERSION);
-    }
-
-    if (argc >= 2 && !strcmp(argv[1], "-h")) {
-        printf("%s -h or -k or -s \n\n -k will kill a previous incarnation,\n-h shows this help\n-s changes the screen-switch key from MR to L1\n",argv[0]);
-    }
-
-    if (argc >= 2 && !strcmp(argv[1], "-s")) {
-        cycle_key = G15_KEY_L1;
-    }else{
-        cycle_key = G15_KEY_MR;
-    }
-
     
+    for (i=0;i<argc;i++) {
+        char daemonargs[255];
+        strcpy(daemonargs,argv[i]);
+        if (!strcmp(daemonargs, "-k")) {
+#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
+            if ((retval = daemon_pid_file_kill_wait(SIGINT, 15)) != 0)
+#else
+                if ((retval = daemon_pid_file_kill(SIGINT)) != 0)
+#endif
+                    daemon_log(LOG_WARNING, "Failed to kill daemon");
+            return retval < 0 ? 1 : 0;
+        }
+        if (!strcmp(daemonargs, "-v")) {
+            printf("G15Daemon version %s\n",VERSION);
+            exit(0);
+        }    
+        
+        if (!strcmp(daemonargs, "-h")) {
+            printf("G15Daemon version %s\n",VERSION);
+            printf("%s -h or -k or -s \n\n -k will kill a previous incarnation,\n-h shows this help\n-s changes the screen-switch key from MR to L1\n",argv[0]);
+            exit(0);
+        }
+
+        if (!strcmp(daemonargs, "-s")) {
+            cycle_key = G15_KEY_L1;
+        }else{
+            cycle_key = G15_KEY_MR;
+        }
+    }
+
     if ((daemonpid = daemon_pid_file_is_running()) >= 0) {
         printf("%s is already running.  Use \'%s -k\' to kill the daemon before running again.\nExiting now\n",argv[0],argv[0]);
         return 1;
