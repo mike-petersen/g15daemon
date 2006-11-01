@@ -36,6 +36,19 @@
 #include <libdaemon/daemon.h>
 extern int leaving;
 extern unsigned int current_key_state;
+extern unsigned int client_handles_keys;
+extern lcd_t *keyhandler;
+
+void send_keystate(lcd_t *client) {
+    int sock = client->connection;
+    int msgret;
+    if(current_key_state){
+            /* send the keystate inband back to the client */
+            if((msgret = send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) 
+                daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
+            current_key_state = 0;
+    }
+}
 
 static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgbuf, unsigned int len)
 {
@@ -103,7 +116,17 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
     { /* client wants to change the M-key backlights */
         lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
         lcdnode->lcd->state_changed = 1;
+    } else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
+    { /* client wants to take control of the G&M keys */
+        daemon_log(LOG_WARNING, "Client is taking over keystate");
+        
+	client_handles_keys=1;
+        keyhandler = &lcdnode->lcd;
+        keyhandler->connection = sock;
+        
+        daemon_log(LOG_WARNING, "Client has taken over keystate");
     }
+    
 }
 
 /* create and open a socket for listening */

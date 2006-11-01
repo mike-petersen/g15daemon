@@ -57,7 +57,9 @@
 #define CLIENT_CMD_BACKLIGHT 0x80
 #define CLIENT_CMD_CONTRAST 0x40
 #define CLIENT_CMD_MKEY_LIGHTS 0x20
-
+/* if the following CMD is sent from a client, G15Daemon will not send any MR or G? keypresses via uinput, 
+ * all M&G keys must be handled by the client.  If the client dies or exits, normal functions resume. */
+#define CLIENT_CMD_KEY_HANDLER 0x10
 
 typedef struct lcd_s
 {

@@ -44,6 +44,8 @@ int leaving = 0;
 
 unsigned int current_key_state;
 unsigned int cycle_key;
+unsigned int client_handles_keys = 0;
+struct lcd_t *keyhandler = NULL;
 
 extern unsigned int connected_clients;
 
@@ -66,6 +68,8 @@ static void *keyboard_watch_thread(void *lcdlist){
             if(keypresses != lastkeypresses){
                 current_key_state = keypresses;
                 g15_process_keys(displaylist, keypresses,lastkeypresses);
+                if(client_handles_keys)
+                    send_keystate(keyhandler);
                 lastkeypresses = keypresses;
             }
         }

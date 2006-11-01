@@ -84,7 +84,6 @@ void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsig
             x1 += sx;
             d += ay;
             setpixel (lcd, x1, y1, colour);
-
         }
     }
     else

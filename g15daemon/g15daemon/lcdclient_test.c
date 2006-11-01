@@ -106,8 +106,18 @@ int main(int argc, char *argv[])
                 send(g15screen_fd,msgbuf,1,MSG_OOB);            
 
             }
-                           
-            usleep(5000);
+
+                                       
+//            usleep(5000);
+            msgbuf[0]=0x10; /* we demand all M&G Keys */
+            send(g15screen_fd,msgbuf,1,MSG_OOB);
+            while(1){
+                printf("waiting on keystate\n");
+                keystate=0;
+                retval = recv(g15screen_fd, &keystate , sizeof(keystate),0);
+                if(keystate)
+                  printf("Recieved %i as keystate",keystate);
+            }
         }
         g15_close_screen(g15screen_fd);
         return 0;
