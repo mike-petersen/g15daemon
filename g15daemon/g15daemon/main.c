@@ -317,7 +317,11 @@ int main (int argc, char *argv[])
 #ifdef HAVE_LINUX_UINPUT_H
         g15_exit_uinput();
 #endif
-        /* exitLibG15(); */
+#ifdef LIBG15_VERSION
+#if LIBG15_VERSION >= 1100
+        exitLibG15(); 
+#endif
+#endif
         lcdlist_destroy(&lcdlist);
     }
 
