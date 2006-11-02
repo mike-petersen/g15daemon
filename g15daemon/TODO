@@ -5,14 +5,14 @@ TODO list for G15daemon.  Not in any particular order.
 - Read a configuration file.  Currently there are no real user-configurable
 options, but ....
 
-- Allow for clients to change LCD backlight.
+DONE - Allow for clients to change LCD backlight.
 
-- enable the M-key backlights - the library supports this
+DONE - enable the M-key backlights - the library supports this
 
 - write a small client app to set configuration options on-the-fly (M-key
 toggle, backlight, etc)
 
-- Allow for clients to request sole use of the 'L' keys (perhaps passing
+DONE - Allow for clients to request sole use of the 'L' keys (perhaps passing
 their status back to the client via MSGs on the socket.
 
 - Allow for clients to send text-based commands controlling the output (need
