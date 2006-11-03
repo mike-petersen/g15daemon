@@ -138,7 +138,7 @@ int init_sockserver(){
     struct    sockaddr_in servaddr; 
 
     if ((listening_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-        daemon_log(LOG_WARNING, "couldnt create socket.\n");
+        daemon_log(LOG_WARNING, "Unable to create socket.\n");
         return -1;
     }
 

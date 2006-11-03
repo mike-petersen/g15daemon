@@ -58,7 +58,7 @@ int g15_init_uinput() {
         ++i;
     }
     if(uinp_fd<0){
-        daemon_log(LOG_ERR,"Couldnt open uinput device.  Please ensure the uinput driver is loaded into the kernel and that you have permission to open the device.");
+        daemon_log(LOG_ERR,"Unable to open UINPUT device.  Please ensure the uinput driver is loaded into the kernel and that you have permission to open the device.");
         return -1;
     }
 
@@ -76,7 +76,7 @@ int g15_init_uinput() {
     
     if (ioctl(uinp_fd, UI_DEV_CREATE))
     {
-        daemon_log(LOG_ERR,"Couldnt create UINPUT device.");
+        daemon_log(LOG_ERR,"Unable to create UINPUT device.");
         return -1;
     }
     return 0;

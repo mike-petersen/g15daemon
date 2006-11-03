@@ -129,12 +129,12 @@ static void *lcdserver_thread(void *lcdlist){
     int g15_socket=-1;
     
     if((g15_socket = init_sockserver())<0){
-        daemon_log(LOG_WARNING,"Couldnt initialise the server at port %i",LISTEN_PORT);
+        daemon_log(LOG_ERR,"Unable to initialise the server at port %i",LISTEN_PORT);
         return NULL;
     }
     
     if (fcntl(g15_socket, F_SETFL, O_NONBLOCK) <0 ) {
-        daemon_log(LOG_INFO,"Couldnt set socket to nonblocking");
+        daemon_log(LOG_ERR,"Unable to set socket to nonblocking");
     }
 
     while ( !leaving ) {
@@ -151,7 +151,8 @@ int main (int argc, char *argv[])
     pid_t daemonpid;
     int retval;
     int i;
-    
+    int g15daemon_debug = 0;
+        
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
     pthread_t server_thread;
@@ -181,7 +182,7 @@ int main (int argc, char *argv[])
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
-            printf("%s -h (--help) or -k (--kill) or -s (--switch) \n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n",argv[0]);
+            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n",argv[0]);
             exit(0);
         }
 
@@ -189,6 +190,10 @@ int main (int argc, char *argv[])
             cycle_key = G15_KEY_L1;
         }else{
             cycle_key = G15_KEY_MR;
+        }
+
+        if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",8)) {
+            g15daemon_debug = 1;
         }
     }
 
@@ -198,12 +203,15 @@ int main (int argc, char *argv[])
     }
 
     daemon_retval_init();
-    
-    if((daemonpid = daemon_fork()) < 0){
-        daemon_retval_done();
-        return 1;
+
+    if(!g15daemon_debug) {
+      if((daemonpid = daemon_fork()) < 0){
+          daemon_retval_done();
+          return 1;
+      }
     }
-    else if (daemonpid){
+      
+    if (daemonpid && !g15daemon_debug){
         retval=0;
         char * g15_errors[] = {	"No Error",
                                 "Unable to write to PID file",
@@ -211,14 +219,13 @@ int main (int argc, char *argv[])
                                 "Unable to configure the linux kernel UINPUT driver",
                                 "Unable to register signal handler",
                                 "Unable to create new thread", NULL };
-      
-        if((retval = daemon_retval_wait(20)) !=0) {
+          if((retval = daemon_retval_wait(20)) !=0) {
             if(retval)
-              daemon_log(LOG_ERR,"An Error Occurred - %i : ( %s ) received",retval, g15_errors[retval]);
-            else
-               daemon_log(LOG_ERR,"A library error occurred.  Please file a bug report stating the g15daemon version, your kernel version, libdaemon version and your distribution name.");
-            return 255;
-        }
+                daemon_log(LOG_ERR,"An Error Occurred - %i : ( %s ) received",retval, g15_errors[retval]);
+              else
+                 daemon_log(LOG_ERR,"A library error occurred.  Please file a bug report stating the g15daemon version, your kernel version, libdaemon version and your distribution name.");
+              return 255;
+          }
     
         return retval;
     
@@ -230,18 +237,18 @@ int main (int argc, char *argv[])
         pthread_attr_t attr;
 
         if(daemon_pid_file_create() !=0){
-            daemon_log(LOG_ERR,"Couldnt create PID File! Exiting");
+            daemon_log(LOG_ERR,"Unable to create PID File! Exiting");
             daemon_retval_send(1);   
             goto exitnow;
         }
-    
+
         /* init stuff here..  */
         retval = initLibG15();
         setLCDContrast(1); 
         setLEDs(0);
         
         if(retval != G15_NO_ERROR){
-            daemon_log(LOG_ERR,"Couldnt find G15 keyboard or keyboard is already handled. Exiting");
+            daemon_log(LOG_ERR,"Unable to find G15 keyboard or the keyboard is already handled. Exiting");
             daemon_retval_send(2);
             goto exitnow;
         }
@@ -251,13 +258,13 @@ int main (int argc, char *argv[])
         daemon_log(LOG_WARNING,"Compiled without Uinput support, extra keys will not be available");
 #endif
         if(retval !=0){
-            daemon_log(LOG_ERR,"Couldnt setup the UINPUT device. Exiting");
+            daemon_log(LOG_ERR,"Unable to setup the UINPUT device. Exiting");
             daemon_retval_send(3);
             goto exitnow;
         }
     
         if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,0) <0){
-            daemon_log(LOG_ERR,"Couldnt register signal handler. Exiting");
+            daemon_log(LOG_ERR,"Unable to register signal handler. Exiting");
             daemon_retval_send(4);
             goto exitnow;
         }
@@ -272,7 +279,7 @@ int main (int argc, char *argv[])
         pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
-            daemon_log(LOG_ERR,"Couldnt create keyboard listener thread.  Exiting");
+            daemon_log(LOG_ERR,"Unable to create keyboard listener thread.  Exiting");
             daemon_retval_send(5);
             goto exitnow;
         }
@@ -283,13 +290,13 @@ int main (int argc, char *argv[])
         pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
-            daemon_log(LOG_ERR,"Couldnt create display thread.  Exiting");
+            daemon_log(LOG_ERR,"Unable to create display thread.  Exiting");
             daemon_retval_send(5);
             goto exitnow;
         }
 
         if (pthread_create(&server_thread, &attr, lcdserver_thread, lcdlist) != 0) {
-            daemon_log(LOG_ERR,"Couldnt create lcdserver thread.  Exiting");
+            daemon_log(LOG_ERR,"Unable to create lcd-client server thread.  Exiting");
             daemon_retval_send(5);
             goto exitnow;
         }

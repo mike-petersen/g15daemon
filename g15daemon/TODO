@@ -2,8 +2,10 @@
 TODO list for G15daemon.  Not in any particular order.
 ********************************************************************************
 
-- Add manpage and other documentation for the client library and it's
+PARTIALLY DONE - Add manpage and other documentation for the client library and it's
   bindings.
+
+- Add client to record & playback macros (being worked on)
 
 - add a few simple template client examples in various languages
 

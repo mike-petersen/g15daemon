@@ -70,5 +70,11 @@ allow clients use of all 'L' keys.
 - Refactored the code slightly to allow for easier modification in the future.
 - Handle long commandline arguments such as --help --version --kill --switch.
 - Greatly improve error reporting.
+- Add client development documentation (man g15daemon_client_devel / README.client_devel)
+- Added a 'debug' mode (-d or --debug) cmdline switch to keep the daemon in the foreground
+  rather than daemonising.  All errors and other info will be reported to STDERR in this mode.
+
+
+
 
 

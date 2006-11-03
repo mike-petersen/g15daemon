@@ -469,7 +469,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
         pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
         pthread_attr_setstacksize(&attr,256*1024); /* set stack to 768k - dont need 8Mb - this is probably rather excessive also */
         if (pthread_create(&client_connection, &attr, lcd_client_thread, clientnode) != 0) {
-            daemon_log(LOG_WARNING,"Couldnt create client thread.");
+            daemon_log(LOG_WARNING,"Unable to create client thread.");
             if (close(conn_s) < 0 ) {
                 daemon_log(LOG_WARNING, "error calling close()\n");
                 return -1;
