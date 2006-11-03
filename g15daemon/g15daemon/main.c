@@ -165,7 +165,7 @@ int main (int argc, char *argv[])
         char daemonargs[20];
         memset(daemonargs,0,20);
         strncpy(daemonargs,argv[i],19);
-        if (!strncmp(daemonargs, "-k",2)) {
+        if (!strncmp(daemonargs, "-k",2) || !strncmp(daemonargs, "--kill",6)) {
 #ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
             if ((retval = daemon_pid_file_kill_wait(SIGINT, 15)) != 0)
 #else
@@ -174,18 +174,18 @@ int main (int argc, char *argv[])
                     daemon_log(LOG_WARNING, "Failed to kill daemon");
             return retval < 0 ? 1 : 0;
         }
-        if (!strncmp(daemonargs, "-v",2)) {
+        if (!strncmp(daemonargs, "-v",2) || !strncmp(daemonargs, "--version",9)) {
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
             exit(0);
         }    
         
-        if (!strncmp(daemonargs, "-h",2)) {
+        if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
-            printf("%s -h or -k or -s \n\n -k will kill a previous incarnation,\n-h shows this help\n-s changes the screen-switch key from MR to L1\n",argv[0]);
+            printf("%s -h (--help) or -k (--kill) or -s (--switch) \n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n",argv[0]);
             exit(0);
         }
 
-        if (!strncmp(daemonargs, "-s",2)) {
+        if (!strncmp(daemonargs, "-s",2) || !strncmp(daemonargs, "--switch",8)) {
             cycle_key = G15_KEY_L1;
         }else{
             cycle_key = G15_KEY_MR;
@@ -205,8 +205,18 @@ int main (int argc, char *argv[])
     }
     else if (daemonpid){
         retval=0;
-        if((retval = daemon_retval_wait(10)) !=0) {
-            daemon_log(LOG_ERR,"Something went wrong. Couldnt get return value from daemon process");
+        char * g15_errors[] = {	"No Error",
+                                "Unable to write to PID file",
+                                "Unable to initialise keyboard",
+                                "Unable to configure the linux kernel UINPUT driver",
+                                "Unable to register signal handler",
+                                "Unable to create new thread", NULL };
+      
+        if((retval = daemon_retval_wait(20)) !=0) {
+            if(retval)
+              daemon_log(LOG_ERR,"An Error Occurred - %i : ( %s ) received",retval, g15_errors[retval]);
+            else
+               daemon_log(LOG_ERR,"A library error occurred.  Please file a bug report stating the g15daemon version, your kernel version, libdaemon version and your distribution name.");
             return 255;
         }
     
@@ -242,13 +252,13 @@ int main (int argc, char *argv[])
 #endif
         if(retval !=0){
             daemon_log(LOG_ERR,"Couldnt setup the UINPUT device. Exiting");
-            daemon_retval_send(2);
+            daemon_retval_send(3);
             goto exitnow;
         }
     
         if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,0) <0){
             daemon_log(LOG_ERR,"Couldnt register signal handler. Exiting");
-            daemon_retval_send(2);
+            daemon_retval_send(4);
             goto exitnow;
         }
         

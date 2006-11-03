@@ -66,6 +66,9 @@ allow clients use of all 'L' keys.
   resume when the client that requested this feature exits.
 - Add manpage for the daemon.
 - Fix automake bug that caused documentation not to be installed by default.
-- Add ability for the daemon to process more than one commandline option
+- Add ability for the daemon to process more than one commandline option.
 - Refactored the code slightly to allow for easier modification in the future.
+- Handle long commandline arguments such as --help --version --kill --switch.
+- Greatly improve error reporting.
+
 
