@@ -37,10 +37,16 @@ extern "C"
 #define G15_WBMPBUF 2
 #define G15_G15RBUF 3
 
-#define G15DAEMON_MKEYLEDS 0x20
-#define G15DAEMON_CONTRAST 0x40
-#define G15DAEMON_BACKLIGHT 0x80
-
+/* client / server commands - see README.devel for details on use */
+ #define G15DAEMON_KEY_HANDLER 0x10
+ #define G15DAEMON_MKEYLEDS 0x20
+ #define G15DAEMON_CONTRAST 0x40
+ #define G15DAEMON_BACKLIGHT 0x80
+ #define G15DAEMON_GET_KEYSTATE 'k'
+ #define G15DAEMON_SWITCH_PRIORITIES 'p'
+ #define G15DAEMON_IS_FOREGROUND 'v'
+ #define G15DAEMON_IS_USER_SELECTED 'u'
+ 
 const char *g15daemon_version();
 
 /* open a new connection to the g15daemon.  returns an fd to be used with g15_send & g15_recv */

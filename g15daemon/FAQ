@@ -33,34 +33,3 @@ you'll find an xmodmaprc script and a bash script in the  contrib
 directory.  Copy the xmodmaprc file to $HOME/.Xmodmap and set the
 bash script to run every time X11 starts.  KDE has  an  AutoStart
 folder you can put it in, Gnome probably has something similar.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
