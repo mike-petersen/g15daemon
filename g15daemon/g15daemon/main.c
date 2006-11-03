@@ -192,7 +192,7 @@ int main (int argc, char *argv[])
             cycle_key = G15_KEY_MR;
         }
 
-        if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",8)) {
+        if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",7)) {
             g15daemon_debug = 1;
         }
     }

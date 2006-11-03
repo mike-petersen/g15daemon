@@ -63,18 +63,17 @@ allow clients use of all 'L' keys.
   option, no keyboard processing is done by the daemon, and the client must
   be prepared to do uinput processing itself, if necessary.  This limitation
   may be removed in future versions of the API.  Normal processing will
-  resume when the client that requested this feature exits.
+  resume when the client that requested this feature exits or closes its
+  connection.
 - Add manpage for the daemon.
 - Fix automake bug that caused documentation not to be installed by default.
-- Add ability for the daemon to process more than one commandline option.
+- Fix the daemons cmdline processing to handle more than one commandline option.
 - Refactored the code slightly to allow for easier modification in the future.
 - Handle long commandline arguments such as --help --version --kill --switch.
 - Greatly improve error reporting.
 - Add client development documentation (man g15daemon_client_devel / README.client_devel)
 - Added a 'debug' mode (-d or --debug) cmdline switch to keep the daemon in the foreground
   rather than daemonising.  All errors and other info will be reported to STDERR in this mode.
-
-
-
-
-
+- If compiled with libg15 1.1.0 or greater (or svn versions later than 3/11/06), the daemon 
+  will now reset the keyboard to defaults on exit.
+- make distcheck && make dist now work as expected.
