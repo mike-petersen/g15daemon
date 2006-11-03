@@ -1,5 +1,24 @@
 .TH "G15daemon Client Development" "" "1.0" "G15Daemon" ""
+.SH "SYNOPSIS"
+
+#include <libg15.h>
+.br
+#include <g15daemon_client.h>
+
+link with
+
+\-lg15daemon_client
+
+int new_g15_screen(int screentype);
+.br
+int g15_close_screen(int sock);
+.br
+int g15_send(int sock, char *buf, unsigned int len);
+.br
+int g15_recv(int sock, char *buf, unsigned int len);
+.br
 .SH "G15Daemon Server / Client communication"
+
 G15Daemon uses INET sockets to talk to its clients, listening on localhost port 15550 for connection requests.  Once connected, the server sends the text string "G15 daemon HELLO" to confirm to the client that it is a valid g15daemon process, creates a new screen, and waits for LCD buffers or commands to be sent from the client.  Clients are able to create multiple screens simply by opening more socket connections to the server process.  If the socket is closed or the client exits, all LCD buffers and the screen associated with that socket are automatically destroyed.
 
 Clients wishing to display on the LCD must send entire screens in the format of their choice.  Currently partial screen updates (icons etc) are not supported.

@@ -2,6 +2,19 @@ G15daemon Client Development()                  G15daemon Client Development()
 
 
 
+[1mSYNOPSIS[0m
+       #include <libg15.h>
+       #include <g15daemon_client.h>
+
+       link with
+
+       -lg15daemon_client
+
+       int new_g15_screen(int screentype);
+       int g15_close_screen(int sock);
+       int g15_send(int sock, char *buf, unsigned int len);
+       int g15_recv(int sock, char *buf, unsigned int len);
+
 [1mG15Daemon Server / Client communication[0m
        G15Daemon uses INET sockets to talk to its clients, listening on local-
        host port 15550 for connection requests.  Once  connected,  the  server
@@ -227,6 +240,8 @@ G15daemon Client Development()                  G15daemon Client Development()
                return 0; }
 
        -- end cutting --
+
+
 
 
 G15Daemon                             1.0       G15daemon Client Development()
