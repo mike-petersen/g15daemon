@@ -3,11 +3,11 @@
 %define prefix	/usr
 Summary: Daemon to control logitech G15 keyboards
 Name: g15daemon
-Version: 1.2.3
+Version: 1.2.5
 Release: 1
 Copyright: GPL
 Group: Applications/System
-Source: ftp://prdownloads.sf.net/g15daemon-1.2.3.tar.bz2
+Source: ftp://prdownloads.sf.net/g15daemon-1.2.5.tar.bz2
 URL: http://g15daemon.sf.net
 Distribution: Linux
 Vendor: NONE
@@ -61,6 +61,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root, root)
 
 %doc AUTHORS COPYING LICENSE NEWS README contrib lang-bindings
+%doc %{_mandir}/man*/*.*
 %{prefix}/lib/*.so
 %{prefix}/lib/*.so.*
 %{prefix}/sbin/*
@@ -69,6 +70,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root, root)
 
 %doc AUTHORS COPYING LICENSE NEWS README contrib lang-bindings
+%doc %{_mandir}/man*/*.*
 
 %{prefix}/lib/libg15daemon_client.*
 %{prefix}/include/*
