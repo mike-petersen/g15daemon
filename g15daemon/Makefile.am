@@ -9,6 +9,7 @@ docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 doc_DATA = FAQ README.usage README ChangeLog TODO AUTHORS NEWS LICENSE 
 
 man1_MANS = Documentation/g15daemon.1
+man3_MANS = Documentation/g15daemon_client_devel.3
 
 dist-hook:
 	rm -rf `find $(distdir)/debian -name .svn`
