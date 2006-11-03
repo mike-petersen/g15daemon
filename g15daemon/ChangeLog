@@ -53,7 +53,19 @@ allow clients use of all 'L' keys.
 - includes xkb patch for xorg 7.1 for native g15 keyboard layout in X11 (contrib directory)
 1.2.3 30/10/2006
 - improved the Xmodmaprc configuration, it now has parity with the xkb version
-
-1.2svn -> current
-- add cmdline switch to change client switch from MR to L1 (round key below LCD)
+1.2.4 01/11/2006
+- Users can now choose to use the L1 key to switch between client screens instead of MR. 
+  - L1 is the small round black button directly below the LCD.
+  - Use -s on the commandline to activate the change.
+1.2.4svn -> current
+- Add ability for clients to request all M and G keypresses be 'pushed' to them,
+  rather than having to request them repeatedly.  If a client uses this
+  option, no keyboard processing is done by the daemon, and the client must
+  be prepared to do uinput processing itself, if necessary.  This limitation
+  may be removed in future versions of the API.  Normal processing will
+  resume when the client that requested this feature exits.
+- Add manpage for the daemon.
+- Fix automake bug that caused documentation not to be installed by default.
+- Add ability for the daemon to process more than one commandline option
+- Refactored the code slightly to allow for easier modification in the future.
 

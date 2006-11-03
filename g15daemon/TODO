@@ -2,6 +2,11 @@
 TODO list for G15daemon.  Not in any particular order.
 ********************************************************************************
 
+- Add manpage and other documentation for the client library and it's
+  bindings.
+
+- add a few simple template client examples in various languages
+
 - Read a configuration file.  Currently there are no real user-configurable
 options, but ....
 
