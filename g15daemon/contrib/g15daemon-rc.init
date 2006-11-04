@@ -26,6 +26,7 @@ case "$1" in
 
   start)    
 	    echo "Starting G15daemon"
+	    /sbin/modprobe uinput
             /usr/sbin/g15daemon 
             echo
             ;;
@@ -40,8 +41,13 @@ case "$1" in
             /usr/sbin/g15daemon
             echo
             ;;
+  status)
+	    echo ""
+	    /usr/sbin/g15daemon --version
+            echo
+            ;;
   *) 
-            gprintf "$0 {start|stop|restart|reload}\n"
+            gprintf "$0 {start|stop|restart|reload|status}\n"
             exit 1
             ;;
 
