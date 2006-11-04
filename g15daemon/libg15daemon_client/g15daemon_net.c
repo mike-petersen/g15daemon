@@ -17,6 +17,8 @@
     
     (c) 2006 Mike Lampard, Philip Lawatsch, and others
     
+    $Revision$ -  $Date$ $Author$
+    
     This daemon listens on localhost port 15550 for client connections,
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.

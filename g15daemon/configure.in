@@ -1,5 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
+# $Revision$ -  $Date$ $Author$
+
 
 AC_PREREQ(2.59)
 AC_INIT(g15daemon, [1.2svn], [mlampard@users.sf.net])
