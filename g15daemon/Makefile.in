@@ -750,6 +750,13 @@ uninstall-man: uninstall-man1 uninstall-man3
 
 dist-hook:
 	rm -rf `find $(distdir)/debian -name .svn`
+
+dist-rpm: dist-bzip2
+	rpmbuild -ts $(distdir).tar.bz2
+
+dist-archives:
+	$(MAKE) dist-bzip2
+	$(MAKE) dist-rpm                
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

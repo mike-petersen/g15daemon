@@ -14,3 +14,9 @@ man3_MANS = $(top_srcdir)/Documentation/g15daemon_client_devel.3
 dist-hook:
 	rm -rf `find $(distdir)/debian -name .svn`
 
+dist-rpm: dist-bzip2
+	rpmbuild -ts $(distdir).tar.bz2
+
+dist-archives:
+	$(MAKE) dist-bzip2
+	$(MAKE) dist-rpm                
