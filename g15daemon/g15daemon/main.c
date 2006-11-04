@@ -39,6 +39,10 @@
 #include "g15daemon.h"
 #include "logo.h"
 
+#ifndef LIBG15_VERSION
+#define LIBG15_VERSION 1000
+#endif
+
 /* all threads will exit if leaving >0 */
 int leaving = 0;
 
@@ -176,7 +180,9 @@ int main (int argc, char *argv[])
             return retval < 0 ? 1 : 0;
         }
         if (!strncmp(daemonargs, "-v",2) || !strncmp(daemonargs, "--version",9)) {
+            float lg15ver = LIBG15_VERSION;
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
+            printf("compiled with libg15 version %.3f\n\n",lg15ver/1000);
             exit(0);
         }    
         

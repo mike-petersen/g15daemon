@@ -62,6 +62,9 @@ int g15_close_screen(int sock);
 int g15_send(int sock, char *buf, unsigned int len);
 int g15_recv(int sock, char *buf, unsigned int len);
 
+/* send a command (defined above) to the daemon.  any replies from the daemon are returned */
+int g15_send_cmd (int sock, unsigned char command, unsigned char value);
+
 #ifdef __cplusplus
 }
 #endif

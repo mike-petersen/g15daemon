@@ -77,3 +77,5 @@ allow clients use of all 'L' keys.
 - If compiled with libg15 1.1.0 or greater (or svn versions later than 3/11/06), the daemon 
   will now reset the keyboard to defaults on exit.
 - make distcheck && make dist now work as expected.
+- libg15daemon_client is now slightly more useful
+- debian packaging now installs manpages

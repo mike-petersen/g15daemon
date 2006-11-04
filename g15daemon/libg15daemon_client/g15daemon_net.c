@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <config.h>
 
+#include <libg15.h>
 #include "g15daemon_client.h" 
 
 #define G15SERVER_PORT 15550
@@ -133,3 +134,69 @@ int g15_recv(int sock, char *buf, unsigned int len)
     }
     return total;
 } 
+
+int g15_send_cmd (int sock, unsigned char command, unsigned char value)
+{
+    int retval;
+    unsigned char packet[2];
+    
+    switch (command) {
+        case G15DAEMON_KEY_HANDLER:
+            if (value > G15_LED_MR)
+                value = G15_LED_MR;
+            packet[0] = command | value;
+            retval = send( sock, packet, 1, MSG_OOB );
+            break;
+        case G15DAEMON_CONTRAST:
+            if (value > G15_CONTRAST_HIGH)
+                value = G15_CONTRAST_HIGH;
+            packet[0] = command | value;
+            retval = send( sock, packet, 1, MSG_OOB );
+            break;
+        case G15DAEMON_BACKLIGHT:
+            if (value > G15_BRIGHTNESS_BRIGHT)
+                value = G15_BRIGHTNESS_BRIGHT;
+            packet[0] = command | value;
+            retval = send( sock, packet, 1, MSG_OOB );
+            break;
+        case G15DAEMON_MKEYLEDS:
+            if (value > G15_LED_MR)
+                value = G15_LED_MR;
+            packet[0] = command | value;
+            retval = send( sock, packet, 1, MSG_OOB );
+            break;
+        case G15DAEMON_SWITCH_PRIORITIES:
+            packet[0] = command;
+            retval = send( sock, packet, 1, MSG_OOB );
+            break;
+        case G15DAEMON_GET_KEYSTATE:{
+            retval = 0;
+            packet[0] = command;
+            send( sock, packet, 1, MSG_OOB );
+            recv(sock, &retval, sizeof(retval),0);
+            break;
+        }
+        case G15DAEMON_IS_FOREGROUND:{
+            unsigned int foreground = 0;
+            packet[0] = command;
+            send( sock, packet, 1, MSG_OOB );
+            memset(packet,0,sizeof(packet));
+            recv( sock, packet, 1, 0);
+            retval =  packet[0] - 48;
+            break;
+        }
+        case G15DAEMON_IS_USER_SELECTED:{
+            unsigned int chosen = 0;
+            packet[0] = command;
+            send( sock, packet, 1, MSG_OOB );
+            memset(packet,0,sizeof(packet));
+            retval = recv(sock, packet , 1,0);              
+            retval = packet[0] - 48;
+            break;
+        }       
+        default:
+            return -1;    
+    }
+    
+    return retval;       
+}

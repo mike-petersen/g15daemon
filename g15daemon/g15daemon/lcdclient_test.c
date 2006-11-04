@@ -38,6 +38,7 @@
 
 #include <libg15.h>
 
+/* #define TEST_KEYHANDLER */
 
 int main(int argc, char *argv[])
 {
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
     char lcdbuffer[6880];
     unsigned int keystate;
     char msgbuf[256];
+    int foo = 0;
     
     if((g15screen_fd = new_g15_screen(G15_PIXELBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
@@ -64,53 +66,53 @@ int main(int argc, char *argv[])
         
         while(1){
             keystate = 0;
-            memset(msgbuf,0,256);
+            int foo;
 
-            if(send(g15screen_fd, "k", 1, MSG_OOB)<1) /* request key status */
-                printf("Error in send\n");    
-            retval = recv(g15screen_fd, &keystate , sizeof(keystate),0);
+            keystate = g15_send_cmd (g15screen_fd, G15DAEMON_GET_KEYSTATE, foo);
             if(keystate)
                 printf("keystate = %i\n",keystate);
 
-            if(keystate & 1) //G1 key.  See libg15.h for details on key values.
+            if(keystate & G15_KEY_G1) //G1 key.  See libg15.h for details on key values.
                 break;
 
-            memset(msgbuf,0,5);
             /* G2,G3 & G4 change LCD backlight */
-            if(keystate & 2){
-                msgbuf[0]=G15_BRIGHTNESS_DARK|G15DAEMON_BACKLIGHT;
-                send(g15screen_fd,msgbuf,1,MSG_OOB);
+            if(keystate & G15_KEY_G2){
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
             }
-            if(keystate & 4){
-                msgbuf[0]=G15_BRIGHTNESS_MEDIUM|G15DAEMON_BACKLIGHT;
-                send(g15screen_fd,msgbuf,1,MSG_OOB);
+            if(keystate & G15_KEY_G3){
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
             }
-            if(keystate & 8){
-                msgbuf[0]=G15_BRIGHTNESS_BRIGHT|G15DAEMON_BACKLIGHT;
-                send(g15screen_fd,msgbuf,1,MSG_OOB);            
+            if(keystate & G15_KEY_G4){
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
             }
 
-            msgbuf[0]='v'; /* are we viewable? */
-            send(g15screen_fd,msgbuf,1,MSG_OOB);            
-            recv(g15screen_fd,msgbuf,1,0);
-            if(msgbuf[0])
+            /* is this client in the foreground?? */
+            retval = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
+
+            if(retval)
               printf("Hey, we are in the foreground, Doc\n");
             else
               printf("What dastardly wabbit put me in the background?\n");
-            
-            if(msgbuf[0]){ /* we've been backgrounded! */
-                sleep(2); /* remain in the background for a bit */
-                msgbuf[0]='p'; /* switch priorities */
-                send(g15screen_fd,msgbuf,1,MSG_OOB);            
-                sleep(2);
-                send(g15screen_fd,msgbuf,1,MSG_OOB);            
 
+            retval = g15_send_cmd (g15screen_fd, G15DAEMON_IS_USER_SELECTED, foo);
+            if(retval)
+              printf("You wanted me in the foreground, right Doc?\n");
+            else
+              printf("You dastardly wabbit !\n");
+            
+            if(retval){ /* we've been backgrounded! */
+                sleep(2); /* remain in the background for a bit */
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);
+                sleep(2); /* switch to foreground */
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);
             }
 
                                        
-//            usleep(5000);
-            msgbuf[0]=0x10; /* we demand all M&G Keys */
-            send(g15screen_fd,msgbuf,1,MSG_OOB);
+            usleep(500);
+#ifdef TEST_KEYHANDLER
+            /* ok.. request that all G&M keys are passed to us.. */
+            retval = g15_send_cmd (g15screen_fd, G15DAEMON_KEY_HANDLER, foo);
+            
             while(1){
                 printf("waiting on keystate\n");
                 keystate=0;
@@ -118,6 +120,8 @@ int main(int argc, char *argv[])
                 if(keystate)
                   printf("Recieved %i as keystate",keystate);
             }
+#endif
+
         }
         g15_close_screen(g15screen_fd);
         return 0;
