@@ -1,5 +1,10 @@
 ** README G15Daemon 1.2 **
 
+$Revision$ 
+$Date$
+$Author$
+
+
 G15daemon  takes control of the G15 keyboard, allowing the use of
 all keys through the linux kernel uinput device driver.  It  also
 controls  the use of the keyboard's LCD display, allows multiple,
