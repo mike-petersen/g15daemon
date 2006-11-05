@@ -59,7 +59,7 @@ allow clients use of all 'L' keys.
 - Users can now choose to use the L1 key to switch between client screens instead of MR. 
   - L1 is the small round black button directly below the LCD.
   - Use -s on the commandline to activate the change.
-1.2.4svn -> current
+1.2.5 05/11/2006
 - Add ability for clients to request all M and G keypresses be 'pushed' to them,
   rather than having to request them repeatedly.  If a client uses this
   option, no keyboard processing is done by the daemon, and the client must
@@ -81,3 +81,5 @@ allow clients use of all 'L' keys.
 - make distcheck && make dist now work as expected.
 - libg15daemon_client is now slightly more useful
 - debian packaging now installs manpages
+1.2.5svn -> current
+- Add compiletime check for uinput version, should resolve compilation problems on some distro's
