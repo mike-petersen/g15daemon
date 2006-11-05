@@ -66,8 +66,14 @@ int g15_init_uinput() {
 
     memset(&uinp,0,sizeof(uinp));
     strncpy(uinp.name, "G15 Extra Keys", UINPUT_MAX_NAME_SIZE);
+
+#ifdef HAVE_UINPUT_USER_DEV_ID
     uinp.id.version = 4;
     uinp.id.bustype = BUS_USB;
+#else
+    uinp.idversion = 4;
+    uinp.idbus = BUS_USB;
+#endif 
 
     ioctl(uinp_fd, UI_SET_EVBIT, EV_KEY);
 

@@ -30,6 +30,18 @@ AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/sock
 #include <linux/input.h>
 #endif
 ])
+#if HAVE_LINUX_UINPUT_H 
+	dnl check for uinput.h version 2.4 or 2.6 ?
+	AC_CHECK_MEMBER([struct uinput_user_dev.id],
+              [AC_DEFINE(HAVE_UINPUT_USER_DEV_ID, 1,
+              [Define if struct uinput_user_dev has id member.])],,
+              [
+			#include <linux/input.h>
+			#include <linux/uinput.h>
+	     ]
+	)
+	dnl end of uinput version checks
+#endif
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
