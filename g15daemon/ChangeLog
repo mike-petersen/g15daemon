@@ -83,3 +83,4 @@ allow clients use of all 'L' keys.
 - debian packaging now installs manpages
 1.2.5svn -> current
 - Add compiletime check for uinput version, should resolve compilation problems on some distro's
+- Security improved - the daemon now sets its effective uid to nobody as soon as possible.

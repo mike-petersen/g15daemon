@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <libdaemon/daemon.h>
+#include <pwd.h>
 
 #include <config.h>
 #include <libg15.h>
@@ -243,7 +244,10 @@ int main (int argc, char *argv[])
         fd_set fds;
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
-
+        struct passwd *nobody;
+        
+        nobody = getpwnam("nobody");
+            
         if(daemon_pid_file_create() !=0){
             daemon_log(LOG_ERR,"Unable to create PID File! Exiting");
             daemon_retval_send(1);   
@@ -276,7 +280,13 @@ int main (int argc, char *argv[])
             daemon_retval_send(4);
             goto exitnow;
         }
-        
+
+        /* all other processes/threads should be seteuid nobody */
+        if(nobody!=NULL) {
+            seteuid(nobody->pw_uid);
+            setegid(nobody->pw_gid);
+        }
+                                                    
         /* initialise the linked list */
         lcdlist = lcdlist_init();
         pthread_mutex_init(&g15lib_mutex, NULL);
@@ -351,8 +361,11 @@ int main (int argc, char *argv[])
     }
 
 exitnow:
-        daemon_retval_done();
+    /* return to root privilages for the final countdown */
+    seteuid(0);
+    setegid(0);
+                
+    daemon_retval_done();
     daemon_pid_file_remove();
-return 0;
-
+    return 0;
 }
