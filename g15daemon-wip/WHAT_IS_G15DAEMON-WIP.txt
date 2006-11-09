@@ -1,0 +1,26 @@
+This is the starting point of g15daemon 2.0.  It's a work in progress,
+partially functional (it already does most of the stuff the previous version
+did), and incredibly untidy...
+
+This is simply here to test and stabilise the API of what will become 2.0
+
+FEATURES:
+- True Plugins 
+- Synchronous Event-based architecture.
+- Mostly backward-compatible with versions 1.0 & 1.2.* via the LCDServer plugin.
+- 
+
+If you want to write a plugin, please see some examples in the plugin
+folder.  If the current plugin API doesn't do something you think it should,
+let us know, it's never too late to change.
+
+TODO:
+- re-write most of it, currently it's simply the old code modified to suit
+the new architecture, and the new stuff is not much better...
+- tidy up the code
+- write some updated documentation
+- write some plugins!
+- write some more documentation and plugins...
+- add config options to a configuration file..
+- add menu functionality to the clock for plugin/g15daemon configuration
+- ???

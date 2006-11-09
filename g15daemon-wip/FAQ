@@ -1,0 +1,35 @@
+This  file  contains  some frequently asked questions and answers
+regarding G15Daemon and it's installation.
+
+Q1.     G15daemon complains that it cant find libg15.so.1 !!
+
+Answer:
+
+By default, libg15 is installed in /usr/local/lib.  Some  distros
+don't  look  there  for libraries by default.  There are two ways
+around this - 1. add /usr/local/lib  to  /etc/ld.so.conf  (you'll
+need  to  be  root  to  do this) and run ldconfig or 2. rerun the
+libg15 configure script with --prefix=/usr, then make && make in-
+stall.  This will install libg15 into the /usr/lib directory.
+
+
+Q2.     G15daemon  complains  about  not receiving a return value
+and won't run!!
+
+Answer:
+
+G15daemon really needs to be run by the user root.   If  you  are
+already running as root, and you still see this error, please let
+us know.
+
+
+Q3.     My 'G' keys dont work in X11 !!
+
+Answer:
+
+The daemon adds new scancodes for all the G & M keys.  X11 doesnt
+understand  some  of these.  In order to have the keys work in X,
+you'll find an xmodmaprc script and a bash script in the  contrib
+directory.  Copy the xmodmaprc file to $HOME/.Xmodmap and set the
+bash script to run every time X11 starts.  KDE has  an  AutoStart
+folder you can put it in, Gnome probably has something similar.

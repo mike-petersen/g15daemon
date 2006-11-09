@@ -1,0 +1,58 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+# $Revision$ -  $Date$ $Author$
+
+
+AC_PREREQ(2.59)
+AC_INIT(g15daemon, [1.9pre], [mlampard@users.sf.net])
+AC_PREFIX_DEFAULT(/usr)
+AC_CONFIG_AUX_DIR(config)
+AM_INIT_AUTOMAKE()
+AC_CONFIG_HEADER([config.h])
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_LIBTOOL
+AC_PROG_RANLIB
+
+# Checks for libraries.
+AC_CHECK_LIB([daemon], [daemon_log],,AC_MSG_ERROR(["libdaemon (or its devel package) not found. please install it"]))
+AC_CHECK_LIB([g15], [initLibG15],,AC_MSG_ERROR(["libg15 (or its devel package) not found. please install it"]))
+AC_CHECK_LIB([m], [sin])
+AC_CHECK_LIB([pthread], [pthread_mutex_init])
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([ linux/input.h ])
+AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h], [], [], 
+[#if HAVE_LINUX_INPUT_H
+#include <linux/input.h>
+#endif
+])
+#if HAVE_LINUX_UINPUT_H 
+	dnl check for uinput.h version 2.4 or 2.6 ?
+	AC_CHECK_MEMBER([struct uinput_user_dev.id],
+              [AC_DEFINE(HAVE_UINPUT_USER_DEV_ID, 1,
+              [Define if struct uinput_user_dev has id member.])],,
+              [
+			#include <linux/input.h>
+			#include <linux/uinput.h>
+	     ]
+	)
+	dnl end of uinput version checks
+#endif
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+
+# Checks for library functions.
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_SELECT_ARGTYPES
+AC_FUNC_STRFTIME
+AC_CHECK_FUNCS([memset select socket strerror])
+
+AC_CONFIG_FILES([Makefile g15daemon/Makefile libg15daemon_client/Makefile plugins/Makefile])
+AC_OUTPUT
