@@ -49,7 +49,6 @@
 /* all threads will exit if leaving >0 */
 int leaving = 0;
 
-unsigned int current_key_state;
 unsigned int cycle_key;
 unsigned int client_handles_keys = 0;
 struct lcd_t *keyhandler = NULL;
@@ -189,19 +188,6 @@ static void *lcd_draw_thread(void *lcdlist){
     return NULL;
 }
 
-static void *plugin_loader_thread(void *lcdlist) {
-
-    lcdlist_t *displaylist = (lcdlist_t*)(lcdlist);
-    static long int lastlcd = 1;
-    
-    g15_open_all_plugins(displaylist,"/usr/share/g15daemon/plugins");
-    while(!leaving) {
-        pthread_msleep(50);
-    }
-    return NULL;
-}
-
-
 
 int main (int argc, char *argv[])
 {
@@ -212,7 +198,6 @@ int main (int argc, char *argv[])
         
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
-    pthread_t plugin_thread;
     
     daemon_pid_file_ident = 
             daemon_log_ident = 
@@ -313,17 +298,7 @@ int main (int argc, char *argv[])
             daemon_retval_send(2);
             goto exitnow;
         }
-#ifdef HAVE_LINUX_UINPUT_H
-        //retval = g15_init_uinput();
-#else
-        daemon_log(LOG_WARNING,"Compiled without Uinput support, extra keys will not be available");
-#endif
-        if(retval !=0){
-            daemon_log(LOG_ERR,"Unable to setup the UINPUT device. Exiting");
-            daemon_retval_send(3);
-            goto exitnow;
-        }
-    
+        
         if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,0) <0){
             daemon_log(LOG_ERR,"Unable to register signal handler. Exiting");
             daemon_retval_send(4);
@@ -363,11 +338,8 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
 
-        if (pthread_create(&plugin_thread, &attr, plugin_loader_thread, lcdlist) != 0) {
-            daemon_log(LOG_ERR,"Unable to create lcd-client server thread.  Exiting");
-            daemon_retval_send(5);
-            goto exitnow;
-        }
+        g15_open_all_plugins(lcdlist,"/usr/share/g15daemon/plugins");
+        
         daemon_retval_send(0);
         daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         FD_ZERO(&fds);
@@ -396,12 +368,9 @@ int main (int argc, char *argv[])
         } while ( leaving == 0 );
         
         daemon_signal_done();
-	pthread_join(plugin_thread,NULL);
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
-#ifdef HAVE_LINUX_UINPUT_H
-        //g15_exit_uinput();
-#endif
+
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1100
         exitLibG15(); 

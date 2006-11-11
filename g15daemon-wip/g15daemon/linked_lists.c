@@ -40,7 +40,7 @@ lcd_t * create_lcd () {
     lcd->max_x = LCD_WIDTH;
     lcd->max_y = LCD_HEIGHT;
     lcd->backlight_state = G15_BRIGHTNESS_MEDIUM;
-    lcd->mkey_state = G15_LED_MR;
+    lcd->mkey_state = 0;
     lcd->contrast_state = G15_CONTRAST_MEDIUM;
     lcd->state_changed = 1;
     lcd->usr_foreground = 0;
@@ -91,12 +91,6 @@ lcdnode_t *lcdnode_add(lcdlist_t **displaylist) {
     lcdnode_t *new = NULL;
     
     pthread_mutex_lock(&lcdlist_mutex);
-    if(((*displaylist)->head->prev == (*displaylist)->head) &&
-         ((*displaylist)->head->next == (*displaylist)->head))
-    {
-        daemon_log(LOG_ERR,"Using previous head");
-      //  return (*displaylist)->head;
-    } 
     new = g15_xmalloc(sizeof(lcdnode_t));
     new->prev = (*displaylist)->head;
     new->next = (*displaylist)->tail; 
