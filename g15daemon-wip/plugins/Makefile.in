@@ -54,6 +54,9 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(libdir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
+g15plugin_clock_la_LIBADD =
+am_g15plugin_clock_la_OBJECTS = g15_plugin_clock.lo
+g15plugin_clock_la_OBJECTS = $(am_g15plugin_clock_la_OBJECTS)
 g15plugin_tcpserver_la_LIBADD =
 am_g15plugin_tcpserver_la_OBJECTS = g15_plugin_net.lo
 g15plugin_tcpserver_la_OBJECTS = $(am_g15plugin_tcpserver_la_OBJECTS)
@@ -71,9 +74,11 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(g15plugin_tcpserver_la_SOURCES) \
+SOURCES = $(g15plugin_clock_la_SOURCES) \
+	$(g15plugin_tcpserver_la_SOURCES) \
 	$(g15plugin_uinput_la_SOURCES)
-DIST_SOURCES = $(g15plugin_tcpserver_la_SOURCES) \
+DIST_SOURCES = $(g15plugin_clock_la_SOURCES) \
+	$(g15plugin_tcpserver_la_SOURCES) \
 	$(g15plugin_uinput_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
@@ -200,12 +205,14 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 METASOURCES = AUTO
-lib_LTLIBRARIES = g15plugin_uinput.la g15plugin_tcpserver.la 
+lib_LTLIBRARIES = g15plugin_uinput.la g15plugin_tcpserver.la g15plugin_clock.la
 INCLUDES = -I$(top_builddir)/libg15daemon_client/ -I$(top_builddir)/g15daemon
 g15plugin_uinput_la_SOURCES = g15_plugin_uinput.c
 g15plugin_uinput_la_LDFLAGS = -avoid-version -module 
 g15plugin_tcpserver_la_SOURCES = g15_plugin_net.c
 g15plugin_tcpserver_la_LDFLAGS = -avoid-version -module 
+g15plugin_clock_la_SOURCES = g15_plugin_clock.c
+g15plugin_clock_la_LDFLAGS = -avoid-version -module 
 all: all-am
 
 .SUFFIXES:
@@ -266,6 +273,8 @@ clean-libLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
+g15plugin_clock.la: $(g15plugin_clock_la_OBJECTS) $(g15plugin_clock_la_DEPENDENCIES) 
+	$(LINK) -rpath $(libdir) $(g15plugin_clock_la_LDFLAGS) $(g15plugin_clock_la_OBJECTS) $(g15plugin_clock_la_LIBADD) $(LIBS)
 g15plugin_tcpserver.la: $(g15plugin_tcpserver_la_OBJECTS) $(g15plugin_tcpserver_la_DEPENDENCIES) 
 	$(LINK) -rpath $(libdir) $(g15plugin_tcpserver_la_LDFLAGS) $(g15plugin_tcpserver_la_OBJECTS) $(g15plugin_tcpserver_la_LIBADD) $(LIBS)
 g15plugin_uinput.la: $(g15plugin_uinput_la_OBJECTS) $(g15plugin_uinput_la_DEPENDENCIES) 
@@ -277,6 +286,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/g15_plugin_clock.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/g15_plugin_net.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/g15_plugin_uinput.Plo@am__quote@
 

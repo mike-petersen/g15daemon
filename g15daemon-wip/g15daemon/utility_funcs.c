@@ -50,13 +50,6 @@ const plugin_info_t generic_info[] = {
     {G15_PLUGIN_NONE,        ""          , NULL,     0,   NULL, NULL}
 };
 
-/* if no exitfunc or eventhandler, member should be NULL */
-const plugin_info_t clock_info[] = {
-    /* TYPE, name, initfunc, updatefreq, exitfunc, eventhandler */
-    {G15_PLUGIN_LCD_CLIENT, "Clock", NULL, 0, NULL, (void*)internal_clock_eventhandler},
-    {G15_PLUGIN_NONE,        ""          , NULL,     0,   NULL, NULL}
-};
-
 /* handy function from xine_utils.c */
 void *g15_xmalloc(size_t size) {
     void *ptr;
@@ -142,67 +135,4 @@ int internal_generic_eventhandler(plugin_event_t *event) {
     }
     return G15_PLUGIN_OK;
 }
-
-void internal_lcdclock(lcd_t *lcd)
-{
-    unsigned int col = 0;
-    unsigned int len=0;
-    int narrows=0;
-    int totalwidth=0;
-    char buf[10];
-    
-    time_t currtime = time(NULL);
-    
-    if(lcd->ident < currtime - 60) {	
-        memset(lcd->buf,0,1024);
-        memset(buf,0,10);
-        strftime(buf,6,"%H:%M",localtime(&currtime));
-
-        if(buf[0]==49) 
-            narrows=1;
-
-        len = strlen(buf); 
-
-        if(narrows)
-            totalwidth=(len*20)+(15);
-        else
-            totalwidth=len*20;
-
-        for (col=0;col<len;col++) {
-            draw_bignum (lcd, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, LCD_HEIGHT, BLACK, buf[col]);
-        }
-        lcd->ident = currtime;
-    }
-}
-
-/* TODO implement a menu for the clock screen */
-int internal_clock_eventhandler(plugin_event_t *myevent) {
-//    lcd_t *lcd = (lcd_t*) myevent->lcd;
-    
-    switch (myevent->event)
-    {
-        case G15_EVENT_KEYPRESS:
-//             printf("internal clock received keypress event : %i\n",myevent->value);
-            break;
-        case G15_EVENT_VISIBILITY_CHANGED:
-            break;
-        default:
-            break;
-    }
-    return G15_PLUGIN_OK;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

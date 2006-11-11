@@ -164,7 +164,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
     void * plugin_handle = NULL;
 
     lcdlist_t *g15daemon_lcds = (lcdlist_t*)&displaylist;
-
+    
     pthread_t client_connection;
     pthread_attr_t attr;
     lcdnode_t *clientnode;
@@ -185,9 +185,17 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
         /* assign the generic eventhandler if the plugin doesnt provide one - the generic one does nothing atm. FIXME*/
         if(plugin_args->info->event_handler==NULL)
             plugin_args->info->event_handler = (void*)internal_generic_eventhandler;
-
+	
+        
         if(plugin_args->type == G15_PLUGIN_LCD_CLIENT) {
-            clientnode = lcdnode_add((void*)g15daemon_lcds);
+            lcdlist_t *foolist = (lcdlist_t*)displaylist;
+		/* FIXME we should just sort out the linked list stuff instead of overriding it */
+            if((lcdlist_t*)foolist->numclients>=1){
+                clientnode = lcdnode_add((void*)g15daemon_lcds);
+            }else {
+                clientnode = foolist->tail;
+                foolist->numclients++;
+            }
             plugin_args->plugin_handle = plugin_handle;
             memcpy(clientnode->lcd->g15plugin,plugin_args,sizeof(plugin_s));
             plugin_args->args = clientnode;
@@ -197,7 +205,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
                   {
                       plugin_args->args = displaylist;
                       plugin_args->plugin_handle = plugin_handle;
-        }
+                  }
 
         memset(&attr,0,sizeof(pthread_attr_t));
         pthread_attr_init(&attr);
@@ -205,8 +213,9 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
         pthread_attr_setstacksize(&attr,64*1024); /* set stack to 64k - dont need 8Mb */
         if (pthread_create(&client_connection, &attr, (void*)plugin_thread, plugin_args) != 0) {
             daemon_log(LOG_WARNING,"Unable to create client thread.");
+        } else {
+            pthread_detach(client_connection);
         }
-        pthread_detach(client_connection);
     }
 }
 

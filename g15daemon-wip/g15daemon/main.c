@@ -164,11 +164,6 @@ static void *lcd_draw_thread(void *lcdlist){
         
         displaying = displaylist->current->lcd;
         
-        if(displaylist->tail == displaylist->current){
-           internal_lcdclock(displaying);
-           displaying->mkey_state = 0;
-        }
-        
         if(displaying->ident != lastlcd){
            write_buf_to_g15(displaying);
            lastlcd = displaying->ident;

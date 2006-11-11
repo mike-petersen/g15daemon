@@ -32,7 +32,6 @@
 extern lcd_t *keyhandler;
 extern unsigned int client_handles_keys;
 extern plugin_info_t *generic_info;
-extern plugin_info_t *clock_info;
 
 lcd_t * create_lcd () {
 
@@ -52,6 +51,7 @@ lcd_t * create_lcd () {
 }
 
 void quit_lcd (lcd_t * lcd) {
+    free (lcd->g15plugin);
     free (lcd);
 }
 
@@ -75,12 +75,13 @@ lcdlist_t *lcdlist_init () {
     displaylist->head->lcd->mkey_state = 0;
     displaylist->head->lcd->masterlist = displaylist;
     /* first screen is the clock/menu */
-    displaylist->head->lcd->g15plugin->info = (void*)&clock_info;
+    displaylist->head->lcd->g15plugin->info = NULL;
     
     displaylist->head->prev = displaylist->head;
     displaylist->head->next = displaylist->head;
     displaylist->head->list = displaylist;
     displaylist->keyboard_handler = NULL;
+    displaylist->numclients = 0;
     
     pthread_mutex_unlock(&lcdlist_mutex);
     return displaylist;
@@ -104,6 +105,7 @@ lcdnode_t *lcdnode_add(lcdlist_t **displaylist) {
     
     (*displaylist)->head = new;
     (*displaylist)->head->list = *displaylist;
+    (*displaylist)->numclients++;
     
     pthread_mutex_unlock(&lcdlist_mutex);
     
@@ -157,7 +159,7 @@ void lcdnode_remove (lcdnode_t *oldnode) {
     next = &oldnode->next;
     
     quit_lcd(oldnode->lcd);
-    
+    (unsigned int)(*display_list)->numclients--;
     if((*display_list)->current == oldnode) {
         if((*display_list)->current!=(*display_list)->head){
             (*display_list)->current = oldnode->next;
@@ -187,7 +189,6 @@ void lcdnode_remove (lcdnode_t *oldnode) {
 }
 
 void lcdlist_destroy(lcdlist_t **displaylist) {
-    
     int i = 0;
     
     while ((*displaylist)->head != (*displaylist)->tail) {

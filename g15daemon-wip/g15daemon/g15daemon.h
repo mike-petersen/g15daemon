@@ -183,7 +183,7 @@ struct lcdlist_s
     lcdnode_t *current;
     void *(*keyboard_handler)(void*);
     struct passwd *nobody;
-    int numclients;
+    unsigned long numclients;
 }lcdlist_s;
 
 pthread_mutex_t lcdlist_mutex;
