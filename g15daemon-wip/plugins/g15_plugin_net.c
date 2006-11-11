@@ -41,6 +41,7 @@
 #include <libdaemon/daemon.h>
 static int leaving;
 int server_events(plugin_event_t *myevent);
+int current_key_state;
 
 /* custom plugininfo for clients... */
 plugin_info_t lcdclient_info[] = {
@@ -52,19 +53,19 @@ plugin_info_t lcdclient_info[] = {
 static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgbuf, unsigned int len)
 {
     int msgret;
-//     if(msgbuf[0] == CLIENT_CMD_GET_KEYSTATE) 
-//     { /* client wants keypresses - FIXME this is redundant with the new event based architecture */
-//         if(lcdnode->list->current == lcdnode){
-//             /* send the keystate inband back to the client */
-//             if((msgret = send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) 
-//                 daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
-//             current_key_state = 0;
-//         }
-//         else{
-//             memset(msgbuf,0,4); /* client isn't currently being displayed.. tell them nothing */
-//             msgret=send(sock,(void *)msgbuf,sizeof(current_key_state),0);
-//         }
-//     } else 
+     if(msgbuf[0] == CLIENT_CMD_GET_KEYSTATE) 
+     { /* client wants keypresses - FIXME this is redundant with the new event based architecture */
+         if(lcdnode->list->current == lcdnode){
+             /* send the keystate inband back to the client */
+             if((msgret = send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) 
+                 daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
+             current_key_state = 0;
+         }
+         else{
+             memset(msgbuf,0,4); /* client isn't currently being displayed.. tell them nothing */
+             msgret=send(sock,(void *)msgbuf,sizeof(current_key_state),0);
+         }
+     } else 
     if(msgbuf[0] == CLIENT_CMD_SWITCH_PRIORITIES){
         send_event(lcdnode,G15_EVENT_REQ_PRIORITY,1);
     }
@@ -389,6 +390,8 @@ int server_events(plugin_event_t *event) {
             if(lcd->connection) { /* server client */
                 if((send(lcd->connection,(void *)&event->value,sizeof(event->value),0))<0) 
                     daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
+                /* temporary workaround for lcdproc */
+                current_key_state = event->value;
             }
             break;
         }
