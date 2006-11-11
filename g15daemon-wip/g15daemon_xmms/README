@@ -1,6 +1,8 @@
 A very simple spectrum analyser for xmms.  
 Improvements and patches are welcome.
 
+This plugin depends on glib devel and xmms devel packages.
+
 To compile, run the configure script in the g15daemon source directory with
 --enable-xmmsplugin and make, make install.
 
