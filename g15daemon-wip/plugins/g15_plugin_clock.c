@@ -79,10 +79,10 @@ static int myeventhandler(plugin_event_t *myevent) {
     switch (myevent->event)
     {
         case G15_EVENT_KEYPRESS:
-        printf("Clock plugin received keypress event : %i\n",myevent->value);
+//        printf("Clock plugin received keypress event : %i\n",myevent->value);
           break;
         case G15_EVENT_VISIBILITY_CHANGED:
-        printf("Clock received new visibility status (%i)\n",myevent->value);
+//        printf("Clock received new visibility status (%i)\n",myevent->value);
           break;
         default:
           break;
