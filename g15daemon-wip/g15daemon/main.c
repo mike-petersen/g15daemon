@@ -80,7 +80,7 @@ int send_event(void *caller, unsigned int event, unsigned long value)
                 lcd_t *lcd = (lcd_t*)caller;
                 lcdlist_t* displaylist = lcd->masterlist;
                 static unsigned int clicktime;
-                if(value == cycle_key) {
+                if(value & cycle_key) {
                     clicktime=gettimerms();
                 }else{
                     unsigned int unclick=gettimerms();
@@ -92,7 +92,11 @@ int send_event(void *caller, unsigned int event, unsigned long value)
                         plugin_event_t *clickevent=malloc(sizeof(plugin_event_t));
                         int *(*plugin_listener)(plugin_event_t *clickevent) = (void*)lcd->g15plugin->info->event_handler;
                         clickevent->event = event;
-                	clickevent->value = value;
+                	clickevent->value = value|cycle_key;
+                	clickevent->lcd = lcd;
+                        (*plugin_listener)((void*)clickevent);
+                        clickevent->event = event;
+                	clickevent->value = value&~cycle_key;
                 	clickevent->lcd = lcd;
                         (*plugin_listener)((void*)clickevent);
                     }
