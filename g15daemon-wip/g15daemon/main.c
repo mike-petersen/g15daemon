@@ -154,7 +154,7 @@ static void *lcd_draw_thread(void *lcdlist){
     static long int lastlcd = 1;
     
     lcd_t *displaying = displaylist->tail->lcd;
-   memset(displaying->buf,0,1024);
+    memset(displaying->buf,0,1024);
     
     writePixmapToLCD(logo_data);
     pthread_sleep(2);
@@ -162,7 +162,7 @@ static void *lcd_draw_thread(void *lcdlist){
     while (!leaving) {
         pthread_mutex_lock(&lcdlist_mutex);
         
-       displaying = displaylist->current->lcd;
+        displaying = displaylist->current->lcd;
         
         if(displaylist->tail == displaylist->current){
            internal_lcdclock(displaying);
@@ -183,7 +183,7 @@ static void *lcd_draw_thread(void *lcdlist){
             
         pthread_mutex_unlock(&lcdlist_mutex);
         
-        pthread_msleep(100);
+        pthread_msleep(5);
     }
     return NULL;
 }
