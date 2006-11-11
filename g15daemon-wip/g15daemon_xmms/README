@@ -1,8 +1,11 @@
-A very simple spectrum analyser for xmms.  Due to the lack of refresh speed
-of the G15's lcd, refresh rate is limited to 5fps.
-
-Probably has numerous bugs, and it certainly isnt synced to the music, but it was an interesting exercise.
+A very simple spectrum analyser for xmms.  
 Improvements and patches are welcome.
 
-To compile, install the g15daemon, then come back to this directory and type
-make, make install.  you're done.
+To compile, run the configure script in the g15daemon source directory with
+--enable-xmmsplugin and make, make install.
+
+New in version 0.2:
+- artist name & track name are displayed
+- now a 16 bar analyser, pretty useful :)
+- something else I cant recall at the moment..
+

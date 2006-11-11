@@ -1,6 +1,6 @@
 LLIBDIR=@LIBDIR@
 
-SUBDIRS =  libg15daemon_client g15daemon plugins
+SUBDIRS =  libg15daemon_client g15daemon plugins g15daemon_xmms
 INCLUDES =  -I$(top_srcdir)/libg15daemon_client -I$(top_srcdir)/g15daemon
 EXTRA_DIST = debian contrib Documentation g15daemon_xmms lang-bindings patches rpm README.usage FAQ LICENSE
 
