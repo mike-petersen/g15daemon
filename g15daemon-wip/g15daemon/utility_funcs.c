@@ -115,6 +115,12 @@ int pthread_msleep(int milliseconds) {
     return nanosleep (&timeout, NULL);
 }
 
+unsigned int gettimerms(){
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return (tv.tv_sec*1000+tv.tv_usec/1000);
+}
+
 /* generic event handler used unless overridden (only loading a plugin will override currently)*/
 int internal_generic_eventhandler(plugin_event_t *event) {
     

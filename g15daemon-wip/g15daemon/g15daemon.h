@@ -237,4 +237,6 @@ int internal_clock_eventhandler(plugin_event_t *myevent);
 int internal_generic_eventhandler(plugin_event_t *myevent);
 /* send event to foreground client's eventlistener */
 int send_event(void *caller, unsigned int event, unsigned long value);
+/* return time in milliseconds */
+unsigned int gettimerms();
 #endif

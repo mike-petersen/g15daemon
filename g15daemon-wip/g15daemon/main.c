@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <libdaemon/daemon.h>
@@ -75,10 +76,27 @@ int send_event(void *caller, unsigned int event, unsigned long value)
                 }
                 free(newevent);
             }else{
+                /* hacky attempt to double-time the use of L1, if the key is pressed less than half a second, it cycles the screens.  If held for longer, the key is sent to the application for use instead */
                 lcd_t *lcd = (lcd_t*)caller;
                 lcdlist_t* displaylist = lcd->masterlist;
-                if(value)
-                    lcdnode_cycle(displaylist);
+                static unsigned int clicktime;
+                if(value == cycle_key) {
+                    clicktime=gettimerms();
+                }else{
+                    unsigned int unclick=gettimerms();
+                    if ((unclick-clicktime)<500) {
+                        lcdnode_cycle(displaylist);
+                    }
+                    else 
+                    {
+                        plugin_event_t *clickevent=malloc(sizeof(plugin_event_t));
+                        int *(*plugin_listener)(plugin_event_t *clickevent) = (void*)lcd->g15plugin->info->event_handler;
+                        clickevent->event = event;
+                	clickevent->value = value;
+                	clickevent->lcd = lcd;
+                        (*plugin_listener)((void*)clickevent);
+                    }
+                }
             }
             lastkeys = value;
             break;
