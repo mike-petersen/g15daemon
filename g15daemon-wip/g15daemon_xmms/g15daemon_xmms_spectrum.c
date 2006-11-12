@@ -49,7 +49,7 @@ last value is half of the current one's. (see source) */
 
 /* Factor used for the diffusion. 4 means that half of the height is
 added to the neighbouring bars */
-#define dif 3
+#define dif 4
 
 static gint16 bar_heights[WIDTH];
 
@@ -210,7 +210,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
 
       if(y)
       {         
-          y = (gint)(log(y) * (16/log(256)));
+          y = (gint)(log(y) * (14/log(64)));
           if(y > 32) y = 32;
       }
 
