@@ -1,0 +1,69 @@
+Index: g15.c
+===================================================================
+RCS file: /cvsroot/lcdproc/lcdproc/server/drivers/g15.c,v
+retrieving revision 1.1
+diff -a -u -r1.1 g15.c
+--- g15.c	13 Aug 2006 15:55:47 -0000	1.1
++++ g15.c	11 Nov 2006 21:29:15 -0000
+@@ -30,6 +30,7 @@
+ #include <errno.h>
+ #include <syslog.h>
+ #include <sys/socket.h>
++#include <sys/types.h>
+ #include <libg15.h>
+ #include <g15daemon_client.h>
+ #include <libg15render.h>
+@@ -110,12 +111,13 @@
+ 	g15_close_screen(p->g15screen_fd);
+ 	
+ 	if (p != NULL) {
++		/*
+ 		if (p->canvas)
+ 			free(p->canvas);
+ 		
+ 		if (p->backingstore)
+ 			free(p->backingstore);
+-
++*/
+ 		free(p);
+ 	}
+ 	drvthis->store_private_ptr(drvthis, NULL);
+@@ -372,14 +374,33 @@
+ MODULE_EXPORT const char * g15_get_key (Driver *drvthis)
+ {
+ 	PrivateData *p = drvthis->private_data;
+-	
++	const char *g15d_ver = g15daemon_version();
++	int toread = 0;
+ 	unsigned int key_state = 0;
+-	
+-	if(send(p->g15screen_fd, "k", 1, MSG_OOB)<1) /* request key status */
+-        report(RPT_INFO, "%s: Error in send to g15daemon", drvthis->name);    
+ 
+-    	recv(p->g15screen_fd, &key_state , sizeof(key_state),0);
++	if ((strncmp("1.2", g15d_ver, 3)))
++	  {
++		fd_set fds;
++		struct timeval tv;
++		memset (&tv, 0, sizeof(struct timeval));
++
++		FD_ZERO(&fds);
++		FD_SET(p->g15screen_fd, &fds);
+ 	
++		toread = select(FD_SETSIZE, &fds, NULL, NULL, &tv);
++	  }
++	else
++	  {
++		if(send(p->g15screen_fd, "k", 1, MSG_OOB)<1) /* request key status */
++	 	  report(RPT_INFO, "%s: Error in send to g15daemon", drvthis->name);
++		toread = 1;
++	  }
++	
++	if (toread >= 1)
++	  read(p->g15screen_fd, &key_state, sizeof(key_state));
++	else
++	  return NULL;
++
+ 	if (key_state & G15_KEY_G1)
+ 		return "Escape";
+ 	else if (key_state & G15_KEY_L1)
