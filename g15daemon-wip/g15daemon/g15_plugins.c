@@ -101,6 +101,42 @@ void run_lcd_client(plugin_t *plugin_args) {
     if(!leaving)
         lcdnode_remove(display);
 }
+void run_advanced_client(plugin_t *plugin_args)
+{ 
+    plugin_info_t *info = plugin_args->info;
+    
+    int (*plugin_init)(void *client_args) = (void*)plugin_args->info->plugin_init;
+    int (*plugin_run)(void *client_args) = (void*)plugin_args->info->plugin_run;
+    int (*plugin_close)(void *client_args) = (void*)plugin_args->info->plugin_exit;
+
+    /*initialise */
+    if(plugin_init){
+        if((*plugin_init)(plugin_args->args)!=G15_PLUGIN_OK)
+            return;
+    }
+
+    if(plugin_args->info->event_handler && plugin_args->type==G15_PLUGIN_CORE_OS_KB){
+        lcdlist_t *masterlist = (lcdlist_t*)plugin_args->args;
+        pthread_mutex_lock(&lcdlist_mutex);
+        (masterlist->keyboard_handler) = (void*)plugin_args->info->event_handler;
+        pthread_mutex_unlock(&lcdlist_mutex);
+    }
+
+    if(plugin_run) {
+        while(((*plugin_run)(plugin_args->args))==G15_PLUGIN_OK && !leaving){
+            if(info->update_msecs<50)
+                info->update_msecs = 50;
+            pthread_msleep(info->update_msecs);
+        }
+    }else{
+        while(1){
+            pthread_msleep(500);
+        }
+    }
+    if(plugin_close) {
+        (*plugin_close)(plugin_args->args);
+    }
+}
 
 void *plugin_thread(plugin_t *plugin_args) {
     plugin_info_t *info = plugin_args->info;
@@ -116,39 +152,8 @@ void *plugin_thread(plugin_t *plugin_args) {
     if(plugin_args->type == G15_PLUGIN_LCD_CLIENT){
     	run_lcd_client(plugin_args);
     }
-    if(plugin_args->type == G15_PLUGIN_CORE_OS_KB||plugin_args->type == G15_PLUGIN_LCD_SERVER) {
-        
-        int (*plugin_init)(void *client_args) = (void*)plugin_args->info->plugin_init;
-        int (*plugin_run)(void *client_args) = (void*)plugin_args->info->plugin_run;
-        int (*plugin_close)(void *client_args) = (void*)plugin_args->info->plugin_exit;
-        
-        /*initialise */
-        if(plugin_init){
-            if((*plugin_init)(plugin_args->args)!=G15_PLUGIN_OK)
-                return;
-        }
-        
-        if(plugin_args->info->event_handler && plugin_args->type==G15_PLUGIN_CORE_OS_KB){
-            lcdlist_t *masterlist = (lcdlist_t*)plugin_args->args;
-            pthread_mutex_lock(&lcdlist_mutex);
-            (masterlist->keyboard_handler) = (void*)plugin_args->info->event_handler;
-            pthread_mutex_unlock(&lcdlist_mutex);
-        }
-        
-        if(plugin_run) {
-            while(((*plugin_run)(plugin_args->args))==G15_PLUGIN_OK && !leaving){
-                if(info->update_msecs<50)
-                    info->update_msecs = 50;
-                pthread_msleep(info->update_msecs);
-            }
-        }else{
-            while(1){
-                pthread_msleep(500);
-            }
-        }
-        if(plugin_close) {
-            (*plugin_close)(plugin_args->args);
-        }
+    else if(plugin_args->type == G15_PLUGIN_CORE_OS_KB||plugin_args->type == G15_PLUGIN_LCD_SERVER) {
+        run_advanced_client(plugin_args);
     }
 
     if(plugin_args)
@@ -190,7 +195,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
         if(plugin_args->type == G15_PLUGIN_LCD_CLIENT) {
             lcdlist_t *foolist = (lcdlist_t*)displaylist;
 		/* FIXME we should just sort out the linked list stuff instead of overriding it */
-            if((lcdlist_t*)foolist->numclients>=1){
+            if((int)foolist->numclients>=1){
                 clientnode = lcdnode_add((void*)g15daemon_lcds);
             }else {
                 clientnode = foolist->tail;
