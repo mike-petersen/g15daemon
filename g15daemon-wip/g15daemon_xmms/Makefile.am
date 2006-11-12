@@ -12,7 +12,7 @@ LIBS = @XMMS_LIBS@ -L$(top_builddir)/libg15daemon_client/
 IMCLUDES = -I$(top_builddir)/libg15daemon_client/
 libg15daemon_xmms_spectrum_la_LDFLAGS = -module -avoid-version
 libg15daemon_xmms_spectrum_la_SOURCES =  g15daemon_xmms_spectrum.c
-libg15daemon_xmms_spectrum_la_LIBADD = $(top_builddir)/libg15daemon_client/libg15daemon_client.la
+libg15daemon_xmms_spectrum_la_LIBADD = $(top_builddir)/libg15daemon_client/libg15daemon_client.la -lg15render
 
 
 
