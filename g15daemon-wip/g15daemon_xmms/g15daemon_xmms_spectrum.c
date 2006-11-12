@@ -28,11 +28,11 @@
 #include <g15daemon_client.h>
 #include <math.h>
 #include <pthread.h>
+#include <string.h>
+#include <glib.h>
 #include <xmms/plugin.h>
 #include <xmms/util.h>
 #include <xmms/xmmsctrl.h>
-#include <string.h>
-#include <glib.h>
 
 #include "font.h"
 
@@ -252,7 +252,8 @@ void draw_bar (unsigned char *buf, int x1, int y1, int x2, int y2, int colour, i
     }
     rectangle (buf, x1, y1 , (int) ceil(x1 + length) , y2 , 1, colour );
 }
-                                                                                                                    
+
+
 void *g15send_thread() {
     int i;
     int playlist_pos;
@@ -261,37 +262,38 @@ void *g15send_thread() {
     char *song;
                                             
     while(!leaving){
-       pthread_mutex_lock(&g15buf_mutex);
+        pthread_mutex_lock(&g15buf_mutex);
        
         memset(lcdbuf,0,1048);
 
         for(i = 0; i < NUM_BANDS; i++)
         {               
-          rectangle(lcdbuf,i*10,40-bar_heights[i],(i*10)+8,35,1,BLACK);
+            rectangle(lcdbuf,i*10,40-bar_heights[i],(i*10)+8,35,1,BLACK);
         }
 
         playlist_pos = xmms_remote_get_playlist_pos(0);
         title = xmms_remote_get_playlist_title(0, playlist_pos);
-        if(strlen(title)>32) {
-          artist = strtok(title,"-");
-          song = strtok(NULL,"-");
-          if(strlen(song)>32)
-            song[32]='\0';
-          draw_str (lcdbuf, song+1, 165-(strlen(song)*5), 0, BLACK,  1);
-          if(strlen(artist)>32)
-            artist[32]='\0';
-          if(artist[strlen(artist)-1]==' ')
-           artist[strlen(artist)-1]='\0';
-          draw_str (lcdbuf, artist, 160-(strlen(artist)*5), 8, BLACK,  1);
-        } else
-            draw_str (lcdbuf, title, 160-(strlen(title)*5), 0, BLACK,  1);
-        
+        if(title!=NULL){ //amarok doesnt support providing title info via xmms interface :(
+            if(strlen(title)>32) {
+                artist = strtok(title,"-");
+                song = strtok(NULL,"-");
+                if(strlen(song)>32)
+                    song[32]='\0';
+                draw_str (lcdbuf, song+1, 165-(strlen(song)*5), 0, BLACK,  1);
+                if(strlen(artist)>32)
+                    artist[32]='\0';
+                if(artist[strlen(artist)-1]==' ')
+                    artist[strlen(artist)-1]='\0';
+                draw_str (lcdbuf, artist, 160-(strlen(artist)*5), 8, BLACK,  1);
+            } else
+                draw_str (lcdbuf, title, 160-(strlen(title)*5), 0, BLACK,  1);
+        }
         draw_bar (lcdbuf, -2, 40, 160, 43, BLACK, xmms_remote_get_output_time(0)/1000, xmms_remote_get_playlist_time(0,playlist_pos)/1000, 1);
 
         g15_send(g15screen_fd,lcdbuf,1048);
         pthread_mutex_unlock(&g15buf_mutex);
         
-       xmms_usleep(25000);
+        xmms_usleep(25000);
     }
 
     return NULL;
