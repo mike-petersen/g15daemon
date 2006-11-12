@@ -41,7 +41,6 @@
 #include <config.h>
 #include <libg15.h>
 #include "g15daemon.h"
-#include "logo.h"
 
 #ifndef LIBG15_VERSION
 #define LIBG15_VERSION 1000
@@ -218,7 +217,7 @@ int main (int argc, char *argv[])
     daemon_pid_file_ident = 
             daemon_log_ident = 
             daemon_ident_from_argv0(argv[0]);
-printf("Datadir== %s \n",DATADIR);    
+
     for (i=0;i<argc;i++) {
         char daemonargs[20];
         memset(daemonargs,0,20);
