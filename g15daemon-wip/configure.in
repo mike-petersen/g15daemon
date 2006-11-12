@@ -50,11 +50,9 @@ AC_PATH_X
 AM_PATH_GLIB(1.2.2,,)
 AM_PATH_XMMS(1.2.4,,[have_xmms=yes])
 AM_PATH_GTK(1.2.2,,)
-LIBS_save=$LIBS
 LIBS="$LIBS $GTK_LIBS"
 CPPFLAGS=$CPPFLAGS_save
-LIBS=$LIBS_save
- 
+
 AC_ARG_ENABLE(xmmsplugin,
 [  --enable-xmmsplugin    Make g15daemon_spectrum_xmms xmms plugin],
 [case "${enableval}" in
@@ -64,6 +62,7 @@ AC_ARG_ENABLE(xmmsplugin,
 esac],[xmmsplugin=false])
 AM_CONDITIONAL(HAVE_XMMSPLUGIN, test x$xmmsplugin = xtrue)
 
+CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

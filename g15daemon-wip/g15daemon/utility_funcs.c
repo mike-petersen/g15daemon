@@ -82,6 +82,47 @@ void write_buf_to_g15(lcd_t *lcd)
     return;
 }
 
+/* basic wbmp loader - wbmps should be inverted for use here */
+int load_wbmp(lcd_t *lcd, char *filename)
+{
+    int wbmp_fd;
+    int retval;
+    unsigned int width, height, buflen,header=4;
+    unsigned char tmpbuf[1024];
+    int i;
+
+    wbmp_fd=open(filename,O_RDONLY);
+    if(!wbmp_fd){
+
+        return -1;
+    }
+    retval=read(wbmp_fd,tmpbuf,865);
+    close(wbmp_fd);
+    if(retval<865){
+        return -1;
+    }
+    if (tmpbuf[2] & 1) {
+        width = ((unsigned char)tmpbuf[2] ^ 1) | (unsigned char)tmpbuf[3];
+        height = tmpbuf[4];
+        header = 5;
+    } else {
+        width = tmpbuf[2];
+        height = tmpbuf[3];
+        header = 4;
+    }
+
+    buflen = (width/8)*height;
+
+    if(width!=160) {/* FIXME - we ought to scale images I suppose */
+        return -1;
+    }
+    pthread_mutex_lock(&lcdlist_mutex);
+    for(i=5;i<retval;i++){
+        lcd->buf[i-5]=tmpbuf[i]^0xff;
+    }
+    pthread_mutex_unlock(&lcdlist_mutex);
+}
+
 
 /* Sleep routine (hackish). */
 void pthread_sleep(int seconds) {

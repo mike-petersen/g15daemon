@@ -178,9 +178,8 @@ static void *lcd_draw_thread(void *lcdlist){
     lcd_t *displaying = displaylist->tail->lcd;
     memset(displaying->buf,0,1024);
     
-    writePixmapToLCD(logo_data);
     pthread_sleep(2);
-    
+
     while (!leaving) {
         pthread_mutex_lock(&lcdlist_mutex);
         
@@ -219,7 +218,7 @@ int main (int argc, char *argv[])
     daemon_pid_file_ident = 
             daemon_log_ident = 
             daemon_ident_from_argv0(argv[0]);
-    
+printf("Datadir== %s \n",DATADIR);    
     for (i=0;i<argc;i++) {
         char daemonargs[20];
         memset(daemonargs,0,20);
@@ -296,6 +295,7 @@ int main (int argc, char *argv[])
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
         struct passwd *nobody;
+        unsigned char location[1024];
         
         nobody = getpwnam("nobody");
             
@@ -354,11 +354,17 @@ int main (int argc, char *argv[])
             daemon_retval_send(5);
             goto exitnow;
         }
-
-        g15_open_all_plugins(lcdlist,"/usr/share/g15daemon/plugins");
-        
         daemon_retval_send(0);
         daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
+        
+	snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/splash/g15logo2.wbmp");
+        load_wbmp(lcdlist->tail->lcd,location);
+	write_buf_to_g15(lcdlist->tail->lcd);
+	
+        snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/plugins");
+
+        g15_open_all_plugins(lcdlist,location);
+        
         FD_ZERO(&fds);
         FD_SET(fd=daemon_signal_fd(),&fds);
     

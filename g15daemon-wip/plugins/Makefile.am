@@ -13,3 +13,4 @@ g15plugin_tcpserver_la_LDFLAGS = -avoid-version -module
 
 g15plugin_clock_la_SOURCES = g15_plugin_clock.c
 g15plugin_clock_la_LDFLAGS = -avoid-version -module 
+
