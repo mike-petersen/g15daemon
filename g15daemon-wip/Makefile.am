@@ -22,6 +22,7 @@ dist-hook:
 	rm -rf `find $(distdir)/patches -name .svn`
 	rm -rf `find $(distdir)/rpm -name .svn`
 	rm -rf `find $(distdir)/plugins -name .svn`
+	rm -rf `find $(distdir)/images -name .svn`
 
 dist-rpm: dist-bzip2
 	rpmbuild -ts $(distdir).tar.bz2

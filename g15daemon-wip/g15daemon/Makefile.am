@@ -3,7 +3,7 @@ METASOURCES = AUTO
 sbin_PROGRAMS = g15daemon
 noinst_PROGRAMS = g15daemontest
 noinst_HEADERS = g15logo.h
-g15daemon_SOURCES = logo.h utility_funcs.c \
+g15daemon_SOURCES = utility_funcs.c \
 	g15daemon.h main.c linked_lists.c gfx_primitives.c g15_plugins.c
 g15daemon_LDADD = -ldl
 g15daemon_LDFLAGS = -rdynamic
