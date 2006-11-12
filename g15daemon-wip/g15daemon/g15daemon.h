@@ -209,8 +209,6 @@ void write_buf_to_g15(lcd_t *lcd);
 
 void setpixel (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int color);
 //void cls (lcd_t * lcd, int color);
-void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color);
-void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int color);
 void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color, int num);
 
 /* utility functions in utility_func.c */

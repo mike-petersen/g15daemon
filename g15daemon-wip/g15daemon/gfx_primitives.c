@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include "g15daemon.h"
 #include <libg15.h>
+#include <libg15render.h>
 
 /* set a pixel in a libg15 buffer */
 void setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
@@ -45,154 +46,73 @@ void setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
         lcd->buf[byte_offset] = lcd->buf[byte_offset]  &  ~(1 << bit_offset);
 }
 
-
-void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour) {
-
-    int d, sx, sy, dx, dy;
-    unsigned int ax, ay;
-
-    x1 = x1 - 1;
-    y1 = y1 - 1;
-    x2 = x2 - 1;
-    y2 = y2 - 1;
-
-    dx = x2 - x1;
-    ax = abs (dx) << 1;
-    if (dx < 0)
-        sx = -1;
-    else
-        sx = 1;
-
-    dy = y2 - y1;
-    ay = abs (dy) << 1;
-    if (dy < 0)
-        sy = -1;
-    else
-        sy = 1;
-
-    /* set the pixel */
-    setpixel (lcd, x1, y1, colour);
-
-    if (ax > ay)
-    {
-        d = ay - (ax >> 1);
-        while (x1 != x2)
-        {
-            if (d >= 0)
-            {
-                y1 += sy;
-                d -= ax;
-            }
-            x1 += sx;
-            d += ay;
-            setpixel (lcd, x1, y1, colour);
-        }
-    }
-    else
-    {
-        d = ax - (ay >> 1);
-        while (y1 != y2)
-        {
-            if (d >= 0)
-            {
-                x1 += sx;
-                d -= ay;
-            }
-            y1 += sy;
-            d += ax;
-            setpixel (lcd, x1, y1, colour);
-        }
-    }
-}
-
-
-void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour) {
-
-    int y;
-
-    if (x1 != x2 && y1 != y2)
-    {
-        if (!filled)
-        {
-            line (lcd, x1, y1, x2, x1, colour);
-            line (lcd, x1, y1, x1, y2, colour);
-            line (lcd, x1, y2, x2, y2, colour);
-            line (lcd, x2, y1, x2, y2, colour);
-        }
-        else
-        {
-            for (y = y1; y <= y2; y++)
-            {
-                line(lcd,x1,y,x2,y,colour);
-            }
-        }
-    }
-}
-
-
 void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour, int num) {
     x1 += 2;
     x2 -= 2;
 
+    g15canvas *canvas = (g15canvas *) malloc (sizeof (g15canvas));
+    g15r_initCanvas (canvas);
+    memcpy (canvas->buffer, lcd->buf, G15_BUFFER_LEN);
+
     switch(num){
         case 45: 
-            rectangle (lcd, x1, y1+((y2/2)-2), x2, y1+((y2/2)+2), 1, BLACK);
+            g15r_pixelBox (canvas, x1, y1+((y2/2)-2), x2, y1+((y2/2)+2), G15_COLOR_BLACK, 1, 1);
             break;
         case 46:
-            rectangle (lcd, x2-5, y2-5, x2, y2 , 1, BLACK);
+            g15r_pixelBox (canvas, x2-5, y2-5, x2, y2 , G15_COLOR_BLACK, 1, 1);
             break;
         case 48:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1 +5, y1 +5, x2 -5, y2 - 6, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1 +5, y1 +5, x2 -5, y2 - 6, G15_COLOR_WHITE, 1, 1);
             break;
         case 49: 
-            rectangle (lcd, x2-5, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1, x2 -5, y2, 1, WHITE);
+            g15r_pixelBox (canvas, x2-5, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1, y1, x2 -5, y2, G15_COLOR_WHITE, 1, 1);
             break;
         case 50:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2 , y2-6, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+5, x2 -5, y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+((y2/2)+3), x2 , y2-6, G15_COLOR_WHITE, 1, 1);
             break;
         case 51:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+5, x2 -5, y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+((y2/2)+3), x2-5 , y2-6, G15_COLOR_WHITE, 1, 1);
             break;
         case 52:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2 -5, y2, 1, WHITE);
-            rectangle (lcd, x1+5, y1, x2-5 , y1+((y2/2)-3), 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+((y2/2)+3), x2 -5, y2, G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1, x2-5 , y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
             break;
         case 53:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+5, x2 , y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+((y2/2)+3), x2-5 , y2-6, G15_COLOR_WHITE, 1, 1);
             break;
         case 54:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+5, x2 , y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+((y2/2)+3), x2-5 , y2-6, G15_COLOR_WHITE, 1, 1);
             break;
         case 55:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y2, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+5, x2 -5, y2, G15_COLOR_WHITE, 1, 1);
             break;
         case 56:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+5, x2-5 , y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+((y2/2)+3), x2-5 , y2-6, G15_COLOR_WHITE, 1, 1);
             break;
         case 57:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2, 1, WHITE);
+            g15r_pixelBox (canvas, x1, y1, x2, y2 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x1+5, y1+5, x2-5 , y1+((y2/2)-3), G15_COLOR_WHITE, 1, 1);
+            g15r_pixelBox (canvas, x1, y1+((y2/2)+3), x2-5 , y2, G15_COLOR_WHITE, 1, 1);
             break;
         case 58: 
-            rectangle (lcd, x2-5, y1+5, x2, y1+10 , 1, BLACK);
-            rectangle (lcd, x2-5, y2-10, x2, y2-5 , 1, BLACK);
+            g15r_pixelBox (canvas, x2-5, y1+5, x2, y1+10 , G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, x2-5, y2-10, x2, y2-5 , G15_COLOR_BLACK, 1, 1);
             break;
-
     }
+    memcpy (lcd->buf, canvas->buffer, G15_BUFFER_LEN);
 }
 
