@@ -73,7 +73,7 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
          }
      } else */
     if(msgbuf[0] == CLIENT_CMD_SWITCH_PRIORITIES){
-        send_event(lcdnode,G15_EVENT_REQ_PRIORITY,1);
+        g15daemon_send_event(lcdnode,G15_EVENT_REQ_PRIORITY,1);
     }
     else if(msgbuf[0] == CLIENT_CMD_IS_FOREGROUND) 
     { /* client wants to know if it's currently viewable */
@@ -371,7 +371,7 @@ static void lcdserver_thread(void *lcdlist){
 
     if((g15_socket = init_sockserver())<0){
         g15daemon_log(LOG_ERR,"Unable to initialise the server at port %i",LISTEN_PORT);
-        return NULL;
+        return;
     }
 
     if (fcntl(g15_socket, F_SETFL, O_NONBLOCK) <0 ) {
@@ -383,7 +383,7 @@ static void lcdserver_thread(void *lcdlist){
     }
 
     close(g15_socket);
-    return NULL;
+    return;
 }
 
 /* incoming events */

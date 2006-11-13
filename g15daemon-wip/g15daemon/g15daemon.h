@@ -182,9 +182,6 @@ pthread_mutex_t g15lib_mutex;
 
 #ifdef G15DAEMON_BUILD
 /* internal g15daemon-only functions */
-/* call create_lcd for every new client, and quit it when done */
-lcd_t * ll_create_lcd ();
-void ll_quit_lcd (lcd_t * lcd);
 void uf_write_buf_to_g15(lcd_t *lcd);
 
 /* linked lists */

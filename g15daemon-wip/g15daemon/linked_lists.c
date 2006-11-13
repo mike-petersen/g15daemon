@@ -34,7 +34,7 @@ extern lcd_t *keyhandler;
 extern unsigned int client_handles_keys;
 extern plugin_info_t *generic_info;
 
-lcd_t * ll_create_lcd () {
+lcd_t static * ll_create_lcd () {
 
     lcd_t *lcd = g15daemon_xmalloc (sizeof (lcd_t));
     lcd->max_x = LCD_WIDTH;
@@ -51,7 +51,7 @@ lcd_t * ll_create_lcd () {
     return (lcd);
 }
 
-void ll_quit_lcd (lcd_t * lcd) {
+static void ll_quit_lcd (lcd_t * lcd) {
     free (lcd->g15plugin);
     free (lcd);
 }
