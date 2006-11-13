@@ -56,7 +56,7 @@ void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
     
     int mode = library==1?RTLD_GLOBAL:RTLD_LOCAL;
     
-    handle = dlopen (name,RTLD_LAZY | mode);
+    handle = dlopen (name,RTLD_NOW | mode);
     
     if ((error = dlerror()) != NULL)  {
         g15daemon_log (LOG_ERR, "%s\n", error);

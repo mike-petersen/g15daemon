@@ -220,7 +220,7 @@ int main (int argc, char *argv[])
     pid_t daemonpid;
     int retval;
     int i;
-    struct sigaction new_action, old_action;
+    struct sigaction new_action;
     cycle_key = G15_KEY_MR;
     unsigned char user[256];
     
