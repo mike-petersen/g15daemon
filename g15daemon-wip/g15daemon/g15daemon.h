@@ -32,21 +32,8 @@
 #define BLACKnWHITE 
 #endif
 
-#define GKEY_OFFSET 167
-#define MKEY_OFFSET 185
-#define LKEY_OFFSET 189
-
-#define G15KEY_DOWN 1
-#define G15KEY_UP 0
-
 #define LCD_WIDTH 160
 #define LCD_HEIGHT 43
-
-/* tcp server defines */
-#define LISTEN_PORT 15550
-#define LISTEN_ADDR "127.0.0.1"
-/* any more than this number of simultaneous clients will be rejected. */
-#define MAX_CLIENTS 10
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -194,6 +181,7 @@ pthread_mutex_t g15lib_mutex;
 #define SERV_HELO "G15 daemon HELLO"
 
 #ifdef G15DAEMON_BUILD
+/* internal g15daemon-only functions */
 /* call create_lcd for every new client, and quit it when done */
 lcd_t * ll_create_lcd ();
 void ll_quit_lcd (lcd_t * lcd);
@@ -209,9 +197,15 @@ int internal_clock_eventhandler(plugin_event_t *myevent);
 int internal_generic_eventhandler(plugin_event_t *myevent);
 #endif
 
+/* the following functions are available for use by plugins */
+
+/* set or unset a pixel in the provided lcd's buffer */
 void g15daemon_setpixel (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int color);
+/* draw large number <num> with the dimensions provided */
 void g15daemon_draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color, int num);
+/* draw a line */
 void g15daemon_line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour);
+/* draw filled or unfilled rectangle */
 void g15daemon_rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour);
 
 /* send event to foreground client's eventlistener */

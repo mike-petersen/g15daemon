@@ -149,25 +149,25 @@ int g15daemon_lcdnode_cycle(lcdlist_t *displaylist)
 
 void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
     
-    lcdlist_t **display_list = NULL;
+    lcdlist_t **displaylist = NULL;
     lcdnode_t **prev = NULL;
     lcdnode_t **next = NULL;
     
     pthread_mutex_lock(&lcdlist_mutex);
     
-    display_list = &oldnode->list;
+    displaylist = &oldnode->list;
     prev = &oldnode->prev;
     next = &oldnode->next;
     
     ll_quit_lcd(oldnode->lcd);
-    (unsigned int)(*display_list)->numclients--;
-    if((*display_list)->current == oldnode) {
-        if((*display_list)->current!=(*display_list)->head){
-            (*display_list)->current = oldnode->next;
+    (unsigned int)(*displaylist)->numclients--;
+    if((*displaylist)->current == oldnode) {
+        if((*displaylist)->current!=(*displaylist)->head){
+            (*displaylist)->current = oldnode->next;
         } else {
-            (*display_list)->current = oldnode->prev;
+            (*displaylist)->current = oldnode->prev;
         }
-        (*display_list)->current->lcd->state_changed = 1;
+        (*displaylist)->current->lcd->state_changed = 1;
     }
     
     if(&oldnode->lcd == (void*)keyhandler) {
@@ -176,12 +176,12 @@ void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
         g15daemon_log(LOG_WARNING,"Client key handler quit, going back to defaults");
     }
     
-    if((*display_list)->head!=oldnode){
+    if((*displaylist)->head!=oldnode){
         (*next)->prev = oldnode->prev;
         (*prev)->next = oldnode->next;
     }else{
-        (*prev)->next = (*display_list)->tail;
-        (*display_list)->head = oldnode->prev;
+        (*prev)->next = (*displaylist)->tail;
+        (*displaylist)->head = oldnode->prev;
     }
 
     free(oldnode);

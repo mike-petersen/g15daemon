@@ -45,6 +45,13 @@
 
 static int uinp_fd = -1;
 
+#define GKEY_OFFSET 167
+#define MKEY_OFFSET 185
+#define LKEY_OFFSET 189
+
+#define G15KEY_DOWN 1
+#define G15KEY_UP 0
+
 int g15_init_uinput(void *plugin_args) {
     
     int i=0;

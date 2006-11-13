@@ -42,6 +42,13 @@
 static int leaving;
 int server_events(plugin_event_t *myevent);
 
+/* tcp server defines */
+#define LISTEN_PORT 15550
+#define LISTEN_ADDR "127.0.0.1"
+
+/* any more than this number of simultaneous clients will be rejected. */
+#define MAX_CLIENTS 10
+
 /* custom plugininfo for clients... */
 plugin_info_t lcdclient_info[] = {
         /* TYPE, 	   name, 	initfunc, updatefreq, exitfunc, eventhandler, initfunc */
