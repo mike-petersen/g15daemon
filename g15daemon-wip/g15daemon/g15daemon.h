@@ -193,53 +193,53 @@ pthread_mutex_t g15lib_mutex;
 /* server hello */
 #define SERV_HELO "G15 daemon HELLO"
 
-/* uinput & keyboard control */
-#ifdef HAVE_LINUX_UINPUT_H
-int g15_init_uinput();
-void g15_uinput_keyup(unsigned char code);
-void g15_uinput_keydown(unsigned char code);
-void g15_exit_uinput();
-#endif
-    
-void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys);
-
+#ifdef G15DAEMON_BUILD
 /* call create_lcd for every new client, and quit it when done */
-lcd_t * create_lcd ();
-void quit_lcd (lcd_t * lcd);
-void write_buf_to_g15(lcd_t *lcd);
-
-void setpixel (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int color);
-//void cls (lcd_t * lcd, int color);
-void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color);
-void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int color);
-void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color, int num);
-
-/* utility functions in utility_func.c */
-void pthread_sleep(int seconds);
-int pthread_msleep(int milliseconds);
+lcd_t * ll_create_lcd ();
+void ll_quit_lcd (lcd_t * lcd);
+void uf_write_buf_to_g15(lcd_t *lcd);
 
 /* linked lists */
-lcdlist_t *lcdlist_init();
-void lcdlist_destroy(lcdlist_t **displaylist);
-lcdnode_t *lcdnode_add(lcdlist_t **display_list);
-void lcdnode_remove(lcdnode_t *badnode);
+lcdlist_t *ll_lcdlist_init();
+void ll_lcdlist_destroy(lcdlist_t **displaylist);
 
-/* create a listening socket */
-int init_sockserver();
-int g15_clientconnect(lcdlist_t **g15daemon,int listening_socket);
-int g15_send(int sock, char *buf, unsigned int len);
-int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len);
-
-/* handy function from xine_utils.c */
-void *g15_xmalloc(size_t size);
 /* internal lcd plugin - the clock/menu */
 int internal_clock_eventhandler(plugin_event_t *myevent);
 /* generic handler for net clients */
 int internal_generic_eventhandler(plugin_event_t *myevent);
+#endif
+
+void g15daemon_setpixel (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int color);
+void g15daemon_draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color, int num);
+void g15daemon_line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour);
+void g15daemon_rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour);
+
 /* send event to foreground client's eventlistener */
-int send_event(void *caller, unsigned int event, unsigned long value);
-/* return time in milliseconds */
-unsigned int gettimerms();
+int g15daemon_send_event(void *caller, unsigned int event, unsigned long value);
+/* open named plugin */
+void * g15daemon_dlopen_plugin(char *name,unsigned int library);
+/* close plugin with handle <handle> */
+int g15daemon_dlclose_plugin(void *handle) ;
 /* syslog wrapper */
 int g15daemon_log (int priority, const char *fmt, ...);
+/* cycle from displayed screen to next on list */
+int g15daemon_lcdnode_cycle(lcdlist_t *displaylist);
+/* add new screen */
+lcdnode_t *g15daemon_lcdnode_add(lcdlist_t **displaylist) ;
+/* remove screen */
+void g15daemon_lcdnode_remove (lcdnode_t *oldnode);
+
+/* handy function from xine_utils.c */
+void *g15daemon_xmalloc(size_t size) ;
+/* convert 1byte/pixel buffer to internal g15 format */
+void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf);
+/* load 160x43 wbmp format file into lcd struct */
+int g15daemon_load_wbmp(lcd_t *lcd, char *filename);
+/* threadsafe sleep */
+void g15daemon_sleep(int seconds);
+/* threadsafe millisecond sleep */
+int g15daemon_msleep(int milliseconds) ;
+/* return current time in milliseconds */
+unsigned int g15daemon_gettime_ms();
+
 #endif

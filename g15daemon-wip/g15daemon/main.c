@@ -23,6 +23,7 @@
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
 */
+#define G15DAEMON_BUILD 1
 
 #include <pthread.h>
 #include <stdio.h>
@@ -53,7 +54,7 @@ unsigned int client_handles_keys = 0;
 struct lcd_t *keyhandler = NULL;
 
 /* send event to foreground client's eventlistener */
-int send_event(void *caller, unsigned int event, unsigned long value)
+int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
 {
     switch(event) {
         case G15_EVENT_KEYPRESS: {
@@ -79,11 +80,11 @@ int send_event(void *caller, unsigned int event, unsigned long value)
                 lcdlist_t* displaylist = lcd->masterlist;
                 static unsigned int clicktime;
                 if(value & cycle_key) {
-                    clicktime=gettimerms();
+                    clicktime=g15daemon_gettime_ms();
                 }else{
-                    unsigned int unclick=gettimerms();
+                    unsigned int unclick=g15daemon_gettime_ms();
                     if ((unclick-clicktime)<500) {
-                        lcdnode_cycle(displaylist);
+                        g15daemon_lcdnode_cycle(displaylist);
                     }
                     else 
                     {
@@ -107,7 +108,7 @@ int send_event(void *caller, unsigned int event, unsigned long value)
             lcd_t *lcd = (lcd_t*)caller;
             lcdlist_t* displaylist = lcd->masterlist;
             if(value)
-                lcdnode_cycle(displaylist);
+                g15daemon_lcdnode_cycle(displaylist);
             break;
         }
         case G15_EVENT_REQ_PRIORITY: {
@@ -159,10 +160,10 @@ static void *keyboard_watch_thread(void *lcdlist){
         pthread_mutex_unlock(&g15lib_mutex);
         
         if(retval == G15_NO_ERROR){
-            send_event(displaylist->current->lcd, 
+            g15daemon_send_event(displaylist->current->lcd, 
                        G15_EVENT_KEYPRESS, keypresses);
         }
-        pthread_msleep(10);
+        g15daemon_msleep(10);
     }
     
     return NULL;
@@ -176,7 +177,7 @@ static void *lcd_draw_thread(void *lcdlist){
     lcd_t *displaying = displaylist->tail->lcd;
     memset(displaying->buf,0,1024);
     
-    pthread_sleep(2);
+    g15daemon_sleep(2);
 
     while (!leaving) {
         pthread_mutex_lock(&lcdlist_mutex);
@@ -184,7 +185,7 @@ static void *lcd_draw_thread(void *lcdlist){
         displaying = displaylist->current->lcd;
         
         if(displaying->ident != lastlcd){
-           write_buf_to_g15(displaying);
+           uf_write_buf_to_g15(displaying);
            lastlcd = displaying->ident;
         }
         
@@ -197,7 +198,7 @@ static void *lcd_draw_thread(void *lcdlist){
             
         pthread_mutex_unlock(&lcdlist_mutex);
         
-        pthread_msleep(5);
+        g15daemon_msleep(5);
     }
     return NULL;
 }
@@ -232,7 +233,7 @@ int main (int argc, char *argv[])
         memset(daemonargs,0,20);
         strncpy(daemonargs,argv[i],19);
         if (!strncmp(daemonargs, "-k",2) || !strncmp(daemonargs, "--kill",6)) {
-                   daemonpid = g15daemon_return_running();
+                   daemonpid = uf_return_running();
                    if(daemonpid>0) {
                        kill(daemonpid,SIGINT);
                    } else
@@ -241,13 +242,13 @@ int main (int argc, char *argv[])
         }
         if (!strncmp(daemonargs, "-v",2) || !strncmp(daemonargs, "--version",9)) {
             float lg15ver = LIBG15_VERSION;
-            printf("G15Daemon version %s - %s\n",VERSION,g15daemon_return_running() >= 0 ?"Loaded & Running":"Not Running");
+            printf("G15Daemon version %s - %s\n",VERSION,uf_return_running() >= 0 ?"Loaded & Running":"Not Running");
             printf("compiled with libg15 version %.3f\n\n",lg15ver/1000);
             exit(0);
         }    
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
-            printf("G15Daemon version %s - %s\n",VERSION,g15daemon_return_running() >= 0 ?"Loaded & Running":"Not Running");
+            printf("G15Daemon version %s - %s\n",VERSION,uf_return_running() >= 0 ?"Loaded & Running":"Not Running");
             printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n",argv[0]);
             exit(0);
         }
@@ -268,14 +269,14 @@ int main (int argc, char *argv[])
         }
 
     }
-    if(g15daemon_return_running()>=0) {
+    if(uf_return_running()>=0) {
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
         exit(0);
     }
     if(!g15daemon_debug)
         daemon(0,0);
 
-    if(g15daemon_create_pidfile() == 0) {
+    if(uf_create_pidfile() == 0) {
         
         int fd;
         fd_set fds;
@@ -313,7 +314,7 @@ int main (int argc, char *argv[])
         }
 
         /* initialise the linked list */
-        lcdlist = lcdlist_init();
+        lcdlist = ll_lcdlist_init();
         lcdlist->nobody = nobody;
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
@@ -339,8 +340,8 @@ int main (int argc, char *argv[])
         g15daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         
         snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/splash/g15logo2.wbmp");
-        load_wbmp(lcdlist->tail->lcd,location);
-        write_buf_to_g15(lcdlist->tail->lcd);
+        g15daemon_load_wbmp(lcdlist->tail->lcd,location);
+        uf_write_buf_to_g15(lcdlist->tail->lcd);
 	
         snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/plugins");
 
@@ -366,7 +367,7 @@ int main (int argc, char *argv[])
         exitLibG15(); 
 #endif
 #endif
-        lcdlist_destroy(&lcdlist);
+        ll_lcdlist_destroy(&lcdlist);
 
 exitnow:
         /* return to root privilages for the final countdown */

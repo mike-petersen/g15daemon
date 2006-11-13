@@ -26,6 +26,7 @@
     g15_plugin.c
     simple plugin loader - loads each plugin and runs each one in it's own thread. a bit expensive probably 
 */
+#define G15DAEMON_BUILD 1
 
 #include <pthread.h>
 #include <stdio.h>
@@ -40,7 +41,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <libg15.h>
-#include "g15daemon.h"
+#include <g15daemon.h>
 #include <dlfcn.h>
 #include <pwd.h>
 
@@ -48,7 +49,7 @@
 
 extern int leaving;
 
-void * g15_dlopen_plugin(char *name,unsigned int library) {
+void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
 
     void * handle;
     char * error;
@@ -65,7 +66,7 @@ void * g15_dlopen_plugin(char *name,unsigned int library) {
     return handle;
 }
 
-int g15_dlclose_plugin(void *handle) {
+int g15daemon_dlclose_plugin(void *handle) {
 
     dlclose(handle);
 }
@@ -90,7 +91,7 @@ void run_lcd_client(plugin_t *plugin_args) {
         plugin_retval = (*plugin)((void*)client_lcd);
         if(info->update_msecs<50)
             info->update_msecs = 50;
-        pthread_msleep(info->update_msecs);
+        g15daemon_msleep(info->update_msecs);
     }
     
     if(plugin_close!=NULL){
@@ -98,7 +99,7 @@ void run_lcd_client(plugin_t *plugin_args) {
     }
 
     if(!leaving)
-        lcdnode_remove(display);
+        g15daemon_lcdnode_remove(display);
 }
 void run_advanced_client(plugin_t *plugin_args)
 { 
@@ -125,11 +126,11 @@ void run_advanced_client(plugin_t *plugin_args)
         while(((*plugin_run)(plugin_args->args))==G15_PLUGIN_OK && !leaving){
             if(info->update_msecs<50)
                 info->update_msecs = 50;
-            pthread_msleep(info->update_msecs);
+            g15daemon_msleep(info->update_msecs);
         }
     }else{
         while(1){
-            pthread_msleep(500);
+            g15daemon_msleep(500);
         }
     }
     if(plugin_close) {
@@ -159,7 +160,7 @@ void *plugin_thread(plugin_t *plugin_args) {
         free(plugin_args);
 
     g15daemon_log(LOG_INFO,"Removed plugin %s",info->name);
-    g15_dlclose_plugin(handle);
+    g15daemon_dlclose_plugin(handle);
 
 }
 
@@ -173,14 +174,14 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
     pthread_attr_t attr;
     lcdnode_t *clientnode;
 
-    if((plugin_handle = g15_dlopen_plugin(name,G15_PLUGIN_NONSHARED))!=NULL) {
+    if((plugin_handle = g15daemon_dlopen_plugin(name,G15_PLUGIN_NONSHARED))!=NULL) {
         plugin_t  *plugin_args=malloc(sizeof(plugin_t));
         plugin_args->info = dlsym(plugin_handle, "g15plugin_info");
 
         dlerror();
         if(!plugin_args->info) { /* if it doesnt have a valid struct, we should just load it as a library... but we dont at the moment FIXME */
             g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",name);
-            g15_dlclose_plugin(plugin_handle);
+            g15daemon_dlclose_plugin(plugin_handle);
             dlerror();
             return;
         }
@@ -195,7 +196,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
             lcdlist_t *foolist = (lcdlist_t*)displaylist;
 		/* FIXME we should just sort out the linked list stuff instead of overriding it */
             if((int)foolist->numclients>=1){
-                clientnode = lcdnode_add((void*)g15daemon_lcds);
+                clientnode = g15daemon_lcdnode_add((void*)g15daemon_lcds);
             }else {
                 clientnode = foolist->tail;
                 foolist->numclients++;
@@ -239,7 +240,7 @@ void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory) {
                 strncat(pluginname,ep->d_name,200);
                 g15daemon_log(LOG_INFO, "Loading plugin %s",pluginname);
                 g15_plugin_load (displaylist, pluginname);
-                pthread_msleep(20);
+                g15daemon_msleep(20);
             }
         }
         (void) closedir (directory);

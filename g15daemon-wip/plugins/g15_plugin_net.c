@@ -248,7 +248,7 @@ void *lcd_client_thread(void *display) {
             }
             pthread_mutex_lock(&lcdlist_mutex);
             memset(client_lcd->buf,0,1024);      
-            convert_buf(client_lcd,tmpbuf);
+            g15daemon_convert_buf(client_lcd,tmpbuf);
             client_lcd->ident = random();
             pthread_mutex_unlock(&lcdlist_mutex);
         }
@@ -301,7 +301,7 @@ void *lcd_client_thread(void *display) {
 exitthread:
         close(client_sock);
     free(tmpbuf);
-    lcdnode_remove(display);
+    g15daemon_lcdnode_remove(display);
     
     pthread_exit(NULL);
 }
@@ -332,7 +332,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
             }
         }
 
-        clientnode = lcdnode_add(g15daemon);
+        clientnode = g15daemon_lcdnode_add(g15daemon);
         clientnode->lcd->connection = conn_s;
         /* override the default (generic handler and use our own for our clients */
         clientnode->lcd->g15plugin->info=(void*)(&lcdclient_info);

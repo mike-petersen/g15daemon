@@ -23,6 +23,7 @@
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
 */
+#define G15DAEMON_BUILD 1
 
 #include <pthread.h>
 #include <stdio.h>
@@ -55,7 +56,7 @@ const plugin_info_t generic_info[] = {
 };
 
 /* handy function from xine_utils.c */
-void *g15_xmalloc(size_t size) {
+void *g15daemon_xmalloc(size_t size) {
     void *ptr;
 
     /* prevent xmalloc(0) of possibly returning NULL */
@@ -69,7 +70,7 @@ void *g15_xmalloc(size_t size) {
     return ptr;
 }
 
-int g15daemon_return_running(){
+int uf_return_running(){
     int fd;
     char pidtxt[128];
     int pid;
@@ -101,13 +102,13 @@ int g15daemon_return_running(){
 }
 
 
-int g15daemon_create_pidfile() {
+int uf_create_pidfile() {
     
     char pidtxt[128];
     size_t l;
     int fd;
     
-    if(!g15daemon_return_running() &&  (fd = open(G15DAEMON_PIDFILE, O_CREAT|O_RDWR|O_EXCL, 0644)) < 0) {
+    if(!uf_return_running() &&  (fd = open(G15DAEMON_PIDFILE, O_CREAT|O_RDWR|O_EXCL, 0644)) < 0) {
         g15daemon_log(LOG_ERR,"previous G15Daemon process died.  removing pidfile");
         unlink(G15DAEMON_PIDFILE);
     }
@@ -146,16 +147,16 @@ int g15daemon_log (int priority, const char *fmt, ...) {
    return 0;
 }
 
-void convert_buf(lcd_t *lcd, unsigned char * orig_buf)
+void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf)
 {
     unsigned int x,y;
     for(x=0;x<160;x++)
         for(y=0;y<43;y++)
-            setpixel(lcd,x,y,orig_buf[x+(y*160)]);
+            g15daemon_setpixel(lcd,x,y,orig_buf[x+(y*160)]);
 }
 
 /* wrap the libg15 function */
-void write_buf_to_g15(lcd_t *lcd)
+void uf_write_buf_to_g15(lcd_t *lcd)
 {
     pthread_mutex_lock(&g15lib_mutex);
     writePixmapToLCD(lcd->buf);
@@ -164,7 +165,7 @@ void write_buf_to_g15(lcd_t *lcd)
 }
 
 /* basic wbmp loader - wbmps should be inverted for use here */
-int load_wbmp(lcd_t *lcd, char *filename)
+int g15daemon_load_wbmp(lcd_t *lcd, char *filename)
 {
     int wbmp_fd;
     int retval;
@@ -206,7 +207,7 @@ int load_wbmp(lcd_t *lcd, char *filename)
 
 
 /* Sleep routine (hackish). */
-void pthread_sleep(int seconds) {
+void g15daemon_sleep(int seconds) {
     pthread_mutex_t dummy_mutex;
     static pthread_cond_t dummy_cond = PTHREAD_COND_INITIALIZER;
     struct timespec timeout;
@@ -226,7 +227,7 @@ void pthread_sleep(int seconds) {
 }
 
 /* millisecond sleep routine. */
-int pthread_msleep(int milliseconds) {
+int g15daemon_msleep(int milliseconds) {
     
     struct timespec timeout;
     if(milliseconds>999)
@@ -237,7 +238,7 @@ int pthread_msleep(int milliseconds) {
     return nanosleep (&timeout, NULL);
 }
 
-unsigned int gettimerms(){
+unsigned int g15daemon_gettime_ms(){
     struct timeval tv;
     gettimeofday(&tv,NULL);
     return (tv.tv_sec*1000+tv.tv_usec/1000);

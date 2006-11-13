@@ -64,7 +64,7 @@ static int *lcdclock(lcd_t *lcd)
 
         for (col=0;col<len;col++) 
         {
-            draw_bignum (lcd, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, LCD_HEIGHT, BLACK, buf[col]);
+            g15daemon_draw_bignum (lcd, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, LCD_HEIGHT, BLACK, buf[col]);
 
         }
         lcd->ident = currtime+100;

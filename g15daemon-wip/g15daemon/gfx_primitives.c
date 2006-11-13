@@ -23,6 +23,7 @@
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
 */
+#define G15DAEMON_BUILD 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@
 #include <libg15.h>
 
 /* set a pixel in a libg15 buffer */
-void setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
+void g15daemon_setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
 {
     unsigned int curr_row = y;
     unsigned int curr_col = x;
@@ -46,7 +47,7 @@ void setpixel(lcd_t *lcd, unsigned int x, unsigned int y, unsigned int val)
 }
 
 
-void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour) {
+void g15daemon_line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour) {
 
     int d, sx, sy, dx, dy;
     unsigned int ax, ay;
@@ -71,7 +72,7 @@ void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsig
         sy = 1;
 
     /* set the pixel */
-    setpixel (lcd, x1, y1, colour);
+    g15daemon_setpixel (lcd, x1, y1, colour);
 
     if (ax > ay)
     {
@@ -85,7 +86,7 @@ void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsig
             }
             x1 += sx;
             d += ay;
-            setpixel (lcd, x1, y1, colour);
+            g15daemon_setpixel (lcd, x1, y1, colour);
         }
     }
     else
@@ -100,13 +101,13 @@ void line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsig
             }
             y1 += sy;
             d += ax;
-            setpixel (lcd, x1, y1, colour);
+            g15daemon_setpixel (lcd, x1, y1, colour);
         }
     }
 }
 
 
-void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour) {
+void g15daemon_rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour) {
 
     int y;
 
@@ -114,83 +115,83 @@ void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, 
     {
         if (!filled)
         {
-            line (lcd, x1, y1, x2, y1, colour);
-            line (lcd, x1, y1, x1, y2, colour);
-            line (lcd, x1, y2, x2, y2, colour);
-            line (lcd, x2, y1, x2, y2, colour);
+            g15daemon_line (lcd, x1, y1, x2, y1, colour);
+            g15daemon_line (lcd, x1, y1, x1, y2, colour);
+            g15daemon_line (lcd, x1, y2, x2, y2, colour);
+            g15daemon_line (lcd, x2, y1, x2, y2, colour);
         }
         else
         {
             for (y = y1; y <= y2; y++)
             {
-                line(lcd,x1,y,x2,y,colour);
+                g15daemon_line(lcd,x1,y,x2,y,colour);
             }
         }
     }
 }
 
 
-void draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour, int num) {
+void g15daemon_draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour, int num) {
     x1 += 2;
     x2 -= 2;
 
     switch(num){
         case 45: 
-            rectangle (lcd, x1, y1+((y2/2)-2), x2, y1+((y2/2)+2), 1, BLACK);
+            g15daemon_rectangle (lcd, x1, y1+((y2/2)-2), x2, y1+((y2/2)+2), 1, BLACK);
             break;
         case 46:
-            rectangle (lcd, x2-5, y2-5, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x2-5, y2-5, x2, y2 , 1, BLACK);
             break;
         case 48:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1 +5, y1 +5, x2 -5, y2 - 6, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1 +5, y1 +5, x2 -5, y2 - 6, 1, WHITE);
             break;
         case 49: 
-            rectangle (lcd, x2-5, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1, x2 -5, y2, 1, WHITE);
+            g15daemon_rectangle (lcd, x2-5, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1, y1, x2 -5, y2, 1, WHITE);
             break;
         case 50:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2 , y2-6, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1+5, y1+((y2/2)+3), x2 , y2-6, 1, WHITE);
             break;
         case 51:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1, y1+5, x2 -5, y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
             break;
         case 52:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2 -5, y2, 1, WHITE);
-            rectangle (lcd, x1+5, y1, x2-5 , y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1, y1+((y2/2)+3), x2 -5, y2, 1, WHITE);
+            g15daemon_rectangle (lcd, x1+5, y1, x2-5 , y1+((y2/2)-3), 1, WHITE);
             break;
         case 53:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
             break;
         case 54:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1+5, y1+5, x2 , y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
             break;
         case 55:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1, y1+5, x2 -5, y2, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1, y1+5, x2 -5, y2, 1, WHITE);
             break;
         case 56:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1+5, y1+((y2/2)+3), x2-5 , y2-6, 1, WHITE);
             break;
         case 57:
-            rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
-            rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
-            rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2, 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1, x2, y2 , 1, BLACK);
+            g15daemon_rectangle (lcd, x1+5, y1+5, x2-5 , y1+((y2/2)-3), 1, WHITE);
+            g15daemon_rectangle (lcd, x1, y1+((y2/2)+3), x2-5 , y2, 1, WHITE);
             break;
         case 58: 
-            rectangle (lcd, x2-5, y1+5, x2, y1+10 , 1, BLACK);
-            rectangle (lcd, x2-5, y2-10, x2, y2-5 , 1, BLACK);
+            g15daemon_rectangle (lcd, x2-5, y1+5, x2, y1+10 , 1, BLACK);
+            g15daemon_rectangle (lcd, x2-5, y2-10, x2, y2-5 , 1, BLACK);
             break;
 
     }

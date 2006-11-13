@@ -23,6 +23,8 @@
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
 */
+#define G15DAEMON_BUILD 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <g15daemon.h>
@@ -32,9 +34,9 @@ extern lcd_t *keyhandler;
 extern unsigned int client_handles_keys;
 extern plugin_info_t *generic_info;
 
-lcd_t * create_lcd () {
+lcd_t * ll_create_lcd () {
 
-    lcd_t *lcd = g15_xmalloc (sizeof (lcd_t));
+    lcd_t *lcd = g15daemon_xmalloc (sizeof (lcd_t));
     lcd->max_x = LCD_WIDTH;
     lcd->max_y = LCD_HEIGHT;
     lcd->backlight_state = G15_BRIGHTNESS_MEDIUM;
@@ -42,35 +44,35 @@ lcd_t * create_lcd () {
     lcd->contrast_state = G15_CONTRAST_MEDIUM;
     lcd->state_changed = 1;
     lcd->usr_foreground = 0;
-    lcd->g15plugin = g15_xmalloc(sizeof (plugin_s)); 
+    lcd->g15plugin = g15daemon_xmalloc(sizeof (plugin_s)); 
     lcd->g15plugin->plugin_handle = NULL;
     lcd->g15plugin->info = (void*)&generic_info;
     
     return (lcd);
 }
 
-void quit_lcd (lcd_t * lcd) {
+void ll_quit_lcd (lcd_t * lcd) {
     free (lcd->g15plugin);
     free (lcd);
 }
 
 
 /* initialise a new displaylist, and add an initial node at the tail (used for the clock) */
-lcdlist_t *lcdlist_init () {
+lcdlist_t *ll_lcdlist_init () {
     
     lcdlist_t *displaylist = NULL;
     
     pthread_mutex_init(&lcdlist_mutex, NULL);
     pthread_mutex_lock(&lcdlist_mutex);
     
-    displaylist = g15_xmalloc(sizeof(lcdlist_t));
+    displaylist = g15daemon_xmalloc(sizeof(lcdlist_t));
     
-    displaylist->head = g15_xmalloc(sizeof(lcdnode_t));
+    displaylist->head = g15daemon_xmalloc(sizeof(lcdnode_t));
     
     displaylist->tail = displaylist->head;
     displaylist->current = displaylist->head;
     
-    displaylist->head->lcd = create_lcd();
+    displaylist->head->lcd = ll_create_lcd();
     displaylist->head->lcd->mkey_state = 0;
     displaylist->head->lcd->masterlist = displaylist;
     /* first screen is the clock/menu */
@@ -86,15 +88,15 @@ lcdlist_t *lcdlist_init () {
     return displaylist;
 }
 
-lcdnode_t *lcdnode_add(lcdlist_t **displaylist) {
+lcdnode_t *g15daemon_lcdnode_add(lcdlist_t **displaylist) {
     
     lcdnode_t *new = NULL;
     
     pthread_mutex_lock(&lcdlist_mutex);
-    new = g15_xmalloc(sizeof(lcdnode_t));
+    new = g15daemon_xmalloc(sizeof(lcdnode_t));
     new->prev = (*displaylist)->head;
     new->next = (*displaylist)->tail; 
-    new->lcd = create_lcd();
+    new->lcd = ll_create_lcd();
     new->lcd->masterlist = (*displaylist);
     new->last_priority = NULL;
     new->list = *displaylist;
@@ -112,15 +114,15 @@ lcdnode_t *lcdnode_add(lcdlist_t **displaylist) {
 }
 
 /* cycle through connected client displays */
-int lcdnode_cycle(lcdlist_t *displaylist)
+int g15daemon_lcdnode_cycle(lcdlist_t *displaylist)
 {
     lcdnode_t *current_screen = displaylist->current;
     
-    send_event(current_screen->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_HIDDEN);
+    g15daemon_send_event(current_screen->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_HIDDEN);
     do
     {
         pthread_mutex_lock(&lcdlist_mutex);
-        send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 0);
+        g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 0);
         
         if(displaylist->tail == displaylist->current){
             displaylist->current = displaylist->head;
@@ -137,15 +139,15 @@ int lcdnode_cycle(lcdlist_t *displaylist)
         displaylist->current = displaylist->current->prev;
     }
     pthread_mutex_unlock(&lcdlist_mutex);
-    send_event(displaylist->current->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_VISIBLE);
-    send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 1);
+    g15daemon_send_event(displaylist->current->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_VISIBLE);
+    g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 1);
     pthread_mutex_lock(&lcdlist_mutex);
     displaylist->current->lcd->state_changed = 1;
     displaylist->current->last_priority =  displaylist->current;
     pthread_mutex_unlock(&lcdlist_mutex);
 }
 
-void lcdnode_remove (lcdnode_t *oldnode) {
+void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
     
     lcdlist_t **display_list = NULL;
     lcdnode_t **prev = NULL;
@@ -157,7 +159,7 @@ void lcdnode_remove (lcdnode_t *oldnode) {
     prev = &oldnode->prev;
     next = &oldnode->next;
     
-    quit_lcd(oldnode->lcd);
+    ll_quit_lcd(oldnode->lcd);
     (unsigned int)(*display_list)->numclients--;
     if((*display_list)->current == oldnode) {
         if((*display_list)->current!=(*display_list)->head){
@@ -187,12 +189,12 @@ void lcdnode_remove (lcdnode_t *oldnode) {
     pthread_mutex_unlock(&lcdlist_mutex);
 }
 
-void lcdlist_destroy(lcdlist_t **displaylist) {
+void ll_lcdlist_destroy(lcdlist_t **displaylist) {
     int i = 0;
     
     while ((*displaylist)->head != (*displaylist)->tail) {
         i++;
-        lcdnode_remove((*displaylist)->head);
+        g15daemon_lcdnode_remove((*displaylist)->head);
     }
     
     free((*displaylist)->tail->lcd);
