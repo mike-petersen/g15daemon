@@ -25,8 +25,7 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
-#include <libdaemon/daemon.h>
-#include "g15daemon.h"
+#include <g15daemon.h>
 #include <libg15.h>
 
 extern lcd_t *keyhandler;
@@ -172,7 +171,7 @@ void lcdnode_remove (lcdnode_t *oldnode) {
     if(&oldnode->lcd == (void*)keyhandler) {
         client_handles_keys = 0;
         keyhandler = NULL;
-        daemon_log(LOG_WARNING,"Client key handler quit, going back to defaults");
+        g15daemon_log(LOG_WARNING,"Client key handler quit, going back to defaults");
     }
     
     if((*display_list)->head!=oldnode){

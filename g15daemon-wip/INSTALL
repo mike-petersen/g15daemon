@@ -42,10 +42,7 @@ My thanks to them for a great program.
 A few things we need to check before installing the g15daemon. 
 
 For compiling you need: 
-libdaemon development package. (libdaemon-dev)
-You can install the libdaemon from your distribution 
-repositories or from the libdaemon homepage . 
-(http://0pointer.de/lennart/projects/libdaemon/ last time I checked...)
+libg15, libg15render, and libusb development packages.
 
 For running the daemon you need:
 linux kernel uniput module

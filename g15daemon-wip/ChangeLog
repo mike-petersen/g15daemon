@@ -91,6 +91,8 @@ allow clients use of all 'L' keys.
   xmms devel and glib devel packages will need to be installed prior to attempting ./configure --enable-xmmsplugin
   Plugin is not compiled by default.
 - Clock is now a plugin
+- dependency on libdaemon is now removed
+
 
 
 

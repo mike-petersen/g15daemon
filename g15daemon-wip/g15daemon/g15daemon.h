@@ -53,6 +53,7 @@
 #endif
 
 #include <pwd.h>
+#include <syslog.h> 
 
 #define CLIENT_CMD_GET_KEYSTATE 'k'
 #define CLIENT_CMD_SWITCH_PRIORITIES 'p'
@@ -239,4 +240,6 @@ int internal_generic_eventhandler(plugin_event_t *myevent);
 int send_event(void *caller, unsigned int event, unsigned long value);
 /* return time in milliseconds */
 unsigned int gettimerms();
+/* syslog wrapper */
+int g15daemon_log (int priority, const char *fmt, ...);
 #endif

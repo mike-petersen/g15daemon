@@ -37,8 +37,8 @@
 
 #include <errno.h>
 #include <libg15.h>
-#include "g15daemon.h"
-#include <libdaemon/daemon.h>
+#include <g15daemon.h>
+
 static int leaving;
 int server_events(plugin_event_t *myevent);
 
@@ -57,7 +57,7 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
          if(lcdnode->list->current == lcdnode){
              // send the keystate inband back to the client 
              if((msgret = send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) 
-                 daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
+                 g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
              current_key_state = 0;
          }
          else{
@@ -105,13 +105,13 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         lcdnode->lcd->state_changed = 1;
     } /*else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
     { 
-        daemon_log(LOG_WARNING, "Client is taking over keystate");
+        g15daemon_log(LOG_WARNING, "Client is taking over keystate");
         
         client_handles_keys=1;
         keyhandler = &lcdnode->lcd;
         keyhandler->connection = sock;
         
-        daemon_log(LOG_WARNING, "Client has taken over keystate");
+        g15daemon_log(LOG_WARNING, "Client has taken over keystate");
     }*/
     
 }
@@ -125,7 +125,7 @@ int init_sockserver(){
     struct    sockaddr_in servaddr; 
 
     if ((listening_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-        daemon_log(LOG_WARNING, "Unable to create socket.\n");
+        g15daemon_log(LOG_WARNING, "Unable to create socket.\n");
         return -1;
     }
 
@@ -138,12 +138,12 @@ int init_sockserver(){
     servaddr.sin_port        = htons(LISTEN_PORT);
 
     if (bind(listening_socket, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
-        daemon_log(LOG_WARNING, "error calling bind()\n");
+        g15daemon_log(LOG_WARNING, "error calling bind()\n");
         return -1;
     }
 
     if (listen(listening_socket, MAX_CLIENTS) < 0 ) {
-        daemon_log(LOG_WARNING, "error calling listen()\n");
+        g15daemon_log(LOG_WARNING, "error calling listen()\n");
         return -1;
     }
 
@@ -327,7 +327,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
         if ( (conn_s = accept(listening_socket, NULL, NULL) ) < 0 ) {
             if(errno==EWOULDBLOCK || errno==EAGAIN){
             }else{
-                daemon_log(LOG_WARNING, "error calling accept()\n");
+                g15daemon_log(LOG_WARNING, "error calling accept()\n");
                 return -1;
             }
         }
@@ -342,9 +342,9 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
         pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
         pthread_attr_setstacksize(&attr,256*1024); /* set stack to 768k - dont need 8Mb - this is probably rather excessive also */
         if (pthread_create(&client_connection, &attr, lcd_client_thread, clientnode) != 0) {
-            daemon_log(LOG_WARNING,"Unable to create client thread.");
+            g15daemon_log(LOG_WARNING,"Unable to create client thread.");
             if (close(conn_s) < 0 ) {
-                daemon_log(LOG_WARNING, "error calling close()\n");
+                g15daemon_log(LOG_WARNING, "error calling close()\n");
                 return -1;
             }
 
@@ -363,12 +363,12 @@ static void lcdserver_thread(void *lcdlist){
     int g15_socket=-1;
 
     if((g15_socket = init_sockserver())<0){
-        daemon_log(LOG_ERR,"Unable to initialise the server at port %i",LISTEN_PORT);
+        g15daemon_log(LOG_ERR,"Unable to initialise the server at port %i",LISTEN_PORT);
         return NULL;
     }
 
     if (fcntl(g15_socket, F_SETFL, O_NONBLOCK) <0 ) {
-        daemon_log(LOG_ERR,"Unable to set socket to nonblocking");
+        g15daemon_log(LOG_ERR,"Unable to set socket to nonblocking");
     }
 
     while ( !leaving ) {
@@ -388,7 +388,7 @@ int server_events(plugin_event_t *event) {
         case G15_EVENT_KEYPRESS:{
             if(lcd->connection) { /* server client */
                 if((send(lcd->connection,(void *)&event->value,sizeof(event->value),0))<0) 
-                    daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
+                    g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
             }
             break;
         }

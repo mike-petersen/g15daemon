@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <libdaemon/daemon.h>
 
 #include <config.h>
 #include <g15daemon.h>
@@ -59,7 +58,7 @@ int g15_init_uinput(void *plugin_args) {
         ++i;
     }
     if(uinp_fd<0){
-        daemon_log(LOG_ERR,"Unable to open UINPUT device.  Please ensure the uinput driver is loaded into the kernel and that you have permission to open the device.");
+        g15daemon_log(LOG_ERR,"Unable to open UINPUT device.  Please ensure the uinput driver is loaded into the kernel and that you have permission to open the device.");
         return -1;
     }
     /* all other processes/threads should be seteuid nobody */
@@ -88,7 +87,7 @@ int g15_init_uinput(void *plugin_args) {
     
     if (ioctl(uinp_fd, UI_DEV_CREATE))
     {
-        daemon_log(LOG_ERR,"Unable to create UINPUT device.");
+        g15daemon_log(LOG_ERR,"Unable to create UINPUT device.");
         return -1;
     }
     return 0;

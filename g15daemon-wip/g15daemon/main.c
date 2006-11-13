@@ -35,7 +35,6 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <libdaemon/daemon.h>
 #include <pwd.h>
 
 #include <config.h>
@@ -48,7 +47,7 @@
 
 /* all threads will exit if leaving >0 */
 int leaving = 0;
-
+unsigned int g15daemon_debug = 0;
 unsigned int cycle_key;
 unsigned int client_handles_keys = 0;
 struct lcd_t *keyhandler = NULL;
@@ -203,43 +202,50 @@ static void *lcd_draw_thread(void *lcdlist){
     return NULL;
 }
 
+void g15daemon_sighandler(int sig) {
+    switch(sig){
+         case SIGINT:
+         case SIGQUIT:
+              leaving = 1;
+               break;
+         case SIGPIPE:
+               break;
+    }
+}
+
 
 int main (int argc, char *argv[])
 {
     pid_t daemonpid;
     int retval;
     int i;
-    int g15daemon_debug = 0;
+    struct sigaction new_action, old_action;
         
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
     
-    daemon_pid_file_ident = 
-            daemon_log_ident = 
-            daemon_ident_from_argv0(argv[0]);
 
     for (i=0;i<argc;i++) {
         char daemonargs[20];
         memset(daemonargs,0,20);
         strncpy(daemonargs,argv[i],19);
         if (!strncmp(daemonargs, "-k",2) || !strncmp(daemonargs, "--kill",6)) {
-#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
-            if ((retval = daemon_pid_file_kill_wait(SIGINT, 15)) != 0)
-#else
-                if ((retval = daemon_pid_file_kill(SIGINT)) != 0)
-#endif
-                    daemon_log(LOG_WARNING, "Failed to kill daemon");
-            return retval < 0 ? 1 : 0;
+                   daemonpid = g15daemon_return_running();
+                   if(daemonpid>0) {
+                       kill(daemonpid,SIGINT);
+                   } else
+                       printf("G15Daemon not running\n");
+ 		   exit(0);
         }
         if (!strncmp(daemonargs, "-v",2) || !strncmp(daemonargs, "--version",9)) {
             float lg15ver = LIBG15_VERSION;
-            printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
+            printf("G15Daemon version %s - %s\n",VERSION,g15daemon_return_running() >= 0 ?"Loaded & Running":"Not Running");
             printf("compiled with libg15 version %.3f\n\n",lg15ver/1000);
             exit(0);
         }    
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
-            printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
+            printf("G15Daemon version %s - %s\n",VERSION,g15daemon_return_running() >= 0 ?"Loaded & Running":"Not Running");
             printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n",argv[0]);
             exit(0);
         }
@@ -254,55 +260,24 @@ int main (int argc, char *argv[])
             g15daemon_debug = 1;
         }
     }
-
-    if ((daemonpid = daemon_pid_file_is_running()) >= 0) {
-        printf("%s is already running.  Use \'%s -k\' to kill the daemon before running again.\nExiting now\n",argv[0],argv[0]);
-        return 1;
+    if(g15daemon_return_running()>=0) {
+        g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
+        exit(0);
     }
+    if(!g15daemon_debug)
+        daemon(0,0);
 
-    daemon_retval_init();
-
-    if(!g15daemon_debug) {
-      if((daemonpid = daemon_fork()) < 0){
-          daemon_retval_done();
-          return 1;
-      }
-    }
-      
-    if (daemonpid && !g15daemon_debug){
-        retval=0;
-        char * g15_errors[] = {	"No Error",
-                                "Unable to write to PID file",
-                                "Unable to initialise keyboard",
-                                "Unable to configure the linux kernel UINPUT driver",
-                                "Unable to register signal handler",
-                                "Unable to create new thread", NULL };
-          if((retval = daemon_retval_wait(20)) !=0) {
-            if(retval)
-                daemon_log(LOG_ERR,"An Error Occurred - %i : ( %s ) received",retval, g15_errors[retval]);
-              else
-                 daemon_log(LOG_ERR,"A library error occurred.  Please file a bug report stating the g15daemon version, your kernel version, libdaemon version and your distribution name.");
-              return 255;
-          }
-    
-        return retval;
-    
-    }else{ /* daemonised now */
-
+    if(g15daemon_create_pidfile() == 0) {
+        
         int fd;
         fd_set fds;
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
         struct passwd *nobody;
         unsigned char location[1024];
-        
+
+        openlog("g15daemon", LOG_PID, LOG_DAEMON);        
         nobody = getpwnam("nobody");
-            
-        if(daemon_pid_file_create() !=0){
-            daemon_log(LOG_ERR,"Unable to create PID File! Exiting");
-            daemon_retval_send(1);   
-            goto exitnow;
-        }
 
         /* init stuff here..  */
         retval = initLibG15();
@@ -310,17 +285,10 @@ int main (int argc, char *argv[])
         setLEDs(0);
         
         if(retval != G15_NO_ERROR){
-            daemon_log(LOG_ERR,"Unable to find G15 keyboard or the keyboard is already handled. Exiting");
-            daemon_retval_send(2);
+            g15daemon_log(LOG_ERR,"Unable to find G15 keyboard or the keyboard is already handled. Exiting");
             goto exitnow;
         }
-        
-        if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,0) <0){
-            daemon_log(LOG_ERR,"Unable to register signal handler. Exiting");
-            daemon_retval_send(4);
-            goto exitnow;
-        }
-
+    
         /* all other processes/threads should be seteuid nobody */
         if(nobody!=NULL) {
             seteuid(nobody->pw_uid);
@@ -338,8 +306,7 @@ int main (int argc, char *argv[])
         pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
-            daemon_log(LOG_ERR,"Unable to create keyboard listener thread.  Exiting");
-            daemon_retval_send(5);
+            g15daemon_log(LOG_ERR,"Unable to create keyboard listener thread.  Exiting");
             goto exitnow;
         }
         pthread_attr_setstacksize(&attr,128*1024); 
@@ -349,47 +316,31 @@ int main (int argc, char *argv[])
         pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
-            daemon_log(LOG_ERR,"Unable to create display thread.  Exiting");
-            daemon_retval_send(5);
+            g15daemon_log(LOG_ERR,"Unable to create display thread.  Exiting");
             goto exitnow;
         }
-        daemon_retval_send(0);
-        daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
+        g15daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         
-	snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/splash/g15logo2.wbmp");
+        snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/splash/g15logo2.wbmp");
         load_wbmp(lcdlist->tail->lcd,location);
-	write_buf_to_g15(lcdlist->tail->lcd);
+        write_buf_to_g15(lcdlist->tail->lcd);
 	
         snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/plugins");
 
         g15_open_all_plugins(lcdlist,location);
+
+        new_action.sa_handler = g15daemon_sighandler;
+        new_action.sa_flags = 0;
+        sigaction(SIGINT, &new_action, NULL);
+    	sigaction(SIGQUIT, &new_action, NULL);
         
-        FD_ZERO(&fds);
-        FD_SET(fd=daemon_signal_fd(),&fds);
-    
         do {
-            fd_set myfds = fds;
-            if(select(FD_SETSIZE,&myfds,0,0,0) <0){
-                if(errno == EINTR) continue;
-                break;
-            }
-        
-            if(FD_ISSET(fd,&fds)){
-                int sig;
-                sig = daemon_signal_next();
-                switch(sig){
-                    case SIGINT:
-                    case SIGQUIT:
-                        leaving = 1;
-                        daemon_log(LOG_INFO,"Leaving by request");
-                        break;
-                    case SIGPIPE:
-                        break;
-                }
-            }
-        } while ( leaving == 0 );
-        
-        daemon_signal_done();
+            sleep(1);
+  
+        } while( leaving == 0);
+
+        g15daemon_log(LOG_INFO,"Leaving by request");
+
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
 
@@ -399,14 +350,13 @@ int main (int argc, char *argv[])
 #endif
 #endif
         lcdlist_destroy(&lcdlist);
-    }
 
 exitnow:
-    /* return to root privilages for the final countdown */
-    seteuid(0);
+        /* return to root privilages for the final countdown */
+        seteuid(0);
     setegid(0);
-                
-    daemon_retval_done();
-    daemon_pid_file_remove();
+    closelog();
+    unlink("/var/run/g15daemon.pid");
+    }
     return 0;
 }

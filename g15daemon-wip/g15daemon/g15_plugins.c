@@ -35,7 +35,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <libdaemon/daemon.h>
 #include <config.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -59,7 +58,7 @@ void * g15_dlopen_plugin(char *name,unsigned int library) {
     handle = dlopen (name,RTLD_LAZY | mode);
     
     if ((error = dlerror()) != NULL)  {
-        daemon_log (LOG_ERR, "%s\n", error);
+        g15daemon_log (LOG_ERR, "%s\n", error);
         return(NULL);
     }
     
@@ -144,7 +143,7 @@ void *plugin_thread(plugin_t *plugin_args) {
     void *handle = plugin_args->plugin_handle;
     
     if(plugin_args->info->plugin_run!=NULL||plugin_args->info->event_handler!=NULL) {
-        daemon_log(LOG_ERR,"registered plugin \"%s\"",info->name);
+        g15daemon_log(LOG_ERR,"registered plugin \"%s\"",info->name);
     } else {
         return NULL;
     }
@@ -159,7 +158,7 @@ void *plugin_thread(plugin_t *plugin_args) {
     if(plugin_args)
         free(plugin_args);
 
-    daemon_log(LOG_INFO,"Removed plugin %s",info->name);
+    g15daemon_log(LOG_INFO,"Removed plugin %s",info->name);
     g15_dlclose_plugin(handle);
 
 }
@@ -180,7 +179,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
 
         dlerror();
         if(!plugin_args->info) { /* if it doesnt have a valid struct, we should just load it as a library... but we dont at the moment FIXME */
-            daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",name);
+            g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",name);
             g15_dlclose_plugin(plugin_handle);
             dlerror();
             return;
@@ -217,7 +216,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
         pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
         pthread_attr_setstacksize(&attr,64*1024); /* set stack to 64k - dont need 8Mb */
         if (pthread_create(&client_connection, &attr, (void*)plugin_thread, plugin_args) != 0) {
-            daemon_log(LOG_WARNING,"Unable to create client thread.");
+            g15daemon_log(LOG_WARNING,"Unable to create client thread.");
         } else {
             pthread_detach(client_connection);
         }
@@ -238,7 +237,7 @@ void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory) {
                 strcpy(pluginname, plugin_directory);
                 strncat(pluginname,"/",1);
                 strncat(pluginname,ep->d_name,200);
-                daemon_log(LOG_INFO, "Loading plugin %s",pluginname);
+                g15daemon_log(LOG_INFO, "Loading plugin %s",pluginname);
                 g15_plugin_load (displaylist, pluginname);
                 pthread_msleep(20);
             }

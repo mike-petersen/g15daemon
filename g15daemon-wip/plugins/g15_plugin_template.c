@@ -33,7 +33,6 @@ simple template plugin, replace the various functions with your own, and change 
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <libdaemon/daemon.h>
 
 #include <config.h>
 #include <g15daemon.h>

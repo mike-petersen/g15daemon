@@ -18,13 +18,7 @@ and any other applications able to use that  library.   A  simple
 xmms  spectrum analyser plugin, based on the finespectrum plugin,
 is also available in the package.
 
-G15daemon depends on libg15 from G15tools, and the libdaemon  de-
-velopment packages
- from your distrobution, or from the libdaemon homepage.
-
-Whilst  G15daemon is developed on and for linux, chances are that
-it will compile and run on any OS that supports pthreads, libusb,
-and libdaemon.
+G15daemon depends on libg15 from G15tools.
 
 [INSTALLING]
 

@@ -39,9 +39,13 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include <libdaemon/daemon.h>
 #include "g15daemon.h"
 #include <libg15.h>
+#include <stdarg.h>
+
+extern unsigned int g15daemon_debug;
+#define G15DAEMON_PIDFILE "/var/run/g15daemon.pid"
+
 
 /* if no exitfunc or eventhandler, member should be NULL */
 const plugin_info_t generic_info[] = {
@@ -59,10 +63,87 @@ void *g15_xmalloc(size_t size) {
         size++;
 
     if((ptr = calloc(1, size)) == NULL) {
-        daemon_log(LOG_WARNING, "g15_xmalloc() failed: %s.\n", strerror(errno));
+        g15daemon_log(LOG_WARNING, "g15_xmalloc() failed: %s.\n", strerror(errno));
         return NULL;
     }
     return ptr;
+}
+
+int g15daemon_return_running(){
+    int fd;
+    char pidtxt[128];
+    int pid;
+    int l;
+    
+    if ((fd = open(G15DAEMON_PIDFILE, O_RDWR, 0644)) < 0) {
+            return -1;
+    }
+    if((l = read(fd,pidtxt,sizeof(pidtxt)-1)) < 0) {
+        unlink (G15DAEMON_PIDFILE);
+        close(fd);
+        return -1;
+    }
+    if((pid = atoi(pidtxt)) <= 0) {
+        g15daemon_log(LOG_ERR,"pidfile corrupt");
+        unlink(G15DAEMON_PIDFILE);
+        close(fd);
+        return -1;
+    }
+    if((kill(pid,0) != 0) && errno != EPERM ) {
+        g15daemon_log(LOG_ERR,"Process died - removing pidfile");
+        unlink(G15DAEMON_PIDFILE);
+        close(fd);
+        return -1;
+    }
+    
+    return pid;
+    
+}
+
+
+int g15daemon_create_pidfile() {
+    
+    char pidtxt[128];
+    size_t l;
+    int fd;
+    
+    if(!g15daemon_return_running() &&  (fd = open(G15DAEMON_PIDFILE, O_CREAT|O_RDWR|O_EXCL, 0644)) < 0) {
+        g15daemon_log(LOG_ERR,"previous G15Daemon process died.  removing pidfile");
+        unlink(G15DAEMON_PIDFILE);
+    }
+    if ((fd = open(G15DAEMON_PIDFILE, O_CREAT|O_RDWR|O_EXCL, 0644)) < 0) {
+        return 1;
+    }
+    
+    snprintf(pidtxt, sizeof(pidtxt), "%lu\n", (unsigned long) getpid());
+
+    if (write(fd, pidtxt, l = strlen(pidtxt)) != l) {
+        g15daemon_log(LOG_WARNING, "write(): %s", strerror(errno));
+        unlink(G15DAEMON_PIDFILE);
+    }
+    
+    if(fd>0) {
+        close(fd);
+        return 0;
+    }
+    return 1;
+}
+
+/* syslog wrapper */
+int g15daemon_log (int priority, const char *fmt, ...) {
+
+   unsigned char buf[1024];
+   va_list argp;
+   va_start (argp, fmt);
+   if(g15daemon_debug == 0)
+     vsyslog(priority, fmt, argp);
+   else {
+     vfprintf(stderr,fmt,argp);
+     fprintf(stderr,"\n");
+   }
+   va_end (argp);
+   
+   return 0;
 }
 
 void convert_buf(lcd_t *lcd, unsigned char * orig_buf)

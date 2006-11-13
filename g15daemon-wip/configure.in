@@ -16,7 +16,6 @@ AC_PROG_LIBTOOL
 AC_PROG_RANLIB
 
 # Checks for libraries.
-AC_CHECK_LIB([daemon], [daemon_log],,AC_MSG_ERROR(["libdaemon (or its devel package) not found. please install it"]))
 AC_CHECK_LIB([g15], [initLibG15],,AC_MSG_ERROR(["libg15 (or its devel package) not found. please install it"]))
 AC_CHECK_LIB([g15render], [g15r_initCanvas],,AC_MSG_ERROR(["libg15render (or its devel package) not found.  please install it"]))
 AC_CHECK_LIB([m], [sin])
