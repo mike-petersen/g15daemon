@@ -114,7 +114,7 @@ void rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, 
     {
         if (!filled)
         {
-            line (lcd, x1, y1, x2, x1, colour);
+            line (lcd, x1, y1, x2, y1, colour);
             line (lcd, x1, y1, x1, y2, colour);
             line (lcd, x1, y2, x2, y2, colour);
             line (lcd, x2, y1, x2, y2, colour);
