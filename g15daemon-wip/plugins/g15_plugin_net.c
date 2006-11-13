@@ -237,7 +237,7 @@ void *lcd_client_thread(void *display) {
 
     int client_sock = client_lcd->connection;
     char helo[]=SERV_HELO;
-    unsigned char *tmpbuf=g15_xmalloc(6880);
+    unsigned char *tmpbuf=g15daemon_xmalloc(6880);
     
     if(g15_send(client_sock, (char*)helo, strlen(SERV_HELO))<0){
         goto exitthread;
