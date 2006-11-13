@@ -48,10 +48,10 @@ static int uinp_fd = -1;
 int g15_init_uinput(void *plugin_args) {
     
     int i=0;
-    struct passwd *nobody;
+    lcdlist_t *displaylist = (lcdlist_t*) plugin_args;
     struct uinput_user_dev uinp;
     static const char *uinput_device_fn[] = { "/dev/uinput", "/dev/input/uinput",0};
-    nobody = getpwnam("nobody");
+    
     seteuid(0);
     setegid(0);
     while (uinput_device_fn[i] && (uinp_fd = open(uinput_device_fn[i],O_RDWR))<0){
@@ -62,10 +62,9 @@ int g15_init_uinput(void *plugin_args) {
         return -1;
     }
     /* all other processes/threads should be seteuid nobody */
-    if(nobody!=NULL) {
-        seteuid(nobody->pw_uid);
-        setegid(nobody->pw_gid);
-    }
+     seteuid(displaylist->nobody->pw_uid);
+     setegid(displaylist->nobody->pw_gid);
+    
     
     memset(&uinp,0,sizeof(uinp));
     strncpy(uinp.name, "G15 Extra Keys", UINPUT_MAX_NAME_SIZE);

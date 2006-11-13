@@ -220,7 +220,9 @@ int main (int argc, char *argv[])
     int retval;
     int i;
     struct sigaction new_action, old_action;
-        
+    cycle_key = G15_KEY_MR;
+    unsigned char user[256];
+    
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
     
@@ -252,13 +254,19 @@ int main (int argc, char *argv[])
 
         if (!strncmp(daemonargs, "-s",2) || !strncmp(daemonargs, "--switch",8)) {
             cycle_key = G15_KEY_L1;
-        }else{
-            cycle_key = G15_KEY_MR;
         }
 
         if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",7)) {
             g15daemon_debug = 1;
         }
+        
+        if (!strncmp(daemonargs, "-u",2) || !strncmp(daemonargs, "--user",7)) {
+            if(argv[i+1]!=NULL){
+                strncpy(user,argv[i+1],128);
+                i++;
+            }
+        }
+
     }
     if(g15daemon_return_running()>=0) {
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
@@ -276,8 +284,17 @@ int main (int argc, char *argv[])
         struct passwd *nobody;
         unsigned char location[1024];
 
-        openlog("g15daemon", LOG_PID, LOG_DAEMON);        
-        nobody = getpwnam("nobody");
+        openlog("g15daemon", LOG_PID, LOG_DAEMON);
+        if(strlen(user)==0){
+            nobody = getpwnam("nobody");
+        }else {
+            nobody = getpwnam(user);
+        }
+        if (nobody==NULL)
+        {
+            nobody = getpwuid(geteuid());
+            g15daemon_log(LOG_WARNING,"BEWARE: running as effective uid %i\n",nobody->pw_uid);
+        }
 
         /* init stuff here..  */
         retval = initLibG15();
