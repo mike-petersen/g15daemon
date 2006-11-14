@@ -48,6 +48,8 @@ int new_g15_screen(int screentype)
 {
     int g15screen_fd;
     struct sockaddr_in serv_addr;
+    /* raise the priority of our packets */
+    int tos = 0x6;
 
     char buffer[256];
     
@@ -63,6 +65,8 @@ int new_g15_screen(int screentype)
     if (connect(g15screen_fd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
         return -1;
     
+    setsockopt(g15screen_fd, SOL_SOCKET, SO_PRIORITY, &tos, sizeof(tos));
+        
     memset(buffer,0,256);
     if(g15_recv(g15screen_fd, buffer, 16)<0)
         return -1;
