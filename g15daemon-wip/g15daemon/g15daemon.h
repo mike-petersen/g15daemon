@@ -196,15 +196,6 @@ int internal_generic_eventhandler(plugin_event_t *myevent);
 
 /* the following functions are available for use by plugins */
 
-/* set or unset a pixel in the provided lcd's buffer */
-void g15daemon_setpixel (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int color);
-/* draw large number <num> with the dimensions provided */
-void g15daemon_draw_bignum (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int color, int num);
-/* draw a line */
-void g15daemon_line (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, unsigned int colour);
-/* draw filled or unfilled rectangle */
-void g15daemon_rectangle (lcd_t * lcd, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, int filled, unsigned int colour);
-
 /* send event to foreground client's eventlistener */
 int g15daemon_send_event(void *caller, unsigned int event, unsigned long value);
 /* open named plugin */

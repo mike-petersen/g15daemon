@@ -149,10 +149,21 @@ int g15daemon_log (int priority, const char *fmt, ...) {
 
 void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf)
 {
-    unsigned int x,y;
+    unsigned int x,y,val;
     for(x=0;x<160;x++)
         for(y=0;y<43;y++)
-            g15daemon_setpixel(lcd,x,y,orig_buf[x+(y*160)]);
+	  {
+		unsigned int pixel_offset = y * LCD_WIDTH + x;
+    		unsigned int byte_offset = pixel_offset / 8;
+    		unsigned int bit_offset = 7-(pixel_offset % 8);
+
+		val = orig_buf[x+(y*160)];
+
+    		if (val)
+        		lcd->buf[byte_offset] = lcd->buf[byte_offset] | 1 << bit_offset;
+    		else
+        		lcd->buf[byte_offset] = lcd->buf[byte_offset]  &  ~(1 << bit_offset);
+	  }
 }
 
 /* wrap the libg15 function */
