@@ -54,7 +54,7 @@ int g15_init_uinput() {
     
     int i=0;
     struct uinput_user_dev uinp;
-    static const char *uinput_device_fn[] = { "/dev/uinput", "/dev/input/uinput",0};
+    static const char *uinput_device_fn[] = { "/dev/uinput", "/dev/input/uinput", "/dev/misc/uinput",0};
     
     while (uinput_device_fn[i] && (uinp_fd = open(uinput_device_fn[i],O_RDWR))<0){
         ++i;
