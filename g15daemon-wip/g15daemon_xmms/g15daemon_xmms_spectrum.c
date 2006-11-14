@@ -58,10 +58,12 @@ static gdouble scale, x00, y00;
 static void g15analyser_init(void);
 static void g15analyser_cleanup(void);
 static void g15analyser_playback_start(void);
+static void g15analyser_playback_stop(void);
 static void g15analyser_render_freq(gint16 data[2][256]);
 
 g15canvas *canvas;
 static unsigned int leaving=0;
+static unsigned int playing=0;
 pthread_t g15send_thread_hd;
 static int g15screen_fd = -1;
 
@@ -80,7 +82,7 @@ VisPlugin g15analyser_vp = {
     NULL, /* configure */
     NULL, /* disable_plugin */
     g15analyser_playback_start, /* playback_start */
-    g15analyser_playback_start, /* playback_stop */
+    g15analyser_playback_stop, /* playback_stop */
     NULL, /* render_pcm */
     g15analyser_render_freq  /* render_freq */
 };
@@ -98,19 +100,11 @@ void *g15send_thread() {
     char *song;
 
     while(!leaving){
-        pthread_mutex_lock(&g15buf_mutex);
-       
+        pthread_mutex_lock (&g15buf_mutex);
 	g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
-        for(i = 0; i < NUM_BANDS; i++)
-        {               
-	    int y1 = (40 - bar_heights[i]);
-	    if (y1 > 36)
-	      continue;
-	    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
-        }
-
         playlist_pos = xmms_remote_get_playlist_pos(0);
+	
         title = xmms_remote_get_playlist_title(0, playlist_pos);
         if(title!=NULL){ //amarok doesnt support providing title info via xmms interface :(
             if(strlen(title)>32) {
@@ -129,22 +123,30 @@ void *g15send_thread() {
         }
         g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(0)/1000, xmms_remote_get_playlist_time(0,playlist_pos)/1000, 1);
 
+	if (playing)
+	  {
+	        for(i = 0; i < NUM_BANDS; i++)
+	        {               
+		    int y1 = (40 - bar_heights[i]);
+		    if (y1 > 36)
+		      continue;
+		    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
+	        }
+	
+	  }
+	else
+	  g15r_renderString (canvas, "Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
+
         g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
         pthread_mutex_unlock(&g15buf_mutex);
-        
         xmms_usleep(25000);
     }
-
     return NULL;
 }
 
 
 static void g15analyser_init(void) {
 
-    pthread_attr_t attr;
-    memset(&attr,0,sizeof(pthread_attr_t));
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
     pthread_mutex_init(&g15buf_mutex, NULL);        
     pthread_mutex_lock(&g15buf_mutex);
     
@@ -167,8 +169,13 @@ static void g15analyser_init(void) {
     leaving = 0;
     
     pthread_mutex_unlock(&g15buf_mutex);
+
+    pthread_attr_t attr;
+    memset(&attr,0,sizeof(pthread_attr_t));
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
     pthread_create(&g15send_thread_hd, &attr, g15send_thread, 0);
-}
+ }
 
 static void g15analyser_cleanup(void) {
     
@@ -185,7 +192,15 @@ static void g15analyser_playback_start(void) {
     pthread_mutex_lock(&g15buf_mutex);
     if (canvas != NULL)
       g15r_clearScreen(canvas, G15_COLOR_WHITE);
+    playing = 1;
     pthread_mutex_unlock(&g15buf_mutex);
+
+}
+
+static void g15analyser_playback_stop(void) {
+
+    playing = 0;
+
 }
 
 static void g15analyser_render_freq(gint16 data[2][256]) {
