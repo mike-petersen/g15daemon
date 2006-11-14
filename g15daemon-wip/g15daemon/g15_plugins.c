@@ -26,7 +26,6 @@
     g15_plugin.c
     simple plugin loader - loads each plugin and runs each one in it's own thread. a bit expensive probably 
 */
-#define G15DAEMON_BUILD 1
 
 #include <pthread.h>
 #include <stdio.h>

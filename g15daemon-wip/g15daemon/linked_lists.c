@@ -23,7 +23,6 @@
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
 */
-#define G15DAEMON_BUILD 1
 
 #include <stdio.h>
 #include <stdlib.h>

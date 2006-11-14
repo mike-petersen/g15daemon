@@ -1,5 +1,6 @@
 
 METASOURCES = AUTO
+AM_CFLAGS = -DG15DAEMON_BUILD
 sbin_PROGRAMS = g15daemon
 noinst_PROGRAMS = g15daemontest
 noinst_HEADERS = g15logo.h
@@ -9,4 +10,4 @@ g15daemon_LDFLAGS = -rdynamic
 g15daemontest_SOURCES = lcdclient_test.c
 INCLUDES = -I$(top_builddir)/libg15daemon_client/
 g15daemontest_LDADD = $(top_builddir)/libg15daemon_client/libg15daemon_client.la
-
+include_HEADERS = g15daemon.h

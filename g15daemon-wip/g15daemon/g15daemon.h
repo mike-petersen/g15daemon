@@ -188,8 +188,6 @@ void uf_write_buf_to_g15(lcd_t *lcd);
 lcdlist_t *ll_lcdlist_init();
 void ll_lcdlist_destroy(lcdlist_t **displaylist);
 
-/* internal lcd plugin - the clock/menu */
-int internal_clock_eventhandler(plugin_event_t *myevent);
 /* generic handler for net clients */
 int internal_generic_eventhandler(plugin_event_t *myevent);
 #endif
