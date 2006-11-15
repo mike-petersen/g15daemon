@@ -103,25 +103,28 @@ void *g15send_thread() {
         pthread_mutex_lock (&g15buf_mutex);
 	g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
-        playlist_pos = xmms_remote_get_playlist_pos(0);
-	
-        title = xmms_remote_get_playlist_title(0, playlist_pos);
-        if(title!=NULL){ //amarok doesnt support providing title info via xmms interface :(
-            if(strlen(title)>32) {
-                artist = strtok(title,"-");
-                song = strtok(NULL,"-");
-                if(strlen(song)>32)
-                    song[32]='\0';
-		g15r_renderString (canvas, (unsigned char *)song+1, 0, G15_TEXT_MED, 165-(strlen(song)*5), 0);
-                if(strlen(artist)>32)
-                    artist[32]='\0';
-                if(artist[strlen(artist)-1]==' ')
-                    artist[strlen(artist)-1]='\0';
-                g15r_renderString (canvas, (unsigned char *)artist, 0, G15_TEXT_MED, 160-(strlen(artist)*5), 8);
-            } else
-		g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
-        }
-        g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(0)/1000, xmms_remote_get_playlist_time(0,playlist_pos)/1000, 1);
+	if (xmms_remote_get_playlist_length > 0)
+	  {
+	        playlist_pos = xmms_remote_get_playlist_pos(0);
+		
+	        title = xmms_remote_get_playlist_title(0, playlist_pos);
+	        if(title!=NULL){ //amarok doesnt support providing title info via xmms interface :(
+	            if(strlen(title)>32) {
+	                artist = strtok(title,"-");
+	                song = strtok(NULL,"-");
+	                if(strlen(song)>32)
+	                    song[32]='\0';
+			g15r_renderString (canvas, (unsigned char *)song+1, 0, G15_TEXT_MED, 165-(strlen(song)*5), 0);
+	                if(strlen(artist)>32)
+	                    artist[32]='\0';
+	                if(artist[strlen(artist)-1]==' ')
+	                    artist[strlen(artist)-1]='\0';
+	                g15r_renderString (canvas, (unsigned char *)artist, 0, G15_TEXT_MED, 160-(strlen(artist)*5), 8);
+	            } else
+			g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
+	        }
+	        g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(0)/1000, xmms_remote_get_playlist_time(0,playlist_pos)/1000, 1);
+	  }
 
 	if (playing)
 	  {
@@ -132,10 +135,9 @@ void *g15send_thread() {
 		      continue;
 		    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
 	        }
-	
 	  }
 	else
-	  g15r_renderString (canvas, "Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
+	  g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
 
         g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
         pthread_mutex_unlock(&g15buf_mutex);
@@ -180,31 +182,39 @@ static void g15analyser_init(void) {
 static void g15analyser_cleanup(void) {
     
     leaving=1;
+    pthread_join (g15send_thread_hd, NULL);
     
+    pthread_mutex_lock (&g15buf_mutex);
     if (canvas != NULL)
       free(canvas);
     if(g15screen_fd)
-        close(g15screen_fd);
+      close(g15screen_fd);
+    pthread_mutex_unlock (&g15buf_mutex);
+    return;
 }
 
 static void g15analyser_playback_start(void) {
     
-    pthread_mutex_lock(&g15buf_mutex);
-    if (canvas != NULL)
-      g15r_clearScreen(canvas, G15_COLOR_WHITE);
+    pthread_mutex_lock (&g15buf_mutex);
     playing = 1;
-    pthread_mutex_unlock(&g15buf_mutex);
+    pthread_mutex_unlock (&g15buf_mutex);
+    return;
 
 }
 
 static void g15analyser_playback_stop(void) {
 
+    pthread_mutex_lock (&g15buf_mutex);
     playing = 0;
+    pthread_mutex_unlock (&g15buf_mutex);
+    return;
 
 }
 
 static void g15analyser_render_freq(gint16 data[2][256]) {
     
+    pthread_mutex_lock(&g15buf_mutex);
+
     gint i;
     gdouble y;
     int j;
@@ -213,8 +223,6 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
     if(!g15screen_fd)
         return;
     
-    pthread_mutex_lock(&g15buf_mutex);
-
     for(i = 0; i < NUM_BANDS; i++)
     {
       for(j=xscale[i], y=0; j < xscale[i+1]; j++)
