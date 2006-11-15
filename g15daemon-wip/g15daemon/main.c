@@ -175,6 +175,7 @@ static void *lcd_draw_thread(void *lcdlist){
     static unsigned int lastscreentime;
     unsigned int fps = 0;
     lcd_t *displaying = displaylist->tail->lcd;
+    lcd_t *lastdisplayed=NULL;
     memset(displaying->buf,0,1024);
     
     g15daemon_sleep(2);
@@ -188,9 +189,10 @@ static void *lcd_draw_thread(void *lcdlist){
             /* monitor 'fps' - due to the TCP protocol, some frames will be bunched up.
             discard excess to reduce load on the bus - FIXME*/
             fps = 1000 / (g15daemon_gettime_ms() - lastscreentime);
-            if(fps<50){  //peak fps rate - most plugins/clients will never come close
+            if(fps<50||displaying!=lastdisplayed){  //peak fps rate - most plugins/clients will never come close
                 uf_write_buf_to_g15(displaying);
                 lastscreentime = g15daemon_gettime_ms();
+                lastdisplayed = displaying;
             }
             lastlcd = displaying->ident;
         }
