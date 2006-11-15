@@ -173,6 +173,8 @@ static void g15analyser_init(void) {
     leaving = 0;
     
     pthread_mutex_unlock(&g15buf_mutex);
+    /* increase lcd drive voltage/contrast for this client */
+    g15_send_cmd(g15screen_fd, G15DAEMON_CONTRAST,2);
 
     pthread_attr_t attr;
     memset(&attr,0,sizeof(pthread_attr_t));
