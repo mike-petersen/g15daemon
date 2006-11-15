@@ -34,6 +34,7 @@
 
 #define LCD_WIDTH 160
 #define LCD_HEIGHT 43
+#define LCD_BUFSIZE 1048
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -131,7 +132,7 @@ typedef struct lcd_s
 {
     lcdlist_t *masterlist;
     int lcd_type;
-    unsigned char buf[1048];
+    unsigned char buf[LCD_BUFSIZE];
     int max_x;
     int max_y;
     int connection;
@@ -211,15 +212,23 @@ void g15daemon_lcdnode_remove (lcdnode_t *oldnode);
 
 /* handy function from xine_utils.c */
 void *g15daemon_xmalloc(size_t size) ;
-/* convert 1byte/pixel buffer to internal g15 format */
-void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf);
-/* load 160x43 wbmp format file into lcd struct */
-int g15daemon_load_wbmp(lcd_t *lcd, char *filename);
 /* threadsafe sleep */
 void g15daemon_sleep(int seconds);
 /* threadsafe millisecond sleep */
 int g15daemon_msleep(int milliseconds) ;
 /* return current time in milliseconds */
 unsigned int g15daemon_gettime_ms();
+/* convert 1byte/pixel buffer to internal g15 format */
+void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf);
+
+/* basic image loading/helper routines for icons & splashscreens etc */
+/* load 160x43 wbmp format file into lcd buffer - image size of 160x43 is assumed */
+int g15daemon_load_wbmp(lcd_t *lcd, char *filename);
+/* load wbmp of almost any size into a pre-prepared buffer of maxlen size.  image width & height are returned */
+int g15daemon_load_wbmp2buf(char *buf, char *filename, int *img_width, int *img_height, int maxlen);
+/* draw an icon at location my_x,my_y, from buf. */
+/* it's assumed that the format of buf is the g15daemon native format (as used by the wbmp functions) 
+   and that width is a multiple of 8.  no clipping is done, the icon must fit entirely within the lcd boundaries */
+void g15daemon_draw_icon(lcd_t *lcd, char *buf, int my_x, int my_y, int width, int height);
 
 #endif

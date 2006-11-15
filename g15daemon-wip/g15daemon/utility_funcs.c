@@ -174,47 +174,85 @@ void uf_write_buf_to_g15(lcd_t *lcd)
     return;
 }
 
-/* basic wbmp loader - wbmps should be inverted for use here */
+
+/* basic wbmp loader - loads wbmp directly into lcdbuf - assumes image is 160x43 */
 int g15daemon_load_wbmp(lcd_t *lcd, char *filename)
+{
+    int retval;
+    unsigned int width=0, height=0;
+     
+    pthread_mutex_lock(&lcdlist_mutex);
+    	retval = g15daemon_load_wbmp2buf(lcd->buf,filename,
+                                         &width,
+                                         &height,
+                                         LCD_BUFSIZE);
+    pthread_mutex_unlock(&lcdlist_mutex);
+    return retval;
+}
+
+/* draw an icon at location my_x,my_y, from buf. width&height should be icons width/height 
+    currently no clipping is done, so image must fit entirely within the boundaries */
+void g15daemon_draw_icon(lcd_t *lcd, char *buf, int my_x, int my_y, int width, int height){
+    int y; 
+    for(y=0;y<height-1;y++){
+        memcpy(lcd->buf+(20*y)+(20*my_y)+(my_x/8),buf+(y*(width/8)),width/8);
+    }
+}
+
+/* test function */
+// int loadmyicon(lcd_t *lcd,int my_x, int my_y){
+//     unsigned int width,height;
+//     unsigned char mybuf[128];
+//     int x,y;
+//     g15daemon_load_wbmp2buf(mybuf,"hi.wbmp",&width,&height,128);
+//     draw_icon(lcd,mybuf, my_x,my_y,width,height);
+// }
+
+/* basic wbmp loader - loads wbmp into pre-prepared buf.  sets img_height & img_width to image size 
+   it is assumed that the image width is a multiple of 8 */
+int g15daemon_load_wbmp2buf(char *buf, char *filename, int *img_width, int *img_height, int maxlen)
 {
     int wbmp_fd;
     int retval;
-    unsigned int width, height, buflen,header=4;
-    unsigned char tmpbuf[1024];
+    unsigned int buflen,header=4;
+    unsigned char headerbytes[5];
     int i;
-
+    
+    if(maxlen<5 || buf == NULL)
+        return -1;
+    
     wbmp_fd=open(filename,O_RDONLY);
     if(!wbmp_fd){
-
         return -1;
     }
-    retval=read(wbmp_fd,tmpbuf,865);
-    close(wbmp_fd);
-    if(retval<865){
-        return -1;
-    }
-    if (tmpbuf[2] & 1) {
-        width = ((unsigned char)tmpbuf[2] ^ 1) | (unsigned char)tmpbuf[3];
-        height = tmpbuf[4];
-        header = 5;
-    } else {
-        width = tmpbuf[2];
-        height = tmpbuf[3];
-        header = 4;
-    }
+    
+    retval=read(wbmp_fd,headerbytes,5);
+    
+    if(retval){
+        if (headerbytes[2] & 1) {
+            *img_width = ((unsigned char)headerbytes[2] ^ 1) | (unsigned char)headerbytes[3];
+            *img_height = headerbytes[4];
+            header = 5;
+        } else {
+            *img_width = headerbytes[2];
+            *img_height = headerbytes[3];
+            header = 4;
+            buf[0]=headerbytes[4];
+        }
 
-    buflen = (width/8)*height;
-
-    if(width!=160) {/* FIXME - we ought to scale images I suppose */
-        return -1;
+        buflen = (*img_width / 8) * (*img_height);
+        if(buflen<maxlen)
+            retval=read(wbmp_fd,buf+(5-header),buflen);
+        else
+            retval = -1;
+        close(wbmp_fd);
     }
-    pthread_mutex_lock(&lcdlist_mutex);
-    for(i=5;i<retval;i++){
-        lcd->buf[i-5]=tmpbuf[i]^0xff;
+    /* now invert the image */
+    for(i=0;i<retval;i++){
+        buf[i]=buf[i]^0xff;
     }
-    pthread_mutex_unlock(&lcdlist_mutex);
+    return retval;
 }
-
 
 /* Sleep routine (hackish). */
 void g15daemon_sleep(int seconds) {
