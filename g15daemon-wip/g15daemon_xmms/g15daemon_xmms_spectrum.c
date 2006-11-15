@@ -124,20 +124,22 @@ void *g15send_thread() {
 			g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
 	        }
 	        g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(0)/1000, xmms_remote_get_playlist_time(0,playlist_pos)/1000, 1);
-	  }
 
-	if (playing)
-	  {
-	        for(i = 0; i < NUM_BANDS; i++)
-	        {               
-		    int y1 = (40 - bar_heights[i]);
-		    if (y1 > 36)
-		      continue;
-		    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
-	        }
+		if (playing)
+		  {
+		        for(i = 0; i < NUM_BANDS; i++)
+		        {               
+			    int y1 = (40 - bar_heights[i]);
+			    if (y1 > 36)
+			      continue;
+			    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
+		        }
+		  }
+		else 
+		  g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
 	  }
 	else
-	  g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
+	  g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
 
         g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
         pthread_mutex_unlock(&g15buf_mutex);
