@@ -103,7 +103,7 @@ void *g15send_thread() {
         pthread_mutex_lock (&g15buf_mutex);
 	g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
-	if (xmms_remote_get_playlist_length > 0)
+	if (xmms_remote_get_playlist_length(0) > 0)
 	  {
 	        playlist_pos = xmms_remote_get_playlist_pos(0);
 		
