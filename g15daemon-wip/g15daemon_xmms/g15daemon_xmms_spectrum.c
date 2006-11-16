@@ -92,7 +92,7 @@ void *g15keys_thread() {
     fds.events = POLLIN;
 
     while(!leaving){
-	if (poll(&fds, 1, 5));
+	if ((poll(&fds, 1, 5)) > 0);
 	  read (g15screen_fd, &keystate, sizeof (keystate));
 	if (keystate)
 	  {
