@@ -41,15 +41,18 @@
 #define NUM_BANDS 16        
 
 static gint16 bar_heights[NUM_BANDS];
+static gint16 scope_data[G15_LCD_WIDTH];
 
 static void g15analyser_init(void);
 static void g15analyser_cleanup(void);
 static void g15analyser_playback_start(void);
 static void g15analyser_playback_stop(void);
+static void g15analyser_render_pcm(gint16 data[2][512]);
 static void g15analyser_render_freq(gint16 data[2][256]);
 
 g15canvas *canvas;
 static unsigned int leaving=0;
+static unsigned int vis_type=0;
 static unsigned int playing=0, paused=0;
 pthread_t g15send_thread_hd;
 pthread_t g15keys_thread_hd;
@@ -62,7 +65,7 @@ VisPlugin g15analyser_vp = {
     NULL,
     0,
     "G15daemon Spectrum Analyzer 0.3",
-    0,
+    1,
     1,
     g15analyser_init, /* init */
     g15analyser_cleanup, /* cleanup */
@@ -71,7 +74,7 @@ VisPlugin g15analyser_vp = {
     NULL, /* disable_plugin */
     g15analyser_playback_start, /* playback_start */
     g15analyser_playback_stop, /* playback_stop */
-    NULL, /* render_pcm */
+    g15analyser_render_pcm, /* render_pcm */
     g15analyser_render_freq  /* render_freq */
 };
 
@@ -89,6 +92,7 @@ void *g15keys_thread() {
 	switch (keystate)
 	  {
 	  	case G15_KEY_L1:
+		  vis_type = 1 - vis_type;
 		  break;
 		case G15_KEY_L2:
 		  {
@@ -173,13 +177,26 @@ void *g15send_thread() {
 
 		if (playing)
 		  {
-		        for(i = 0; i < NUM_BANDS; i++)
-		        {               
-			    int y1 = (40 - bar_heights[i]);
-			    if (y1 > 36)
-			      continue;
-			    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
-		        }
+			if (vis_type == 0)
+			  {
+			        for(i = 0; i < NUM_BANDS; i++)
+			          {               
+				    int y1 = (40 - bar_heights[i]);
+				    if (y1 > 36)
+				      continue;
+				    g15r_pixelBox (canvas, (i * 10), y1, ((i * 10) + 8), 36, G15_COLOR_BLACK, 1, 1);
+			          }
+			  }
+			else
+			  {
+				int y1, y2=25;
+				for (i = 0; i < 160; i++)
+				  {
+				    y1 = y2;
+				    y2 = (25 - scope_data[i]);
+				    g15r_drawLine (canvas, i, y1, i + 1, y2, G15_COLOR_BLACK);
+				  }
+			  }
 		  }
 		else 
 		  g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
@@ -264,6 +281,28 @@ static void g15analyser_playback_stop(void) {
     pthread_mutex_unlock (&g15buf_mutex);
     return;
 
+}
+
+static void g15analyser_render_pcm(gint16 data[2][512]) {
+    pthread_mutex_lock (&g15buf_mutex);
+
+    gint i;
+    gint max;
+    gint scale = 128;
+
+    do
+      {
+	    max = 0;
+	    for (i = 0; i < G15_LCD_WIDTH; i++)
+	      {
+		scope_data[i] = data[0][i] / scale;
+		if (abs(scope_data[i]) > abs(max))
+		  max = scope_data[i];
+	      }
+	    scale += 128;
+      } while (abs(max) > 10);
+
+    pthread_mutex_unlock (&g15buf_mutex);
 }
 
 static void g15analyser_render_freq(gint16 data[2][256]) {

@@ -9,6 +9,7 @@ To compile, run the configure script in the g15daemon source directory with
 New in version 0.2:
 - artist name & track name are displayed
 - now a 16 bar analyser, pretty useful :)
+- now includes oscilloscope (swap between scope and analyser with L1)
 - Playback control with L2-L5 (L2=play/pause, L3=stop, L4=prev, L5=next)
 - something else I cant recall at the moment..
 
