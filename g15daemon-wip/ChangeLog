@@ -92,7 +92,4 @@ allow clients use of all 'L' keys.
   Plugin is not compiled by default.
 - Clock is now a plugin
 - dependency on libdaemon is now removed
-
-
-
-
+- g15daemon is now dependant on libg15render.
