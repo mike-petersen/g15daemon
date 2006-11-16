@@ -221,14 +221,4 @@ unsigned int g15daemon_gettime_ms();
 /* convert 1byte/pixel buffer to internal g15 format */
 void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf);
 
-/* basic image loading/helper routines for icons & splashscreens etc */
-/* load 160x43 wbmp format file into lcd buffer - image size of 160x43 is assumed */
-int g15daemon_load_wbmp(lcd_t *lcd, char *filename);
-/* load wbmp of almost any size into a pre-prepared buffer of maxlen size.  image width & height are returned */
-int g15daemon_load_wbmp2buf(char *buf, char *filename, int *img_width, int *img_height, int maxlen);
-/* draw an icon at location my_x,my_y, from buf. */
-/* it's assumed that the format of buf is the g15daemon native format (as used by the wbmp functions) 
-   and that width is a multiple of 8.  no clipping is done, the icon must fit entirely within the lcd boundaries */
-void g15daemon_draw_icon(lcd_t *lcd, char *buf, int my_x, int my_y, int width, int height);
-
 #endif
