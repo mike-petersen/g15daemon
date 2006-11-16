@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <poll.h>
 #include <g15daemon_client.h>
 #include <math.h>
 #include <pthread.h>
@@ -85,57 +86,65 @@ VisPlugin *get_vplugin_info(void) {
 
 void *g15keys_thread() {
     int keystate = 0;
+    struct pollfd fds;
+
+    fds.fd = g15screen_fd;
+    fds.events = POLLIN;
 
     while(!leaving){
-	read (g15screen_fd, &keystate, sizeof (keystate));
-	pthread_mutex_lock (&g15buf_mutex);
-	switch (keystate)
+	if (poll(&fds, 1, 5));
+	  read (g15screen_fd, &keystate, sizeof (keystate));
+	if (keystate)
 	  {
-	  	case G15_KEY_L1:
-		  vis_type = 1 - vis_type;
-		  break;
-		case G15_KEY_L2:
+		pthread_mutex_lock (&g15buf_mutex);
+		switch (keystate)
 		  {
-		  	if (playing)
+		  	case G15_KEY_L1:
+			  vis_type = 1 - vis_type;
+			  break;
+			case G15_KEY_L2:
 			  {
-			  	if (paused)
+			  	if (playing)
 				  {
-				  	xmms_remote_play(0);
-					paused = 0;
+				  	if (paused)
+					  {
+					  	xmms_remote_play(0);
+						paused = 0;
+					  }
+					else
+					  {
+					  	xmms_remote_pause(0);
+						paused = 1;
+					  }
 				  }
 				else
-				  {
-				  	xmms_remote_pause(0);
-					paused = 1;
-				  }
+				  xmms_remote_play(0);
+				break;
 			  }
-			else
-			  xmms_remote_play(0);
-			break;
+			case G15_KEY_L3:
+			  {
+			  	if (playing)
+				  xmms_remote_stop(0);
+				break;
+			  }
+			case G15_KEY_L4:
+			  {
+			  	if (playing)
+				  xmms_remote_playlist_prev(0);
+				break;
+			  }
+			case G15_KEY_L5:
+			  {
+			  	if (playing)
+				  xmms_remote_playlist_next(0);
+				break;
+			  }
+			default:
+			  break;
 		  }
-		case G15_KEY_L3:
-		  {
-		  	if (playing)
-			  xmms_remote_stop(0);
-			break;
-		  }
-		case G15_KEY_L4:
-		  {
-		  	if (playing)
-			  xmms_remote_playlist_prev(0);
-			break;
-		  }
-		case G15_KEY_L5:
-		  {
-		  	if (playing)
-			  xmms_remote_playlist_next(0);
-			break;
-		  }
-		default:
-		  break;
+		keystate = 0;
+		pthread_mutex_unlock (&g15buf_mutex);
 	  }
-	keystate = 0;
-	pthread_mutex_unlock (&g15buf_mutex);
         xmms_usleep(25000);
     }
     return NULL;
