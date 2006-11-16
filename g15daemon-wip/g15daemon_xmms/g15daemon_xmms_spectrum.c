@@ -25,6 +25,7 @@
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <g15daemon_client.h>
 #include <math.h>
@@ -34,6 +35,7 @@
 #include <xmms/plugin.h>
 #include <xmms/util.h>
 #include <xmms/xmmsctrl.h>
+#include <libg15.h>
 #include <libg15render.h>
 
 #define NUM_BANDS 16        
@@ -48,8 +50,9 @@ static void g15analyser_render_freq(gint16 data[2][256]);
 
 g15canvas *canvas;
 static unsigned int leaving=0;
-static unsigned int playing=0;
+static unsigned int playing=0, paused=0;
 pthread_t g15send_thread_hd;
+pthread_t g15keys_thread_hd;
 static int g15screen_fd = -1;
 
 pthread_mutex_t g15buf_mutex;
@@ -75,6 +78,63 @@ VisPlugin g15analyser_vp = {
 
 VisPlugin *get_vplugin_info(void) {
     return &g15analyser_vp;
+}
+
+void *g15keys_thread() {
+    int keystate = 0;
+
+    while(!leaving){
+	read (g15screen_fd, &keystate, sizeof (keystate));
+	pthread_mutex_lock (&g15buf_mutex);
+	switch (keystate)
+	  {
+	  	case G15_KEY_L1:
+		  break;
+		case G15_KEY_L2:
+		  {
+		  	if (playing)
+			  {
+			  	if (paused)
+				  {
+				  	xmms_remote_play(0);
+					paused = 0;
+				  }
+				else
+				  {
+				  	xmms_remote_pause(0);
+					paused = 1;
+				  }
+			  }
+			else
+			  xmms_remote_play(0);
+			break;
+		  }
+		case G15_KEY_L3:
+		  {
+		  	if (playing)
+			  xmms_remote_stop(0);
+			break;
+		  }
+		case G15_KEY_L4:
+		  {
+		  	if (playing)
+			  xmms_remote_playlist_prev(0);
+			break;
+		  }
+		case G15_KEY_L5:
+		  {
+		  	if (playing)
+			  xmms_remote_playlist_next(0);
+			break;
+		  }
+		default:
+		  break;
+	  }
+	keystate = 0;
+	pthread_mutex_unlock (&g15buf_mutex);
+        xmms_usleep(25000);
+    }
+    return NULL;
 }
 
 void *g15send_thread() {
@@ -167,12 +227,14 @@ static void g15analyser_init(void) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
     pthread_create(&g15send_thread_hd, &attr, g15send_thread, 0);
+    pthread_create(&g15keys_thread_hd, &attr, g15keys_thread, 0);
  }
 
 static void g15analyser_cleanup(void) {
     
     leaving=1;
     pthread_join (g15send_thread_hd, NULL);
+    pthread_join (g15keys_thread_hd, NULL);
     
     pthread_mutex_lock (&g15buf_mutex);
     if (canvas != NULL)
@@ -187,6 +249,7 @@ static void g15analyser_playback_start(void) {
     
     pthread_mutex_lock (&g15buf_mutex);
     playing = 1;
+    paused = 0;
     pthread_mutex_unlock (&g15buf_mutex);
     return;
 
@@ -196,6 +259,7 @@ static void g15analyser_playback_stop(void) {
 
     pthread_mutex_lock (&g15buf_mutex);
     playing = 0;
+    paused = 0;
     pthread_mutex_unlock (&g15buf_mutex);
     return;
 
