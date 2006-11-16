@@ -141,7 +141,12 @@ void *g15send_thread() {
 	else
 	  g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
 
-        g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+        if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
+             /* connection error occurred - try to reconnect to the daemon */
+            while((g15screen_fd=new_g15_screen(G15_G15RBUF))<0 && !leaving){
+              xmms_usleep(150000);
+            }
+        }
         pthread_mutex_unlock(&g15buf_mutex);
         xmms_usleep(25000);
     }

@@ -31,6 +31,9 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <config.h>
 
 #include <libg15.h>
@@ -66,7 +69,10 @@ int new_g15_screen(int screentype)
         return -1;
     
     setsockopt(g15screen_fd, SOL_SOCKET, SO_PRIORITY, &tos, sizeof(tos));
-        
+
+    if (fcntl(g15screen_fd, F_SETFL, O_NONBLOCK) <0 ) {
+    }
+                        
     memset(buffer,0,256);
     if(g15_recv(g15screen_fd, buffer, 16)<0)
         return -1;
@@ -101,15 +107,19 @@ int g15_send(int sock, char *buf, unsigned int len)
     while(total < len && !leaving) {
         memset(pfd,0,sizeof(pfd));
         pfd[0].fd = sock;
-        pfd[0].events = POLLOUT;
-        if(poll(pfd,1,500)>0) {
-            if(pfd[0].revents & POLLOUT) {
-                retval = send(sock, buf+total, bytesleft, 0);
+        pfd[0].events = POLLOUT|POLLERR|POLLHUP|POLLNVAL;
+        if(poll(pfd,1,500)>=0) {
+            if(pfd[0].revents & POLLOUT && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL) ) {
+                retval = send(sock, buf+total, bytesleft, MSG_DONTWAIT);
                 if (retval == -1) { 
                     break; 
                 }
                 bytesleft -= retval;
                 total += retval;
+            }
+            if((pfd[0].revents & POLLERR|| pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)){
+              retval=-1;
+              break;
             }
         }
     }
