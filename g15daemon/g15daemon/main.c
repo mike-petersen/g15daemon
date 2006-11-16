@@ -227,7 +227,10 @@ int main (int argc, char *argv[])
                                 "Unable to initialise keyboard",
                                 "Unable to configure the linux kernel UINPUT driver",
                                 "Unable to register signal handler",
-                                "Unable to create new thread", NULL };
+                                "Unable to create new keyboard thread", 
+                                "Unable to create new display thread",
+                                "Unable to create server thread",
+                                NULL };
           if((retval = daemon_retval_wait(20)) !=0) {
             if(retval)
                 daemon_log(LOG_ERR,"An Error Occurred - %i : ( %s ) received",retval, g15_errors[retval]);
@@ -292,9 +295,6 @@ int main (int argc, char *argv[])
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
-        pthread_attr_setscope(&attr,PTHREAD_SCOPE_SYSTEM);
-        int thread_policy=SCHED_RR;
-        pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Unable to create keyboard listener thread.  Exiting");
@@ -302,20 +302,16 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
         pthread_attr_setstacksize(&attr,128*1024); 
-        /* all other threads have a lower priority... maybe */
-        pthread_attr_setscope(&attr,PTHREAD_SCOPE_PROCESS);
-        thread_policy=SCHED_OTHER;
-        pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Unable to create display thread.  Exiting");
-            daemon_retval_send(5);
+            daemon_retval_send(6);
             goto exitnow;
         }
 
         if (pthread_create(&server_thread, &attr, lcdserver_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Unable to create lcd-client server thread.  Exiting");
-            daemon_retval_send(5);
+            daemon_retval_send(7);
             goto exitnow;
         }
         daemon_retval_send(0);
