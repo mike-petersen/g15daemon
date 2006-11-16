@@ -143,6 +143,7 @@ void *g15send_thread() {
     char *title;
     char *artist;
     char *song;
+    char *strtok_ptr;
 
     while(!leaving){
         pthread_mutex_lock (&g15buf_mutex);
@@ -155,8 +156,8 @@ void *g15send_thread() {
 	        title = xmms_remote_get_playlist_title(0, playlist_pos);
 	        if(title!=NULL){ //amarok doesnt support providing title info via xmms interface :(
 	            if(strlen(title)>32) {
-	                artist = strtok(title,"-");
-	                song = strtok(NULL,"-");
+	                artist = strtok_r(title,"-",&strtok_ptr);
+	                song = strtok_r(NULL,"-",&strtok_ptr);
 	                if(strlen(song)>32)
 	                    song[32]='\0';
 			g15r_renderString (canvas, (unsigned char *)song+1, 0, G15_TEXT_MED, 165-(strlen(song)*5), 0);
