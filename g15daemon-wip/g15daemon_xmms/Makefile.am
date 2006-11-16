@@ -5,7 +5,7 @@ lib_LTLIBRARIES =
 endif 
 libdir = @XMMS_VISUALIZATION_PLUGIN_DIR@
 
-AM_CFLAGS = -Wall @XMMS_CFLAGS@ @CFLAGS@ -I$(top_builddir) -I$(top_srcdir) \
+AM_CFLAGS = -O3 -Wall @XMMS_CFLAGS@ @CFLAGS@ -I$(top_builddir) -I$(top_srcdir) \
          @GTK_CFLAGS@
 
 LIBS = @XMMS_LIBS@ -L$(top_builddir)/libg15daemon_client/ 

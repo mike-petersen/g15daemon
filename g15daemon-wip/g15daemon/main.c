@@ -144,6 +144,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
             (*plugin_listener)((void*)newevent);
         }
     }
+    return 0;
 }
 
 static void *keyboard_watch_thread(void *lcdlist){
@@ -274,7 +275,7 @@ int main (int argc, char *argv[])
         
         if (!strncmp(daemonargs, "-u",2) || !strncmp(daemonargs, "--user",7)) {
             if(argv[i+1]!=NULL){
-                strncpy(user,argv[i+1],128);
+                strncpy((char*)user,argv[i+1],128);
                 i++;
             }
         }
@@ -289,18 +290,16 @@ int main (int argc, char *argv[])
 
     if(uf_create_pidfile() == 0) {
         
-        int fd;
-        fd_set fds;
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
         struct passwd *nobody;
         unsigned char location[1024];
 
         openlog("g15daemon", LOG_PID, LOG_DAEMON);
-        if(strlen(user)==0){
+        if(strlen((char*)user)==0){
             nobody = getpwnam("nobody");
         }else {
-            nobody = getpwnam(user);
+            nobody = getpwnam((char*)user);
         }
         if (nobody==NULL)
         {
@@ -350,20 +349,20 @@ int main (int argc, char *argv[])
         }
         g15daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         
-        snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/splash/g15logo2.wbmp");
+        snprintf((char*)location,1024,"%s/%s",DATADIR,"g15daemon/splash/g15logo2.wbmp");
 	g15canvas *canvas = (g15canvas *)malloc (sizeof (g15canvas));
 	memset (canvas->buffer, 0, G15_BUFFER_LEN);
 	canvas->mode_cache = 0;
 	canvas->mode_reverse = 0;
 	canvas->mode_xor = 0;
-        g15r_loadWbmpSplash(canvas,location);
+        g15r_loadWbmpSplash(canvas,(char*)location);
 	memcpy (lcdlist->tail->lcd->buf, canvas->buffer, G15_BUFFER_LEN);
 	free (canvas);
         uf_write_buf_to_g15(lcdlist->tail->lcd);
 	
-        snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/plugins");
+        snprintf((char*)location,1024,"%s/%s",DATADIR,"g15daemon/plugins");
 
-        g15_open_all_plugins(lcdlist,location);
+        g15_open_all_plugins(lcdlist,(char*)location);
 
         new_action.sa_handler = g15daemon_sighandler;
         new_action.sa_flags = 0;

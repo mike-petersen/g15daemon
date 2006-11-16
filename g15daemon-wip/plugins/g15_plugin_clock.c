@@ -99,10 +99,12 @@ static int myeventhandler(plugin_event_t *myevent) {
 
 /* completely uncessary function called when plugin is exiting */
 static void *callmewhenimdone(lcd_t *lcd){
+    return NULL;
 }
 
 /* completely unnecessary initialisation function which could just as easily have been set to NULL in the g15plugin_info struct */
 static void *myinithandler(lcd_t *lcd){
+    return NULL;
 }
 
 /* if no exitfunc or eventhandler, member should be NULL */

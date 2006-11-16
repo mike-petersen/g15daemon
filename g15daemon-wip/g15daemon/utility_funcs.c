@@ -31,11 +31,10 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <poll.h>
-#include <sys/socket.h>
+#include <sys/time.h>
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -132,7 +131,6 @@ int uf_create_pidfile() {
 /* syslog wrapper */
 int g15daemon_log (int priority, const char *fmt, ...) {
 
-   unsigned char buf[1024];
    va_list argp;
    va_start (argp, fmt);
    if(g15daemon_debug == 0)

@@ -1,6 +1,6 @@
 
 METASOURCES = AUTO
-AM_CFLAGS = -DG15DAEMON_BUILD
+AM_CFLAGS = -DG15DAEMON_BUILD -Wall
 sbin_PROGRAMS = g15daemon
 noinst_PROGRAMS = g15daemontest
 noinst_HEADERS = g15logo.h

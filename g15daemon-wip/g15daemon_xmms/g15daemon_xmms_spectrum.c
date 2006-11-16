@@ -20,9 +20,10 @@
     This daemon listens on localhost port 15550 for client connections,
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
+
+    simple analyser xmms plugin for g15daemon
 */
 
-/* xmms plugin for the daemon, based on finespectrum plugin available on sourceforge */
 #include <stdlib.h>
 #include <unistd.h>
 #include <g15daemon_client.h>
@@ -35,25 +36,9 @@
 #include <xmms/xmmsctrl.h>
 #include <libg15render.h>
 
-#define WIDTH 256
-
-/* Linearity of the amplitude scale (0.5 for linear, keep in [0.1, 0.9]) */
-//#define linearity 0.33
-#define linearity 0.33
-
 #define NUM_BANDS 16        
 
-/* Time factor of the band dinamics. 3 means that the coefficient of the
-last value is half of the current one's. (see source) */
-#define tau 3
-
-/* Factor used for the diffusion. 4 means that half of the height is
-added to the neighbouring bars */
-#define dif 4
-
-static gint16 bar_heights[WIDTH];
-
-static gdouble scale, x00, y00;
+static gint16 bar_heights[NUM_BANDS];
 
 static void g15analyser_init(void);
 static void g15analyser_cleanup(void);
@@ -171,10 +156,6 @@ static void g15analyser_init(void) {
 	canvas->mode_xor = 0;
       }
 
-    scale = G15_HEIGHT / ( log((1 - linearity) / linearity) *2 );
-    x00 = linearity*linearity*32768.0/(2 * linearity - 1);
-    y00 = -log(-x00) * scale;
-    
     leaving = 0;
     
     pthread_mutex_unlock(&g15buf_mutex);

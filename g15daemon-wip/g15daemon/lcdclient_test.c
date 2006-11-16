@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
             retval = g15_send(g15screen_fd,(char*)lcdbuffer,6880);
         }
 
-        printf("checking key status - press G1 to exit\n",retval);
+        printf("checking key status - press G1 to exit\n");
         
         while(1){
             keystate = 0;

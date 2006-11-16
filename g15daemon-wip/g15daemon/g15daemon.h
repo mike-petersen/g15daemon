@@ -172,7 +172,7 @@ struct lcdlist_s
     lcdnode_t *current;
     void *(*keyboard_handler)(void*);
     struct passwd *nobody;
-    unsigned long numclients;
+    volatile unsigned long numclients;
 }lcdlist_s;
 
 pthread_mutex_t lcdlist_mutex;
@@ -184,7 +184,12 @@ pthread_mutex_t g15lib_mutex;
 #ifdef G15DAEMON_BUILD
 /* internal g15daemon-only functions */
 void uf_write_buf_to_g15(lcd_t *lcd);
-
+/* return the pid of a running copy of g15daemon, else -1 */
+int uf_return_running();
+/* create a /var/run/g15daemon.pid file, returning 0 on success else -1 */
+int uf_create_pidfile();
+/* open & run all plugins in the given directory */
+void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory);
 /* linked lists */
 lcdlist_t *ll_lcdlist_init();
 void ll_lcdlist_destroy(lcdlist_t **displaylist);
@@ -204,7 +209,7 @@ int g15daemon_dlclose_plugin(void *handle) ;
 /* syslog wrapper */
 int g15daemon_log (int priority, const char *fmt, ...);
 /* cycle from displayed screen to next on list */
-int g15daemon_lcdnode_cycle(lcdlist_t *displaylist);
+void g15daemon_lcdnode_cycle(lcdlist_t *displaylist);
 /* add new screen */
 lcdnode_t *g15daemon_lcdnode_add(lcdlist_t **displaylist) ;
 /* remove screen */

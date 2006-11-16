@@ -68,6 +68,7 @@ void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
 int g15daemon_dlclose_plugin(void *handle) {
 
     dlclose(handle);
+    return 0;
 }
 
 void run_lcd_client(plugin_t *plugin_args) {
@@ -139,7 +140,7 @@ void run_advanced_client(plugin_t *plugin_args)
 
 void *plugin_thread(plugin_t *plugin_args) {
     plugin_info_t *info = plugin_args->info;
-    int (*event)(plugin_event_t *event) = (void*)plugin_args->info->event_handler;
+    /* int (*event)(plugin_event_t *event) = (void*)plugin_args->info->event_handler; */
     void *handle = plugin_args->plugin_handle;
     
     if(plugin_args->info->plugin_run!=NULL||plugin_args->info->event_handler!=NULL) {
@@ -161,6 +162,7 @@ void *plugin_thread(plugin_t *plugin_args) {
     g15daemon_log(LOG_INFO,"Removed plugin %s",info->name);
     g15daemon_dlclose_plugin(handle);
 
+    return NULL;
 }
 
 int g15_plugin_load (lcdlist_t **displaylist, char *name) {
@@ -182,7 +184,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
             g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",name);
             g15daemon_dlclose_plugin(plugin_handle);
             dlerror();
-            return;
+            return -1;
         }
 
         plugin_args->type = plugin_args->info->type;
@@ -221,6 +223,7 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
             pthread_detach(client_connection);
         }
     }
+    return 0;
 }
 
 
@@ -232,7 +235,7 @@ void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory) {
     directory = opendir (plugin_directory);
     if (directory != NULL)
     {
-        while (ep = readdir (directory)) {
+        while ((ep = readdir (directory))) {
             if(strstr(ep->d_name,".so")){
                 strcpy(pluginname, plugin_directory);
                 strncat(pluginname,"/",1);

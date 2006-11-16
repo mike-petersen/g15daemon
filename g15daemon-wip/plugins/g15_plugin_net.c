@@ -26,6 +26,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -58,8 +59,8 @@ plugin_info_t lcdclient_info[] = {
 
 static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgbuf, unsigned int len)
 {
-    int msgret;
-/*     if(msgbuf[0] == CLIENT_CMD_GET_KEYSTATE) 
+    /* int msgret;
+    if(msgbuf[0] == CLIENT_CMD_GET_KEYSTATE) 
      { // client wants keypresses - FIXME this is redundant with the new event based architecture 
          if(lcdnode->list->current == lcdnode){
              // send the keystate inband back to the client 
@@ -232,7 +233,6 @@ void *lcd_client_thread(void *display) {
     lcdnode_t *g15node = display;
     lcd_t *client_lcd = g15node->lcd;
     int retval;
-    int i,y,x;
     unsigned int width, height, buflen,header=4;
 
     int client_sock = client_lcd->connection;
@@ -389,7 +389,7 @@ static void lcdserver_thread(void *lcdlist){
 /* incoming events */
 int server_events(plugin_event_t *event) {
     lcd_t *lcd = (lcd_t*) event->lcd;
-    static int lastkeys;
+
     switch (event->event)
     {
         case G15_EVENT_KEYPRESS:{

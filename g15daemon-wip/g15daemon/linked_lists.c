@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <g15daemon.h>
 #include <libg15.h>
 
@@ -113,7 +114,7 @@ lcdnode_t *g15daemon_lcdnode_add(lcdlist_t **displaylist) {
 }
 
 /* cycle through connected client displays */
-int g15daemon_lcdnode_cycle(lcdlist_t *displaylist)
+void g15daemon_lcdnode_cycle(lcdlist_t *displaylist)
 {
     lcdnode_t *current_screen = displaylist->current;
     
@@ -159,7 +160,7 @@ void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
     next = &oldnode->next;
     
     ll_quit_lcd(oldnode->lcd);
-    (unsigned int)(*displaylist)->numclients--;
+    (*displaylist)->numclients--;
     if((*displaylist)->current == oldnode) {
         if((*displaylist)->current!=(*displaylist)->head){
             (*displaylist)->current = oldnode->next;

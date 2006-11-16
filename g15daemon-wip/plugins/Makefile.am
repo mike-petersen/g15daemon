@@ -1,6 +1,7 @@
 
 METASOURCES = AUTO
 libdir = /usr/share/g15daemon/plugins
+AM_CFLAGS = -Wall
 
 lib_LTLIBRARIES =g15plugin_uinput.la g15plugin_tcpserver.la g15plugin_clock.la
 INCLUDES = -I$(top_builddir)/libg15daemon_client/ -I$(top_builddir)/g15daemon
