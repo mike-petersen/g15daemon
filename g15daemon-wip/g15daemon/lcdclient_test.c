@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "g15daemon_client.h"
@@ -47,8 +48,6 @@ int main(int argc, char *argv[])
     int g15screen_fd, retval;
     char lcdbuffer[6880];
     unsigned int keystate;
-    char msgbuf[256];
-    int foo = 0;
     
     if((g15screen_fd = new_g15_screen(G15_PIXELBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
@@ -68,7 +67,7 @@ int main(int argc, char *argv[])
         
         while(1){
             keystate = 0;
-            int foo;
+            int foo = 0;
 
 //            keystate = g15_send_cmd (g15screen_fd, G15DAEMON_GET_KEYSTATE, foo);
 //while(1){
