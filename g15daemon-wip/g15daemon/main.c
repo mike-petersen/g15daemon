@@ -39,6 +39,7 @@
 
 #include <config.h>
 #include <libg15.h>
+#include <libg15render.h>
 #include "g15daemon.h"
 
 #ifndef LIBG15_VERSION
@@ -348,7 +349,14 @@ int main (int argc, char *argv[])
         g15daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         
         snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/splash/g15logo2.wbmp");
-        g15daemon_load_wbmp(lcdlist->tail->lcd,location);
+	g15canvas *canvas = (g15canvas *)malloc (sizeof (g15canvas));
+	memset (canvas->buffer, 0, G15_BUFFER_LEN);
+	canvas->mode_cache = 0;
+	canvas->mode_reverse = 0;
+	canvas->mode_xor = 0;
+        g15r_loadWbmpSplash(canvas,location);
+	memcpy (lcdlist->tail->lcd->buf, canvas->buffer, G15_BUFFER_LEN);
+	free (canvas);
         uf_write_buf_to_g15(lcdlist->tail->lcd);
 	
         snprintf(location,1024,"%s/%s\0",DATADIR,"g15daemon/plugins");
