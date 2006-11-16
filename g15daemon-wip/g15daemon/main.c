@@ -174,7 +174,7 @@ static void *lcd_draw_thread(void *lcdlist){
     lcdlist_t *displaylist = (lcdlist_t*)(lcdlist);
     static long int lastlcd = 1;
     static unsigned int lastscreentime;
-    unsigned int fps = 0;
+    /* unsigned int fps = 0; */
     lcd_t *displaying = displaylist->tail->lcd;
     lcd_t *lastdisplayed=NULL;
     memset(displaying->buf,0,1024);
@@ -188,14 +188,16 @@ static void *lcd_draw_thread(void *lcdlist){
         
         if(displaying->ident != lastlcd){
             /* monitor 'fps' - due to the TCP protocol, some frames will be bunched up.
-            discard excess to reduce load on the bus - FIXME*/
-            fps = 1000 / (g15daemon_gettime_ms() - lastscreentime);
-            if(fps<50||displaying!=lastdisplayed){  //peak fps rate - most plugins/clients will never come close
+            discard excess to reduce load on the bus */
+            /* fps = 1000 / (g15daemon_gettime_ms() - lastscreentime); */
+            /* if the current screen is less than 20ms from the previous (equivelant to 50fps) delay it */
+            /* this allows a real-world fps of 40fps with no almost frame loss and reduces peak usb bus-load */
+            if((g15daemon_gettime_ms() - lastscreentime)>=20||displaying!=lastdisplayed){  
                 uf_write_buf_to_g15(displaying);
                 lastscreentime = g15daemon_gettime_ms();
                 lastdisplayed = displaying;
+                lastlcd = displaying->ident;
             }
-            lastlcd = displaying->ident;
         }
         
         if(displaying->state_changed ){
