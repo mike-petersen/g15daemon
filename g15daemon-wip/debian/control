@@ -2,7 +2,7 @@ Source: g15daemon
 Section: utils
 Priority: optional
 Maintainer: Anthony J. Mirabella <mirabeaj@gmail.com>
-Build-Depends: debhelper (>= 4.0.0), autotools-dev, libg15-dev, libdaemon-dev
+Build-Depends: debhelper (>= 4.0.0), autotools-dev, libg15-dev, libg15render-dev
 Standards-Version: 3.6.2
 
 Package: g15daemon
