@@ -76,7 +76,7 @@ static int *lcdclock(lcd_t *lcd)
 
     memcpy (lcd->buf, canvas->buffer, G15_BUFFER_LEN);
     lcd->ident = currtime+100;
-    
+    free(canvas);
     return G15_PLUGIN_OK;
 }
 
