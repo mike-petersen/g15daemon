@@ -36,6 +36,7 @@
 #include <xmms/plugin.h>
 #include <xmms/util.h>
 #include <xmms/xmmsctrl.h>
+#include <xmms/configfile.h>
 #include <libg15.h>
 #include <libg15render.h>
 
@@ -84,6 +85,41 @@ VisPlugin *get_vplugin_info(void) {
     return &g15analyser_vp;
 }
 
+void g15spectrum_read_config(void)
+{
+    ConfigFile *cfg;
+    gchar *filename;
+
+    vis_type = 0;
+
+    filename = g_strconcat(g_get_home_dir(), "/.xmms/config", NULL);
+    cfg = xmms_cfg_open_file(filename);
+
+    if (cfg)
+    {
+        xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "visualisation_type", (int*)&vis_type);
+        xmms_cfg_free(cfg);
+    }
+    g_free(filename);
+}
+
+void g15spectrum_write_config(void)
+{
+    ConfigFile *cfg;
+    gchar *filename;
+
+    filename = g_strconcat(g_get_home_dir(), "/.xmms/config", NULL);
+    cfg = xmms_cfg_open_file(filename);
+
+    if (cfg)
+    {
+        xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "visualisation_type", vis_type);
+        xmms_cfg_write_file(cfg, filename);
+        xmms_cfg_free(cfg);
+    }
+    g_free(filename);
+}
+
 void *g15keys_thread() {
     int keystate = 0;
     struct pollfd fds;
@@ -101,6 +137,7 @@ void *g15keys_thread() {
 		  {
 		  	case G15_KEY_L1:
 			  vis_type = 1 - vis_type;
+                          g15spectrum_write_config(); // save as default next time
 			  break;
 			case G15_KEY_L2:
 			  {
@@ -244,7 +281,7 @@ static void g15analyser_init(void) {
       }
 
     leaving = 0;
-    
+    g15spectrum_read_config();
     pthread_mutex_unlock(&g15buf_mutex);
     /* increase lcd drive voltage/contrast for this client */
     g15_send_cmd(g15screen_fd, G15DAEMON_CONTRAST,2);
