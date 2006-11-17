@@ -39,7 +39,7 @@ simple Clock plugin, replace the various functions with your own, and change the
 #include <libg15render.h>
 
 
-static int mode=24;
+static int mode=1;
 
 static int *lcdclock(lcd_t *lcd)
 {
@@ -62,7 +62,7 @@ static int *lcdclock(lcd_t *lcd)
     
     memset(lcd->buf,0,G15_BUFFER_LEN);
     memset(buf,0,10);
-    if(mode==24){
+    if(mode){
     	strftime(buf,6,"%H:%M",localtime(&currtime));
     }else{
         strftime(buf,6,"%I:%M",localtime(&currtime));
