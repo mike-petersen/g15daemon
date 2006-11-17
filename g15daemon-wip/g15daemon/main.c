@@ -62,7 +62,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
             if(!(value & cycle_key) && !(lastkeys & cycle_key)){
                 lcd_t *lcd = (lcd_t*)caller;
                 int *(*plugin_listener)(plugin_event_t *newevent) = (void*)lcd->g15plugin->info->event_handler;
-                plugin_event_t *newevent=malloc(sizeof(plugin_event_t));
+                plugin_event_t *newevent=g15daemon_xmalloc(sizeof(plugin_event_t));
                 newevent->event = event;
                 newevent->value = value;
                 newevent->lcd = lcd;
@@ -88,7 +88,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                     }
                     else 
                     {
-                        plugin_event_t *clickevent=malloc(sizeof(plugin_event_t));
+                        plugin_event_t *clickevent=g15daemon_xmalloc(sizeof(plugin_event_t));
                         int *(*plugin_listener)(plugin_event_t *clickevent) = (void*)lcd->g15plugin->info->event_handler;
                         clickevent->event = event;
                 	clickevent->value = value|cycle_key;
@@ -98,6 +98,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                 	clickevent->value = value&~cycle_key;
                 	clickevent->lcd = lcd;
                         (*plugin_listener)((void*)clickevent);
+                        free(clickevent);
                     }
                 }
             }
@@ -137,11 +138,12 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
         default: {
             lcd_t *lcd = (lcd_t*)caller;
             int *(*plugin_listener)(plugin_event_t *newevent) = (void*)lcd->g15plugin->info->event_handler;
-            plugin_event_t *newevent=malloc(sizeof(plugin_event_t));
+            plugin_event_t *newevent=g15daemon_xmalloc(sizeof(plugin_event_t));
             newevent->event = event;
             newevent->value = value;
             newevent->lcd = lcd;
             (*plugin_listener)((void*)newevent);
+            free(newevent);
         }
     }
     return 0;
@@ -317,15 +319,16 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
     
-        /* all other processes/threads should be seteuid nobody */
+        /* initialise the linked list */
+        lcdlist = ll_lcdlist_init();
+        lcdlist->nobody = nobody;
+        
+        uf_conf_open(lcdlist, "/etc/g15daemon.conf");
+                /* all other processes/threads should be seteuid nobody */
         if(nobody!=NULL) {
             seteuid(nobody->pw_uid);
             setegid(nobody->pw_gid);
         }
-
-        /* initialise the linked list */
-        lcdlist = ll_lcdlist_init();
-        lcdlist->nobody = nobody;
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
@@ -350,7 +353,7 @@ int main (int argc, char *argv[])
         g15daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         
         snprintf((char*)location,1024,"%s/%s",DATADIR,"g15daemon/splash/g15logo2.wbmp");
-	g15canvas *canvas = (g15canvas *)malloc (sizeof (g15canvas));
+	g15canvas *canvas = (g15canvas *)g15daemon_xmalloc (sizeof (g15canvas));
 	memset (canvas->buffer, 0, G15_BUFFER_LEN);
 	canvas->mode_cache = 0;
 	canvas->mode_reverse = 0;
@@ -391,6 +394,8 @@ exitnow:
         seteuid(0);
     setegid(0);
     closelog();
+    uf_conf_write(lcdlist,"/etc/g15daemon.conf");
+    uf_conf_free(lcdlist);
     unlink("/var/run/g15daemon.pid");
     }
     return 0;

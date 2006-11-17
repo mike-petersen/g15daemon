@@ -102,6 +102,31 @@ typedef struct plugin_event_s 	plugin_event_t;
 typedef struct plugin_info_s 	plugin_info_t;
 typedef struct plugin_s 	plugin_t;
 
+typedef struct config_items_s	config_items_t;
+typedef struct config_section_s config_section_t;
+typedef struct configfile_s 	configfile_t;
+
+typedef struct config_items_s
+{
+    config_items_t *next;
+    config_items_t *head;
+    char *key;
+    char *value;
+} config_items_s;
+
+typedef struct config_section_s
+{
+    config_section_t *head;
+    config_section_t *next;
+    char *sectionname;
+    config_items_t *items;
+}config_section_s;
+
+typedef struct configfile_s
+{
+    config_section_t *sections;
+}configfile_s;
+
 typedef struct plugin_info_s 
 {
     /* type - see above for valid defines*/
@@ -173,6 +198,7 @@ struct lcdlist_s
     void *(*keyboard_handler)(void*);
     struct passwd *nobody;
     volatile unsigned long numclients;
+    configfile_t *config;
 }lcdlist_s;
 
 pthread_mutex_t lcdlist_mutex;
@@ -194,11 +220,29 @@ void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory);
 lcdlist_t *ll_lcdlist_init();
 void ll_lcdlist_destroy(lcdlist_t **displaylist);
 
+/* open and parse config file */
+int uf_conf_open(lcdlist_t *list, char *filename);
+/* write the config file with all keys/sections */
+int uf_conf_write(lcdlist_t *list,char *filename);
+/* free all memory used by the config subsystem */
+void uf_conf_free(lcdlist_t *list);
 /* generic handler for net clients */
 int internal_generic_eventhandler(plugin_event_t *myevent);
 #endif
 
 /* the following functions are available for use by plugins */
+/* create a new section */
+config_section_t *g15daemon_cfg_load_section(lcdlist_t *displaylist,char *name);
+/* return string value from key in sectionname */
+char* g15daemon_cfg_read_string(config_section_t *section, char *key, char *defaultval);
+/* return float from key in sectionname */
+double g15daemon_cfg_read_float(config_section_t *section, char *key, double defaultval);
+/* return int from key in sectionname */
+int g15daemon_cfg_read_int(config_section_t *section, char *key, int defaultval);
+/* add a new key, or update the value of an already existing key, or return -1 if section doesnt exist */
+int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val);
+int g15daemon_cfg_write_float(config_section_t *section, char *key, double val);
+int g15daemon_cfg_write_int(config_section_t *section, char *key, int val);
 
 /* send event to foreground client's eventlistener */
 int g15daemon_send_event(void *caller, unsigned int event, unsigned long value);

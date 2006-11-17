@@ -33,6 +33,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <ctype.h>
+
 #include <sys/time.h>
 
 #ifdef HAVE_CONFIG_H
@@ -99,7 +102,6 @@ int uf_return_running(){
     
 }
 
-
 int uf_create_pidfile() {
     
     char pidtxt[128];
@@ -127,6 +129,7 @@ int uf_create_pidfile() {
     }
     return 1;
 }
+
 
 /* syslog wrapper */
 int g15daemon_log (int priority, const char *fmt, ...) {
@@ -229,5 +232,266 @@ int internal_generic_eventhandler(plugin_event_t *event) {
           break;
     }
     return G15_PLUGIN_OK;
+}
+
+
+/* free all memory used by the config subsystem */
+void uf_conf_free(lcdlist_t *list)
+{
+    config_section_t *section=list->config->sections;
+    config_items_t *tmpitem=NULL;
+    config_section_t *tmpsection=section;
+    
+    while(tmpsection!=NULL){
+        tmpitem=section->items;
+        
+        if(section->sectionname){
+            free(section->sectionname);
+            while(section->items!=NULL){
+                if(tmpitem->key!=NULL) 
+                    free(tmpitem->key);
+                if(tmpitem->value!=NULL)
+                    free(tmpitem->value);
+                tmpitem=section->items->next;
+                free(section->items);
+                section->items=tmpitem;
+            }
+        }
+        tmpsection=section->next;
+        free(section);
+        section=tmpsection;
+    }
+    free(section);
+    free(list->config);
+}
+
+/* write the config file with all keys/sections */
+int uf_conf_write(lcdlist_t *list,char *filename)
+{
+    int config_fd=-1;
+    config_section_t *foo=list->config->sections;
+    config_items_t * item=NULL;
+    char line[1024];
+    config_fd = open(filename,O_CREAT|O_RDWR|O_TRUNC);
+    if(config_fd){
+    snprintf(line,1024,"# G15Daemon Configuration File\n");
+    write(config_fd,line,strlen(line));
+    while(foo!=NULL){
+        item=foo->items;
+        memset(line,0,1024);
+        if(foo->sectionname){
+            snprintf(line,1024,"\n[%s]\n",foo->sectionname);
+            write(config_fd,line,strlen(line));
+            while(item!=NULL){
+                memset(line,0,1024);
+                snprintf(line,1024,"%s: %s\n",item->key, item->value);
+                write(config_fd,line,strlen(line));
+                item=item->next;
+            }
+        }
+        foo=foo->next;
+    }
+    close(config_fd);
+    return 0;
+    }
+    return -1;
+}
+
+/* search the list for valid section name return pointer to section, or NULL otherwise */
+config_section_t* uf_search_confsection(lcdlist_t *list,char *sectionname){
+    config_section_t *section=list->config->sections;
+    
+    while(section!=NULL){
+        if(0==strcmp((char*)section->sectionname,(char*)sectionname))
+            break;
+        section=section->next;
+    }
+    return section;
+}
+
+/* search the list for valid key called "key" in section named "section" return pointer to item or NULL */
+config_items_t* uf_search_confitem(config_section_t *section, char *key){
+    
+    config_items_t * item=NULL;
+    
+    if(section!=NULL){
+        item=section->items;
+        while(item!=NULL){
+            if(0==strcmp((char*)item->key,(char*)key))
+                break;
+            item=item->next;
+        }
+    }
+    return item;
+}
+
+
+/* return pointer to section, or create a new section if it doesnt exist */
+config_section_t *g15daemon_cfg_load_section(lcdlist_t *displaylist,char *name) {
+    
+    config_section_t *new = NULL;
+    if((new=uf_search_confsection(displaylist,name))!=NULL)
+        return new;
+    new = g15daemon_xmalloc(sizeof(config_section_t));
+    new->head = new;
+    new->next = NULL;;
+    new->sectionname=strdup(name);
+    if(!displaylist->config->sections){
+        displaylist->config->sections=new;
+        displaylist->config->sections->head = new;
+    } else {
+        displaylist->config->sections->head->next=new;
+        displaylist->config->sections->head = new;
+    }
+    return new;
+}
+
+/* cleanup whitespace */
+char * uf_remove_whitespace(char *str){
+    int z=0;
+    while(isspace(str[z])&&str[z])
+        z++;
+    str+=z;
+    return str;
+}
+
+/* add a new key, or update the value of an already existing key, or return -1 if section doesnt exist */
+int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val){
+    
+    config_items_t *new = NULL;
+
+    if(section==NULL)
+        return -1;
+
+    
+    if((uf_search_confitem(section, key))){
+        free(new);
+        new=uf_search_confitem(section, key);
+        new->value=strdup(val);
+    }else{
+        new=g15daemon_xmalloc(sizeof(config_items_t));
+        new->head=new;
+        new->next=NULL;
+        new->key=strdup(key);
+        new->value=strdup(val);
+        if(!section->items){
+            section->items=new;
+            section->items->head=new;
+        }else{
+            section->items->head->next=new;
+            section->items->head=new;
+        }
+    }
+    return 0;
+}
+
+int g15daemon_cfg_write_int(config_section_t *section, char *key, int val) {
+    char tmp[1024];
+    snprintf(tmp,1024,"%i",val);
+    return g15daemon_cfg_write_string(section, key, tmp);
+}
+
+int g15daemon_cfg_write_float(config_section_t *section, char *key, double val) {
+    char tmp[1024];
+    snprintf(tmp,1024,"%f",val);
+    return g15daemon_cfg_write_string(section, key, tmp);
+}
+/* the config read functions will either return a value from the config file, or the default value, which will be written to the config file if the key doesnt exist */
+
+/* return int from key in sectionname */
+int g15daemon_cfg_read_int(config_section_t *section, char *key, int defaultval) {
+    
+    config_items_t *item = uf_search_confitem(section, key);
+    if(item){
+           return atoi(item->value);
+    }
+    g15daemon_cfg_write_int(section, key, defaultval);
+    return defaultval;
+}
+
+/* return float from key in sectionname */
+double g15daemon_cfg_read_float(config_section_t *section, char *key, double defaultval) {
+    
+    config_items_t *item = uf_search_confitem(section, key);
+    if(item){
+           return atof(item->value);
+    }
+    g15daemon_cfg_write_float(section, key, defaultval);
+    return defaultval;
+}
+
+/* return string value from key in sectionname */
+char* g15daemon_cfg_read_string(config_section_t *section, char *key, char *defaultval) {
+    
+    config_items_t *item = uf_search_confitem(section, key);
+    if(item){
+           return item->value;
+    }
+    g15daemon_cfg_write_string(section, key, defaultval);
+    return defaultval;
+}
+
+
+int uf_conf_open(lcdlist_t *list, char *filename) {
+
+    char *buffer, *lines;
+    int config_fd=-1;
+    char *sect;
+    char *start;
+    char *bar;
+    int i;
+    struct stat stats;
+	
+    list->config=g15daemon_xmalloc(sizeof(configfile_t));
+    list->config->sections=NULL;
+
+    config_fd = open(filename,O_RDWR);
+
+    if (lstat(filename, &stats) == -1)
+        return -1;
+    if (!(config_fd = open(filename, O_RDWR)))
+        return -1;
+
+    buffer = g15daemon_xmalloc(stats.st_size + 1);
+        
+    if (read(config_fd, buffer, stats.st_size) != stats.st_size)
+    {
+        free(buffer);
+        close(config_fd);
+        return -1;
+    }
+    close(config_fd);
+    buffer[stats.st_size] = '\0';
+        
+    lines=strtok_r(buffer,"\n",&bar);
+        
+    while(lines!=NULL){
+        sect=strdup(lines);
+        config_section_t *section;
+        i=0;
+        while(isspace(sect[i])){
+            i++;
+        }
+        start=sect+i;
+        if(start[0]=='#'){
+	        /* comment.. ignore */
+        }else if(strcmp(start,"]")<0) { /* section title */
+            char sectiontitle[1024];
+            memset(sectiontitle,0,1024);
+            strncpy(sectiontitle,start+1,strlen(start)-2);
+            section = g15daemon_cfg_load_section(list,sectiontitle);
+        }else{
+            /*section keys */
+            char *foo;
+            char *key = uf_remove_whitespace( strtok_r(start,":",&foo) );
+            char *val = uf_remove_whitespace( strtok_r(NULL,":", &foo) );
+
+            g15daemon_cfg_write_string(section,key,val);
+        }        
+        free(sect);
+        lines=strtok_r(NULL,"\n",&bar);
+    }
+    free(buffer);
+    return 0;
 }
 

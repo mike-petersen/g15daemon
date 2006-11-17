@@ -33,10 +33,13 @@ simple Clock plugin, replace the various functions with your own, and change the
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include <libg15.h>
 #include <config.h>
 #include <g15daemon.h>
 #include <libg15render.h>
+
+
+static int mode=24;
 
 static int *lcdclock(lcd_t *lcd)
 {
@@ -59,8 +62,11 @@ static int *lcdclock(lcd_t *lcd)
     
     memset(lcd->buf,0,G15_BUFFER_LEN);
     memset(buf,0,10);
-    strftime(buf,6,"%H:%M",localtime(&currtime));
-
+    if(mode==24){
+    	strftime(buf,6,"%H:%M",localtime(&currtime));
+    }else{
+        strftime(buf,6,"%I:%M",localtime(&currtime));
+    }
     if(buf[0]==49) 
     	narrows=1;
 
@@ -81,11 +87,16 @@ static int *lcdclock(lcd_t *lcd)
 }
 
 static int myeventhandler(plugin_event_t *myevent) {
-//    lcd_t *lcd = (lcd_t*) myevent->lcd;
     
+    lcd_t *lcd = (lcd_t*) myevent->lcd;
+    config_section_t *clockcfg =NULL;
     switch (myevent->event)
     {
         case G15_EVENT_KEYPRESS:
+            clockcfg = g15daemon_cfg_load_section(lcd->masterlist,"Clock");
+            if(myevent->value&G15_KEY_L1)
+                mode=1^mode;
+            g15daemon_cfg_write_int(clockcfg, "mode", mode);
 //        printf("Clock plugin received keypress event : %i\n",myevent->value);
           break;
         case G15_EVENT_VISIBILITY_CHANGED:
@@ -104,6 +115,8 @@ static void *callmewhenimdone(lcd_t *lcd){
 
 /* completely unnecessary initialisation function which could just as easily have been set to NULL in the g15plugin_info struct */
 static void *myinithandler(lcd_t *lcd){
+    config_section_t *clockcfg = g15daemon_cfg_load_section(lcd->masterlist,"Clock");
+    mode=g15daemon_cfg_read_int(clockcfg, "mode",0);
     return NULL;
 }
 
