@@ -198,7 +198,7 @@ void *g15send_thread() {
 			  }
 			else
 			  {
-				int y1, y2=25;
+				int y1, y2=(25 - scope_data[0]);
 				for (i = 0; i < 160; i++)
 				  {
 				    y1 = y2;
