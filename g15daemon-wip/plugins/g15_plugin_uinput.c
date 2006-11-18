@@ -44,6 +44,8 @@
 #include <libg15.h>
 
 static int uinp_fd = -1;
+static config_section_t *uinput_cfg=NULL;
+static int map_Lkeys = 0;
 
 #define GKEY_OFFSET 167
 #define MKEY_OFFSET 185
@@ -55,14 +57,22 @@ static int uinp_fd = -1;
 int g15_init_uinput(void *plugin_args) {
     
     int i=0;
+    char *custom_filename;
     lcdlist_t *displaylist = (lcdlist_t*) plugin_args;
     struct uinput_user_dev uinp;
-    static const char *uinput_device_fn[] = { "/dev/uinput", "/dev/input/uinput",0};
+    static const char *uinput_device_fn[] = { "/dev/uinput", "/dev/input/uinput","/dev/misc/uinput",0};
+    
+    uinput_cfg = g15daemon_cfg_load_section(displaylist,"Keyboard OS Mapping (uinput)");
+    custom_filename = g15daemon_cfg_read_string(uinput_cfg, "device",(char*)uinput_device_fn[1]);
+    map_Lkeys=g15daemon_cfg_read_int(uinput_cfg, "Lkeys.mapped",0);
     
     seteuid(0);
     setegid(0);
     while (uinput_device_fn[i] && (uinp_fd = open(uinput_device_fn[i],O_RDWR))<0){
         ++i;
+    }
+    if(uinp_fd<0) {	/* try reading the users preference in the config */
+        uinp_fd = open(custom_filename,O_RDWR);
     }
     if(uinp_fd<0){
         g15daemon_log(LOG_ERR,"Unable to open UINPUT device.  Please ensure the uinput driver is loaded into the kernel and that you have permission to open the device.");
@@ -251,33 +261,34 @@ void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned
         keydown(MKEY_OFFSET+3);
     else if(!(currentkeys & G15_KEY_MR) && (lastkeys & G15_KEY_MR))
         keyup(MKEY_OFFSET+3);
+    
+    if(map_Lkeys){
+        /* 'L' keys...  */
+        if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
+            keydown(LKEY_OFFSET);
+        else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
+            keyup(LKEY_OFFSET);
 
+        if((currentkeys & G15_KEY_L2) && !(lastkeys & G15_KEY_L2))
+            keydown(LKEY_OFFSET+1);
+        else if(!(currentkeys & G15_KEY_L2) && (lastkeys & G15_KEY_L2))
+            keyup(LKEY_OFFSET+1);
 
-    /* 'L' keys...  */
-    if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
-        keydown(LKEY_OFFSET);
-    else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
-        keyup(LKEY_OFFSET);
+        if((currentkeys & G15_KEY_L3) && !(lastkeys & G15_KEY_L3))
+            keydown(LKEY_OFFSET+2);
+        else if(!(currentkeys & G15_KEY_L3) && (lastkeys & G15_KEY_L3))
+            keyup(LKEY_OFFSET+2);
 
-    if((currentkeys & G15_KEY_L2) && !(lastkeys & G15_KEY_L2))
-        keydown(LKEY_OFFSET+1);
-    else if(!(currentkeys & G15_KEY_L2) && (lastkeys & G15_KEY_L2))
-        keyup(LKEY_OFFSET+1);
+        if((currentkeys & G15_KEY_L4) && !(lastkeys & G15_KEY_L4))
+            keydown(LKEY_OFFSET+3);
+        else if(!(currentkeys & G15_KEY_L4) && (lastkeys & G15_KEY_L4))
+            keyup(LKEY_OFFSET+3);
 
-    if((currentkeys & G15_KEY_L3) && !(lastkeys & G15_KEY_L3))
-        keydown(LKEY_OFFSET+2);
-    else if(!(currentkeys & G15_KEY_L3) && (lastkeys & G15_KEY_L3))
-        keyup(LKEY_OFFSET+2);
-
-    if((currentkeys & G15_KEY_L4) && !(lastkeys & G15_KEY_L4))
-        keydown(LKEY_OFFSET+3);
-    else if(!(currentkeys & G15_KEY_L4) && (lastkeys & G15_KEY_L4))
-        keyup(LKEY_OFFSET+3);
-
-    if((currentkeys & G15_KEY_L5) && !(lastkeys & G15_KEY_L5))
-        keydown(LKEY_OFFSET+4);
-    else if(!(currentkeys & G15_KEY_L5) && (lastkeys & G15_KEY_L5))
-        keyup(LKEY_OFFSET+4);
+        if((currentkeys & G15_KEY_L5) && !(lastkeys & G15_KEY_L5))
+            keydown(LKEY_OFFSET+4);
+        else if(!(currentkeys & G15_KEY_L5) && (lastkeys & G15_KEY_L5))
+            keyup(LKEY_OFFSET+4);
+    }
 }
 
 
