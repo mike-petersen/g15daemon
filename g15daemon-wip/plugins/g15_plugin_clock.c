@@ -49,7 +49,8 @@ static int *lcdclock(lcd_t *lcd)
     int narrows=0;
     int totalwidth=0;
     char buf[10];
-    int height = G15_LCD_HEIGHT;
+    char ampm[3];
+    int height = G15_LCD_HEIGHT - 1;
     g15canvas *canvas = (g15canvas *) malloc (sizeof (g15canvas));
 
     if (canvas != NULL)
@@ -64,6 +65,7 @@ static int *lcdclock(lcd_t *lcd)
     
     memset(lcd->buf,0,G15_BUFFER_LEN);
     memset(buf,0,10);
+    memset(ampm,0,3);
     if(showdate) {
         char buf2[40];
         strftime(buf2,40,"%A %e %B %Y",localtime(&currtime));
@@ -75,6 +77,7 @@ static int *lcdclock(lcd_t *lcd)
    	strftime(buf,6,"%H:%M",localtime(&currtime));
     } else { 
         strftime(buf,6,"%l:%M",localtime(&currtime));
+	strftime(ampm,3,"%p",localtime(&currtime));
     }
     if(buf[0]==49) 
     	narrows=1;
@@ -91,6 +94,9 @@ static int *lcdclock(lcd_t *lcd)
     for (col=0;col<len;col++) 
       g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, buf[col]);
     
+    if(ampm[0]!=0)
+      g15r_renderString (canvas,ampm,0,G15_TEXT_LARGE,totalwidth,height-6);
+
     memcpy (lcd->buf, canvas->buffer, G15_BUFFER_LEN);
     lcd->ident = currtime+100;
     free(canvas);
