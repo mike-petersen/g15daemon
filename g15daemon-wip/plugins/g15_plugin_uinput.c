@@ -58,11 +58,11 @@ int g15_init_uinput(void *plugin_args) {
     
     int i=0;
     char *custom_filename;
-    lcdlist_t *displaylist = (lcdlist_t*) plugin_args;
+    g15daemon_t *masterlist = (g15daemon_t*) plugin_args;
     struct uinput_user_dev uinp;
     static const char *uinput_device_fn[] = { "/dev/uinput", "/dev/input/uinput","/dev/misc/uinput",0};
     
-    uinput_cfg = g15daemon_cfg_load_section(displaylist,"Keyboard OS Mapping (uinput)");
+    uinput_cfg = g15daemon_cfg_load_section(masterlist,"Keyboard OS Mapping (uinput)");
     custom_filename = g15daemon_cfg_read_string(uinput_cfg, "device",(char*)uinput_device_fn[1]);
     map_Lkeys=g15daemon_cfg_read_int(uinput_cfg, "Lkeys.mapped",0);
     
@@ -79,8 +79,8 @@ int g15_init_uinput(void *plugin_args) {
         return -1;
     }
     /* all other processes/threads should be seteuid nobody */
-     seteuid(displaylist->nobody->pw_uid);
-     setegid(displaylist->nobody->pw_gid);
+     seteuid(masterlist->nobody->pw_uid);
+     setegid(masterlist->nobody->pw_gid);
     
     
     memset(&uinp,0,sizeof(uinp));
@@ -147,7 +147,7 @@ void g15_uinput_keyup(unsigned char code)
 #endif
 #endif
     
-void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys)
+void g15_process_keys(g15daemon_t *masterlist, unsigned int currentkeys, unsigned int lastkeys)
 {
     /* 'G' keys */
     if((currentkeys & G15_KEY_G1) && !(lastkeys & G15_KEY_G1))

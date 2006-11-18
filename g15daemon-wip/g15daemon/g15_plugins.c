@@ -116,7 +116,7 @@ void run_advanced_client(plugin_t *plugin_args)
     }
 
     if(plugin_args->info->event_handler && plugin_args->type==G15_PLUGIN_CORE_OS_KB){
-        lcdlist_t *masterlist = (lcdlist_t*)plugin_args->args;
+        g15daemon_t *masterlist = (g15daemon_t*)plugin_args->args;
         pthread_mutex_lock(&lcdlist_mutex);
         (masterlist->keyboard_handler) = (void*)plugin_args->info->event_handler;
         pthread_mutex_unlock(&lcdlist_mutex);
@@ -165,39 +165,44 @@ void *plugin_thread(plugin_t *plugin_args) {
     return NULL;
 }
 
-int g15_plugin_load (lcdlist_t **displaylist, char *name) {
+int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
 
     void * plugin_handle = NULL;
-
-    lcdlist_t *g15daemon_lcds = (lcdlist_t*)&displaylist;
+    config_section_t *plugin_cfg = g15daemon_cfg_load_section(masterlist,"PLUGINS");
     
     pthread_t client_connection;
     pthread_attr_t attr;
     lcdnode_t *clientnode;
 
-    if((plugin_handle = g15daemon_dlopen_plugin(name,G15_PLUGIN_NONSHARED))!=NULL) {
+    if((plugin_handle = g15daemon_dlopen_plugin(filename,G15_PLUGIN_NONSHARED))!=NULL) {
         plugin_t  *plugin_args=malloc(sizeof(plugin_t));
         plugin_args->info = dlsym(plugin_handle, "g15plugin_info");
 
         dlerror();
         if(!plugin_args->info) { /* if it doesnt have a valid struct, we should just load it as a library... but we dont at the moment FIXME */
-            g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",name);
+            g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",filename);
             g15daemon_dlclose_plugin(plugin_handle);
             dlerror();
             return -1;
         }
+        
+        if(strncasecmp("Load",g15daemon_cfg_read_string(plugin_cfg, plugin_args->info->name,"Load"),5)!=0)
+        {
+            g15daemon_dlclose_plugin(plugin_handle);
+            return -1;
+        } 	
 
         plugin_args->type = plugin_args->info->type;
         /* assign the generic eventhandler if the plugin doesnt provide one - the generic one does nothing atm. FIXME*/
         if(plugin_args->info->event_handler==NULL)
             plugin_args->info->event_handler = (void*)internal_generic_eventhandler;
-	
         
+    
         if(plugin_args->type == G15_PLUGIN_LCD_CLIENT) {
-            lcdlist_t *foolist = (lcdlist_t*)displaylist;
-		/* FIXME we should just sort out the linked list stuff instead of overriding it */
+            g15daemon_t *foolist = (g15daemon_t*)masterlist;
+            /* FIXME we should just sort out the linked list stuff instead of overriding it */
             if((int)foolist->numclients>=1){
-                clientnode = g15daemon_lcdnode_add((void*)g15daemon_lcds);
+                clientnode = g15daemon_lcdnode_add((void*)masterlist);
             }else {
                 clientnode = foolist->tail;
                 foolist->numclients++;
@@ -209,25 +214,25 @@ int g15_plugin_load (lcdlist_t **displaylist, char *name) {
                   plugin_args->type == G15_PLUGIN_CORE_KB_INPUT ||
                           plugin_args->type == G15_PLUGIN_LCD_SERVER) 
                   {
-                      plugin_args->args = displaylist;
+                      plugin_args->args = masterlist;
                       plugin_args->plugin_handle = plugin_handle;
                   }
 
-        memset(&attr,0,sizeof(pthread_attr_t));
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-        pthread_attr_setstacksize(&attr,64*1024); /* set stack to 64k - dont need 8Mb */
-        if (pthread_create(&client_connection, &attr, (void*)plugin_thread, plugin_args) != 0) {
-            g15daemon_log(LOG_WARNING,"Unable to create client thread.");
-        } else {
-            pthread_detach(client_connection);
-        }
+                  memset(&attr,0,sizeof(pthread_attr_t));
+                  pthread_attr_init(&attr);
+                  pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+                  pthread_attr_setstacksize(&attr,64*1024); /* set stack to 64k - dont need 8Mb */
+                  if (pthread_create(&client_connection, &attr, (void*)plugin_thread, plugin_args) != 0) {
+                      g15daemon_log(LOG_WARNING,"Unable to create client thread.");
+                  } else {
+                      pthread_detach(client_connection);
+                  }
     }
     return 0;
 }
 
 
-void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory) {
+void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
     
     DIR *directory;
     struct dirent *ep;
@@ -241,7 +246,7 @@ void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory) {
                 strncat(pluginname,"/",1);
                 strncat(pluginname,ep->d_name,200);
                 g15daemon_log(LOG_INFO, "Loading plugin %s",pluginname);
-                g15_plugin_load (displaylist, pluginname);
+                g15_plugin_load (masterlist, pluginname);
                 g15daemon_msleep(20);
             }
         }

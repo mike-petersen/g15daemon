@@ -77,14 +77,14 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
             }else{
                 /* hacky attempt to double-time the use of L1, if the key is pressed less than half a second, it cycles the screens.  If held for longer, the key is sent to the application for use instead */
                 lcd_t *lcd = (lcd_t*)caller;
-                lcdlist_t* displaylist = lcd->masterlist;
+                g15daemon_t* masterlist = lcd->masterlist;
                 static unsigned int clicktime;
                 if(value & cycle_key) {
                     clicktime=g15daemon_gettime_ms();
                 }else{
                     unsigned int unclick=g15daemon_gettime_ms();
                     if ((unclick-clicktime)<500) {
-                        g15daemon_lcdnode_cycle(displaylist);
+                        g15daemon_lcdnode_cycle(masterlist);
                     }
                     else 
                     {
@@ -107,9 +107,9 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
         }
         case G15_EVENT_CYCLE_PRIORITY:{
             lcd_t *lcd = (lcd_t*)caller;
-            lcdlist_t* displaylist = lcd->masterlist;
+            g15daemon_t* masterlist = lcd->masterlist;
             if(value)
-                g15daemon_lcdnode_cycle(displaylist);
+                g15daemon_lcdnode_cycle(masterlist);
             break;
         }
         case G15_EVENT_REQ_PRIORITY: {
@@ -151,7 +151,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
 
 static void *keyboard_watch_thread(void *lcdlist){
     
-    lcdlist_t *displaylist = (lcdlist_t*)(lcdlist);
+    g15daemon_t *masterlist = (g15daemon_t*)(lcdlist);
     
     unsigned int keypresses = 0;
     int retval = 0;
@@ -163,7 +163,7 @@ static void *keyboard_watch_thread(void *lcdlist){
         pthread_mutex_unlock(&g15lib_mutex);
         
         if(retval == G15_NO_ERROR){
-            g15daemon_send_event(displaylist->current->lcd, 
+            g15daemon_send_event(masterlist->current->lcd, 
                        G15_EVENT_KEYPRESS, keypresses);
         }
         g15daemon_msleep(10);
@@ -174,12 +174,12 @@ static void *keyboard_watch_thread(void *lcdlist){
 
 static void *lcd_draw_thread(void *lcdlist){
 
-    lcdlist_t *displaylist = (lcdlist_t*)(lcdlist);
+    g15daemon_t *masterlist = (g15daemon_t*)(lcdlist);
     static long int lastlcd = 1;
     static unsigned int lastscreentime;
     /* unsigned int fps = 0; */
-    lcd_t *displaying = displaylist->tail->lcd;
-    lcd_t *lastdisplayed=NULL;
+    lcd_t *displaying = masterlist->tail->lcd;
+    char *lastdisplayed=NULL;
     memset(displaying->buf,0,1024);
     
     g15daemon_sleep(2);
@@ -187,7 +187,7 @@ static void *lcd_draw_thread(void *lcdlist){
     while (!leaving) {
         pthread_mutex_lock(&lcdlist_mutex);
         
-        displaying = displaylist->current->lcd;
+        displaying = masterlist->current->lcd;
         
         if(displaying->ident != lastlcd){
             /* monitor 'fps' - due to the TCP protocol, some frames will be bunched up.
@@ -195,10 +195,10 @@ static void *lcd_draw_thread(void *lcdlist){
             /* fps = 1000 / (g15daemon_gettime_ms() - lastscreentime); */
             /* if the current screen is less than 20ms from the previous (equivelant to 50fps) delay it */
             /* this allows a real-world fps of 40fps with no almost frame loss and reduces peak usb bus-load */
-            if((g15daemon_gettime_ms() - lastscreentime)>=20||displaying!=lastdisplayed){  
+            if((g15daemon_gettime_ms() - lastscreentime)>=20||(char*)displaying!=lastdisplayed){  
                 uf_write_buf_to_g15(displaying);
                 lastscreentime = g15daemon_gettime_ms();
-                lastdisplayed = displaying;
+                lastdisplayed = (char*)displaying;
                 lastlcd = displaying->ident;
             }
         }
@@ -292,7 +292,7 @@ int main (int argc, char *argv[])
 
     if(uf_create_pidfile() == 0) {
         
-        lcdlist_t *lcdlist;
+        g15daemon_t *lcdlist;
         pthread_attr_t attr;
         struct passwd *nobody;
         unsigned char location[1024];

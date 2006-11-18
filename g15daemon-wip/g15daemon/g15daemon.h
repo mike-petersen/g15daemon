@@ -54,39 +54,45 @@
  * all M&G keys must be handled by the client.  If the client dies or exits, normal functions resume. */
 #define CLIENT_CMD_KEY_HANDLER 0x10
 
-/* plugin types - LCD plugins are provided with a lcd_t and keystates via EVENT when visible */
+enum {
+    /* plugin types - LCD plugins are provided with a lcd_t and keystates via EVENT when visible */
 /* CORE plugins source and sink events, have no screen associated, and are not able to quit.
-   by design they implement core functionality..CORE_LIBRARY implements graphic and other 
-   functions for use by other plugins.
+    by design they implement core functionality..CORE_LIBRARY implements graphic and other 
+    functions for use by other plugins.
 */
-#define G15_PLUGIN_NONE			0
-#define G15_PLUGIN_LCD_CLIENT		1
-#define G15_PLUGIN_CORE_KB_INPUT	2
-#define G15_PLUGIN_CORE_OS_KB		3
-#define G15_PLUGIN_LCD_SERVER		4
+    G15_PLUGIN_NONE = 0,
+    G15_PLUGIN_LCD_CLIENT =1,
+    G15_PLUGIN_CORE_KB_INPUT = 2,
+    G15_PLUGIN_CORE_OS_KB = 3,
+    G15_PLUGIN_LCD_SERVER = 4
+};
 
+enum {
+    /* plugin RETURN values */
+    G15_PLUGIN_QUIT = -1,
+    G15_PLUGIN_OK = 0
+};
 
-/* plugin RETURN values */
-#define G15_PLUGIN_QUIT -1
-#define G15_PLUGIN_OK	0
+enum {
+    /* plugin EVENT types */
+    G15_EVENT_KEYPRESS = 1,
+    G15_EVENT_VISIBILITY_CHANGED,
+    G15_EVENT_USER_FOREGROUND,
+    G15_EVENT_MLED,
+    G15_EVENT_BACKLIGHT,
+    G15_EVENT_CONTRAST,
+    G15_EVENT_REQ_PRIORITY,
+    G15_EVENT_CYCLE_PRIORITY,
+    G15_EVENT_EXITNOW,
+    /* core event types */
+    G15_COREVENT_KEYPRESS_IN,
+    G15_COREVENT_KEYPRESS_OUT
+};
 
-/* plugin EVENT types */
-#define G15_EVENT_KEYPRESS		1
-#define G15_EVENT_VISIBILITY_CHANGED	2
-#define G15_EVENT_USER_FOREGROUND	3
-#define G15_EVENT_MLED			4
-#define G15_EVENT_BACKLIGHT		5
-#define G15_EVENT_CONTRAST		6
-#define G15_EVENT_REQ_PRIORITY		7
-#define G15_EVENT_CYCLE_PRIORITY	8
-#define G15_EVENT_EXITNOW		9
-/* core event types */
-#define G15_COREVENT_KEYPRESS_IN	10
-#define G15_COREVENT_KEYPRESS_OUT	11
-
-
-#define SCR_HIDDEN			0
-#define SCR_VISIBLE			1
+enum {
+    SCR_HIDDEN = 0,
+    SCR_VISIBLE
+};
 
 /* plugin global or local */
 enum {
@@ -95,7 +101,7 @@ enum {
 };
 
 typedef struct lcd_s 		lcd_t;
-typedef struct lcdlist_s 	lcdlist_t;
+typedef struct g15daemon_s 	g15daemon_t;
 typedef struct lcdnode_s 	lcdnode_t;
 
 typedef struct plugin_event_s 	plugin_event_t;
@@ -146,7 +152,7 @@ typedef struct plugin_info_s
 
 typedef struct plugin_s 
 {
-    lcdlist_t *masterlist;
+    g15daemon_t *masterlist;
     unsigned int type;
     plugin_info_t *info;
     void *plugin_handle;
@@ -155,7 +161,7 @@ typedef struct plugin_s
 
 typedef struct lcd_s
 {
-    lcdlist_t *masterlist;
+    g15daemon_t *masterlist;
     int lcd_type;
     unsigned char buf[LCD_BUFSIZE];
     int max_x;
@@ -183,14 +189,14 @@ typedef struct plugin_event_s
 
 
 struct lcdnode_s {
-    lcdlist_t *list;
+    g15daemon_t *list;
     lcdnode_t *prev;
     lcdnode_t *next;
     lcdnode_t *last_priority;
     lcd_t *lcd;
 }lcdnode_s;
 
-struct lcdlist_s
+struct g15daemon_s
 {
     lcdnode_t *head;
     lcdnode_t *tail;
@@ -199,7 +205,7 @@ struct lcdlist_s
     struct passwd *nobody;
     volatile unsigned long numclients;
     configfile_t *config;
-}lcdlist_s;
+}g15daemon_s;
 
 pthread_mutex_t lcdlist_mutex;
 pthread_mutex_t g15lib_mutex;
@@ -215,24 +221,24 @@ int uf_return_running();
 /* create a /var/run/g15daemon.pid file, returning 0 on success else -1 */
 int uf_create_pidfile();
 /* open & run all plugins in the given directory */
-void g15_open_all_plugins(lcdlist_t **displaylist, char *plugin_directory);
+void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory);
 /* linked lists */
-lcdlist_t *ll_lcdlist_init();
-void ll_lcdlist_destroy(lcdlist_t **displaylist);
+g15daemon_t *ll_lcdlist_init();
+void ll_lcdlist_destroy(g15daemon_t **masterlist);
 
 /* open and parse config file */
-int uf_conf_open(lcdlist_t *list, char *filename);
+int uf_conf_open(g15daemon_t *list, char *filename);
 /* write the config file with all keys/sections */
-int uf_conf_write(lcdlist_t *list,char *filename);
+int uf_conf_write(g15daemon_t *list,char *filename);
 /* free all memory used by the config subsystem */
-void uf_conf_free(lcdlist_t *list);
+void uf_conf_free(g15daemon_t *list);
 /* generic handler for net clients */
 int internal_generic_eventhandler(plugin_event_t *myevent);
 #endif
 
 /* the following functions are available for use by plugins */
 /* create a new section */
-config_section_t *g15daemon_cfg_load_section(lcdlist_t *displaylist,char *name);
+config_section_t *g15daemon_cfg_load_section(g15daemon_t *masterlist,char *name);
 /* return string value from key in sectionname */
 char* g15daemon_cfg_read_string(config_section_t *section, char *key, char *defaultval);
 /* return float from key in sectionname */
@@ -257,9 +263,9 @@ int g15daemon_dlclose_plugin(void *handle) ;
 /* syslog wrapper */
 int g15daemon_log (int priority, const char *fmt, ...);
 /* cycle from displayed screen to next on list */
-void g15daemon_lcdnode_cycle(lcdlist_t *displaylist);
+void g15daemon_lcdnode_cycle(g15daemon_t *masterlist);
 /* add new screen */
-lcdnode_t *g15daemon_lcdnode_add(lcdlist_t **displaylist) ;
+lcdnode_t *g15daemon_lcdnode_add(g15daemon_t **masterlist) ;
 /* remove screen */
 void g15daemon_lcdnode_remove (lcdnode_t *oldnode);
 

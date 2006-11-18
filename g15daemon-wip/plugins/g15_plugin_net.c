@@ -314,7 +314,7 @@ exitthread:
 }
 
 /* poll the listening socket for connections, spawning new threads as needed to handle clients */
-int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
+int g15_clientconnect (g15daemon_t **g15daemon, int listening_socket) {
 
     int conn_s;
     struct pollfd pfd[1];
@@ -366,7 +366,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
 */
 static void lcdserver_thread(void *lcdlist){
 
-    lcdlist_t *displaylist = (lcdlist_t*) lcdlist ;
+    g15daemon_t *masterlist = (g15daemon_t*) lcdlist ;
     int g15_socket=-1;
 
     if((g15_socket = init_sockserver())<0){
@@ -379,7 +379,7 @@ static void lcdserver_thread(void *lcdlist){
     }
 
     while ( !leaving ) {
-        g15_clientconnect(&displaylist,g15_socket);
+        g15_clientconnect(&masterlist,g15_socket);
     }
 
     close(g15_socket);

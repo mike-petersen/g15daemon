@@ -236,7 +236,7 @@ int internal_generic_eventhandler(plugin_event_t *event) {
 
 
 /* free all memory used by the config subsystem */
-void uf_conf_free(lcdlist_t *list)
+void uf_conf_free(g15daemon_t *list)
 {
     config_section_t *section=list->config->sections;
     config_items_t *tmpitem=NULL;
@@ -266,7 +266,7 @@ void uf_conf_free(lcdlist_t *list)
 }
 
 /* write the config file with all keys/sections */
-int uf_conf_write(lcdlist_t *list,char *filename)
+int uf_conf_write(g15daemon_t *list,char *filename)
 {
     int config_fd=-1;
     config_section_t *foo=list->config->sections;
@@ -298,7 +298,7 @@ int uf_conf_write(lcdlist_t *list,char *filename)
 }
 
 /* search the list for valid section name return pointer to section, or NULL otherwise */
-config_section_t* uf_search_confsection(lcdlist_t *list,char *sectionname){
+config_section_t* uf_search_confsection(g15daemon_t *list,char *sectionname){
     config_section_t *section=list->config->sections;
     
     while(section!=NULL){
@@ -327,21 +327,21 @@ config_items_t* uf_search_confitem(config_section_t *section, char *key){
 
 
 /* return pointer to section, or create a new section if it doesnt exist */
-config_section_t *g15daemon_cfg_load_section(lcdlist_t *displaylist,char *name) {
+config_section_t *g15daemon_cfg_load_section(g15daemon_t *masterlist,char *name) {
     
     config_section_t *new = NULL;
-    if((new=uf_search_confsection(displaylist,name))!=NULL)
+    if((new=uf_search_confsection(masterlist,name))!=NULL)
         return new;
     new = g15daemon_xmalloc(sizeof(config_section_t));
     new->head = new;
     new->next = NULL;;
     new->sectionname=strdup(name);
-    if(!displaylist->config->sections){
-        displaylist->config->sections=new;
-        displaylist->config->sections->head = new;
+    if(!masterlist->config->sections){
+        masterlist->config->sections=new;
+        masterlist->config->sections->head = new;
     } else {
-        displaylist->config->sections->head->next=new;
-        displaylist->config->sections->head = new;
+        masterlist->config->sections->head->next=new;
+        masterlist->config->sections->head = new;
     }
     return new;
 }
@@ -452,7 +452,7 @@ char* g15daemon_cfg_read_string(config_section_t *section, char *key, char *defa
 }
 
 
-int uf_conf_open(lcdlist_t *list, char *filename) {
+int uf_conf_open(g15daemon_t *list, char *filename) {
 
     char *buffer, *lines;
     int config_fd=-1;
