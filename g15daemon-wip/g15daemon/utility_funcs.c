@@ -279,7 +279,7 @@ int uf_conf_write(lcdlist_t *list,char *filename)
     while(foo!=NULL){
         item=foo->items;
         memset(line,0,1024);
-        if(foo->sectionname){
+        if(foo->sectionname!=NULL){
             snprintf(line,1024,"\n[%s]\n",foo->sectionname);
             write(config_fd,line,strlen(line));
             while(item!=NULL){
@@ -475,7 +475,7 @@ int uf_conf_open(lcdlist_t *list, char *filename) {
         start=sect+i;
         if(start[0]=='#'){
 	        /* comment.. ignore */
-        }else if(strcmp(start,"]")<0) { /* section title */
+        }else if(strrchr(start,']')) { /* section title */
             char sectiontitle[1024];
             memset(sectiontitle,0,1024);
             strncpy(sectiontitle,start+1,strlen(start)-2);
