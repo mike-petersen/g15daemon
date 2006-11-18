@@ -40,6 +40,7 @@ simple Clock plugin, replace the various functions with your own, and change the
 
 
 static int mode=1;
+static int showdate=0;
 
 static int *lcdclock(lcd_t *lcd)
 {
@@ -48,6 +49,7 @@ static int *lcdclock(lcd_t *lcd)
     int narrows=0;
     int totalwidth=0;
     char buf[10];
+    int height = G15_LCD_HEIGHT;
     g15canvas *canvas = (g15canvas *) malloc (sizeof (g15canvas));
 
     if (canvas != NULL)
@@ -62,24 +64,33 @@ static int *lcdclock(lcd_t *lcd)
     
     memset(lcd->buf,0,G15_BUFFER_LEN);
     memset(buf,0,10);
-    if(mode){
-    	strftime(buf,6,"%H:%M",localtime(&currtime));
-    }else{
-        strftime(buf,6,"%I:%M",localtime(&currtime));
+    if(showdate) {
+        char buf2[40];
+        strftime(buf2,40,"%A %e %B %Y",localtime(&currtime));
+        g15r_renderString (canvas,buf2 , 0, G15_TEXT_MED, 80-((strlen(buf2)*5)/2), height-6);
+        height-=10;
+      }
+
+    if(mode) {
+   	strftime(buf,6,"%H:%M",localtime(&currtime));
+    } else { 
+        strftime(buf,6,"%l:%M",localtime(&currtime));
     }
     if(buf[0]==49) 
     	narrows=1;
-
+    
     len = strlen(buf); 
-
+    if(buf[0]==' ')
+     len++;
+    
     if(narrows)
         totalwidth=(len*20)+(15);
     else
         totalwidth=len*20;
 
     for (col=0;col<len;col++) 
-      g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, G15_LCD_HEIGHT, buf[col]);
-
+      g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, buf[col]);
+    
     memcpy (lcd->buf, canvas->buffer, G15_BUFFER_LEN);
     lcd->ident = currtime+100;
     free(canvas);
@@ -94,9 +105,14 @@ static int myeventhandler(plugin_event_t *myevent) {
     {
         case G15_EVENT_KEYPRESS:
             clockcfg = g15daemon_cfg_load_section(lcd->masterlist,"Clock");
-            if(myevent->value&G15_KEY_L1)
-                mode=1^mode;
-            g15daemon_cfg_write_int(clockcfg, "mode", mode);
+            if(myevent->value & G15_KEY_L2){
+                mode = 1^mode;
+                g15daemon_cfg_write_bool(clockcfg, "24hrFormat", mode);
+            }
+            if(myevent->value & G15_KEY_L3) {
+                showdate = 1^showdate;
+                g15daemon_cfg_write_bool(clockcfg, "ShowDate", showdate);   
+            }
 //        printf("Clock plugin received keypress event : %i\n",myevent->value);
           break;
         case G15_EVENT_VISIBILITY_CHANGED:
@@ -116,7 +132,8 @@ static void *callmewhenimdone(lcd_t *lcd){
 /* completely unnecessary initialisation function which could just as easily have been set to NULL in the g15plugin_info struct */
 static void *myinithandler(lcd_t *lcd){
     config_section_t *clockcfg = g15daemon_cfg_load_section(lcd->masterlist,"Clock");
-    mode=g15daemon_cfg_read_int(clockcfg, "mode",0);
+    mode=g15daemon_cfg_read_bool(clockcfg, "24hrFormat",1);
+    showdate=g15daemon_cfg_read_bool(clockcfg, "ShowDate",0);
     return NULL;
 }
 
