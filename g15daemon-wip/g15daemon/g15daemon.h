@@ -239,10 +239,14 @@ char* g15daemon_cfg_read_string(config_section_t *section, char *key, char *defa
 double g15daemon_cfg_read_float(config_section_t *section, char *key, double defaultval);
 /* return int from key in sectionname */
 int g15daemon_cfg_read_int(config_section_t *section, char *key, int defaultval);
+/* return bool as int from key in sectionname */
+int g15daemon_cfg_read_bool(config_section_t *section, char *key, int defaultval);
 /* add a new key, or update the value of an already existing key, or return -1 if section doesnt exist */
 int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val);
 int g15daemon_cfg_write_float(config_section_t *section, char *key, double val);
 int g15daemon_cfg_write_int(config_section_t *section, char *key, int val);
+/* simply write value as On or Off depending on whether val>0 */
+int g15daemon_cfg_write_bool(config_section_t *section, char *key, unsigned int val);
 
 /* send event to foreground client's eventlistener */
 int g15daemon_send_event(void *caller, unsigned int event, unsigned long value);

@@ -396,7 +396,27 @@ int g15daemon_cfg_write_float(config_section_t *section, char *key, double val) 
     snprintf(tmp,1024,"%f",val);
     return g15daemon_cfg_write_string(section, key, tmp);
 }
+
+/* simply write value as On or Off depending on whether val>0 */
+int g15daemon_cfg_write_bool(config_section_t *section, char *key, unsigned int val) {
+    char tmp[1024];
+    snprintf(tmp,1024,"%s",val?"On":"Off");
+    return g15daemon_cfg_write_string(section, key, tmp);
+}
+
 /* the config read functions will either return a value from the config file, or the default value, which will be written to the config file if the key doesnt exist */
+
+/* return bool as int from key in sectionname */
+int g15daemon_cfg_read_bool(config_section_t *section, char *key, int defaultval) {
+    
+    config_items_t *item = uf_search_confitem(section, key);
+    if(item){
+        int retval= 1^retval?(strncmp(item->value,"On",2)==0):1;
+           return retval;
+    }
+    g15daemon_cfg_write_bool(section, key, defaultval);
+    return defaultval;
+}
 
 /* return int from key in sectionname */
 int g15daemon_cfg_read_int(config_section_t *section, char *key, int defaultval) {
