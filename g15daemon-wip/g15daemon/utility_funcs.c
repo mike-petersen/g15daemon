@@ -465,8 +465,6 @@ int uf_conf_open(g15daemon_t *list, char *filename) {
     list->config=g15daemon_xmalloc(sizeof(configfile_t));
     list->config->sections=NULL;
 
-    config_fd = open(filename,O_RDWR);
-
     if (lstat(filename, &stats) == -1)
         return -1;
     if (!(config_fd = open(filename, O_RDWR)))
