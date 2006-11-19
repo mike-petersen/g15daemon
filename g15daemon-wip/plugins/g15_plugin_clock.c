@@ -102,7 +102,7 @@ static int *lcdclock(lcd_t *lcd)
 	  num = 12;
 
 	if (num >= 0)
-	  g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, num);
+	  g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, G15_COLOR_BLACK, num);
       }
     
     if(ampm[0]!=0)
