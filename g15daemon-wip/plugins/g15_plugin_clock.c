@@ -92,7 +92,18 @@ static int *lcdclock(lcd_t *lcd)
         totalwidth=len*20;
 
     for (col=0;col<len;col++) 
-      g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, buf[col]);
+      {
+      	int num = -1;
+	if ((buf[col] > 47) && (buf[col] < 59))
+	  num = buf[col] - 48;
+	else if (buf[col] == 45)
+	  num = 11;
+	else if (buf[col] == 46)
+	  num = 12;
+
+	if (num >= 0)
+	  g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, num);
+      }
     
     if(ampm[0]!=0)
       g15r_renderString (canvas,ampm,0,G15_TEXT_LARGE,totalwidth,height-6);
