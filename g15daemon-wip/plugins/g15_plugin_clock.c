@@ -106,7 +106,7 @@ static int *lcdclock(lcd_t *lcd)
       }
     
     if(ampm[0]!=0)
-      g15r_renderString (canvas,ampm,0,G15_TEXT_LARGE,totalwidth,height-6);
+      g15r_renderString (canvas,ampm,0,G15_TEXT_LARGE,totalwidth+15,height-6);
 
     memcpy (lcd->buf, canvas->buffer, G15_BUFFER_LEN);
     lcd->ident = currtime+100;
