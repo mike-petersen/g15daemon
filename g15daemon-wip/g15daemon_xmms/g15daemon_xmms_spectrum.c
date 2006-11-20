@@ -296,7 +296,9 @@ static void g15analyser_init(void) {
 
 static void g15analyser_cleanup(void) {
     
+    pthread_mutex_lock (&g15buf_mutex);
     leaving=1;
+    pthread_mutex_unlock (&g15buf_mutex);
     pthread_join (g15send_thread_hd, NULL);
     pthread_join (g15keys_thread_hd, NULL);
     
@@ -332,21 +334,24 @@ static void g15analyser_playback_stop(void) {
 static void g15analyser_render_pcm(gint16 data[2][512]) {
     pthread_mutex_lock (&g15buf_mutex);
 
-    gint i;
-    gint max;
-    gint scale = 128;
-
-    do
+    if (playing && !leaving)
       {
-	    max = 0;
-	    for (i = 0; i < G15_LCD_WIDTH; i++)
+	    gint i;
+	    gint max;
+	    gint scale = 128;
+	
+	    do
 	      {
-		scope_data[i] = data[0][i] / scale;
-		if (abs(scope_data[i]) > abs(max))
-		  max = scope_data[i];
-	      }
-	    scale += 128;
-      } while (abs(max) > 10);
+		    max = 0;
+		    for (i = 0; i < G15_LCD_WIDTH; i++)
+		      {
+			scope_data[i] = data[0][i] / scale;
+			if (abs(scope_data[i]) > abs(max))
+			  max = scope_data[i];
+		      }
+		    scale += 128;
+	      } while (abs(max) > 10);
+      }
 
     pthread_mutex_unlock (&g15buf_mutex);
 }
@@ -355,30 +360,34 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
     
     pthread_mutex_lock(&g15buf_mutex);
 
-    gint i;
-    gdouble y;
-    int j;
-    int xscale[] = {0, 1, 2, 3, 5, 7, 10, 14, 20, 28, 40, 54, 74,101, 137, 187, 255};
-
-    if(!g15screen_fd)
-        return;
-    
-    for(i = 0; i < NUM_BANDS; i++)
-    {
-      for(j=xscale[i], y=0; j < xscale[i+1]; j++)
+    if (playing && !leaving)
       {
-	  if(data[0][j] > y)
-	    y = data[0][j];
+	    gint i;
+	    gdouble y;
+	    int j;
+	    int xscale[] = {0, 1, 2, 3, 5, 7, 10, 14, 20, 28, 40, 54, 74,101, 137, 187, 255};
+	
+	    if(!g15screen_fd)
+	        return;
+	    
+	    for(i = 0; i < NUM_BANDS; i++)
+	    {
+	      for(j=xscale[i], y=0; j < xscale[i+1]; j++)
+	      {
+		  if(data[0][j] > y)
+		    y = data[0][j];
+	      }
+	
+	      if(y)
+	      {         
+	          y = (gint)(log(y) * (14/log(64)));
+	          if(y > 32) y = 32;
+	      }
+	
+	      bar_heights[i] = y;
+	    }
       }
 
-      if(y)
-      {         
-          y = (gint)(log(y) * (14/log(64)));
-          if(y > 32) y = 32;
-      }
-
-      bar_heights[i] = y;
-    }
     pthread_mutex_unlock(&g15buf_mutex);
 
     return;
