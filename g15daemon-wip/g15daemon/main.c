@@ -195,6 +195,7 @@ static void *lcd_draw_thread(void *lcdlist){
             /* fps = 1000 / (g15daemon_gettime_ms() - lastscreentime); */
             /* if the current screen is less than 20ms from the previous (equivelant to 50fps) delay it */
             /* this allows a real-world fps of 40fps with no almost frame loss and reduces peak usb bus-load */
+                        
             if((g15daemon_gettime_ms() - lastscreentime)>=20||(char*)displaying!=lastdisplayed){  
                 uf_write_buf_to_g15(displaying);
                 lastscreentime = g15daemon_gettime_ms();
@@ -287,6 +288,13 @@ int main (int argc, char *argv[])
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
         exit(0);
     }
+    
+    /* init stuff here..  */
+    if((retval=initLibG15())==G15_ERROR_OPENING_USB_DEVICE){
+        g15daemon_log(LOG_ERR,"Unable to attach to the G15 Keyboard... exiting");
+        exit(1);
+    }
+        
     if(!g15daemon_debug)
         daemon(0,0);
 
@@ -308,17 +316,10 @@ int main (int argc, char *argv[])
             nobody = getpwuid(geteuid());
             g15daemon_log(LOG_WARNING,"BEWARE: running as effective uid %i\n",nobody->pw_uid);
         }
-
-        /* init stuff here..  */
-        retval = initLibG15();
+        
         setLCDContrast(1); 
         setLEDs(0);
         
-        if(retval != G15_NO_ERROR){
-            g15daemon_log(LOG_ERR,"Unable to find G15 keyboard or the keyboard is already handled. Exiting");
-            goto exitnow;
-        }
-    
         /* initialise the linked list */
         lcdlist = ll_lcdlist_init();
         lcdlist->nobody = nobody;
