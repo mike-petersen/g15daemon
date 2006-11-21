@@ -155,16 +155,25 @@ static void *keyboard_watch_thread(void *lcdlist){
     
     unsigned int keypresses = 0;
     int retval = 0;
-    
     while (!leaving) {
         
         pthread_mutex_lock(&g15lib_mutex);
         retval = getPressedKeys(&keypresses, 40);
         pthread_mutex_unlock(&g15lib_mutex);
         
+        /* every 2nd packet contains the codes we want.. immediately try again */
+        while (retval == G15_ERROR_TRY_AGAIN){
+            pthread_mutex_lock(&g15lib_mutex);
+            retval = getPressedKeys(&keypresses, 40);
+            pthread_mutex_unlock(&g15lib_mutex);
+        }
+
         if(retval == G15_NO_ERROR){
             g15daemon_send_event(masterlist->current->lcd, 
-                       G15_EVENT_KEYPRESS, keypresses);
+                                 G15_EVENT_KEYPRESS, keypresses);
+        }
+        if(retval == G15_ERROR_READING_USB_DEVICE){
+            //g15daemon_log(LOG_WARNING,"Error reading the keyboard");
         }
         g15daemon_msleep(10);
     }
@@ -205,9 +214,11 @@ static void *lcd_draw_thread(void *lcdlist){
         }
         
         if(displaying->state_changed ){
+            pthread_mutex_lock(&g15lib_mutex);
             setLCDContrast(displaying->contrast_state);
             setLEDs(displaying->mkey_state);
             setLCDBrightness(displaying->backlight_state);
+            pthread_mutex_unlock(&g15lib_mutex);
             displaying->state_changed = 0;
         }
             
