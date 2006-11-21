@@ -246,6 +246,7 @@ int main (int argc, char *argv[])
     pid_t daemonpid;
     int retval;
     int i;
+    int cycle_cmdline_override=0;
     struct sigaction new_action;
     cycle_key = G15_KEY_MR;
     unsigned char user[256];
@@ -281,6 +282,7 @@ int main (int argc, char *argv[])
 
         if (!strncmp(daemonargs, "-s",2) || !strncmp(daemonargs, "--switch",8)) {
             cycle_key = G15_KEY_L1;
+            cycle_cmdline_override=1;
         }
 
         if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",7)) {
@@ -312,6 +314,7 @@ int main (int argc, char *argv[])
     if(uf_create_pidfile() == 0) {
         
         g15daemon_t *lcdlist;
+        config_section_t *global_cfg=NULL;
         pthread_attr_t attr;
         struct passwd *nobody;
         unsigned char location[1024];
@@ -336,7 +339,11 @@ int main (int argc, char *argv[])
         lcdlist->nobody = nobody;
         
         uf_conf_open(lcdlist, "/etc/g15daemon.conf");
-                /* all other processes/threads should be seteuid nobody */
+        global_cfg=g15daemon_cfg_load_section(lcdlist,"Global");
+        if(!cycle_cmdline_override){
+            cycle_key = 1==g15daemon_cfg_read_bool(global_cfg,"Use MR as Cycle Key",0)?G15_KEY_MR:G15_KEY_L1;
+        }
+               /* all other processes/threads should be seteuid nobody */
         if(nobody!=NULL) {
             seteuid(nobody->pw_uid);
             setegid(nobody->pw_gid);
