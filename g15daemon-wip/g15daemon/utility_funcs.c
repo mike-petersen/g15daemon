@@ -273,21 +273,26 @@ int uf_conf_write(g15daemon_t *list,char *filename)
     config_items_t * item=NULL;
     char line[1024];
     
-    
     config_fd = open(filename,O_CREAT|O_RDWR|O_TRUNC);
     if(config_fd){
-    snprintf(line,1024,"# G15Daemon Configuration File\n");
+    snprintf(line,1024,"# G15Daemon Configuration File\n# any items entered before a [section] header\n# will be in the Global config space\n# comments you wish to keep should start with a semicolon';'\n");
     write(config_fd,line,strlen(line));
     while(foo!=NULL){
         item=foo->items;
         memset(line,0,1024);
         if(foo->sectionname!=NULL){
             snprintf(line,1024,"\n[%s]\n",foo->sectionname);
+            if(strcmp(foo->sectionname,"Global")!=0) // hide global section header.. 
             write(config_fd,line,strlen(line));
+            else
+                write(config_fd,"\n",strlen("\n"));
             while(item!=NULL){
                 memset(line,0,1024);
                 if(item->key!=NULL){
-                    snprintf(line,1024,"%s: %s\n",item->key, item->value);
+                    if(item->key[0]==';') // comment
+                        snprintf(line,1024,"%s\n",item->key);
+                    else
+                        snprintf(line,1024,"%s: %s\n",item->key, item->value);
                     write(config_fd,line,strlen(line));
                 }
                 item=item->next;
@@ -353,6 +358,8 @@ config_section_t *g15daemon_cfg_load_section(g15daemon_t *masterlist,char *name)
 /* cleanup whitespace */
 char * uf_remove_whitespace(char *str){
     int z=0;
+    if(str==NULL)
+        str=strdup(" ");
     while(isspace(str[z])&&str[z])
         z++;
     str+=z;
@@ -363,10 +370,11 @@ char * uf_remove_whitespace(char *str){
 int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val){
     
     config_items_t *new = NULL;
+    const char empty[]=" ";
 
     if(section==NULL)
         return -1;
-
+    
     if((uf_search_confitem(section, key))){
         free(new);
         new=uf_search_confitem(section, key);
@@ -538,28 +546,36 @@ int uf_conf_open(g15daemon_t *list, char *filename) {
     buffer[stats.st_size] = '\0';
         
     lines=strtok_r(buffer,"\n",&bar);
-        
+    config_section_t *section=NULL;
     while(lines!=NULL){
         sect=strdup(lines);
-        config_section_t *section;
+        
         i=0;
         while(isspace(sect[i])){
             i++;
         }
         start=sect+i;
         if(start[0]=='#'){
-	        /* comment.. ignore */
-        }else if(strrchr(start,']')) { /* section title */
+	   /* header - ignore */
+           /* comments start with ; and can be produced like so:
+             g15daemon_cfg_write_string(noload_cfg,"; Plugins in this section will not be loaded on start","");
+             the value parameter must not be used.
+           */
+        } else if(strrchr(start,']')) { /* section title */
             char sectiontitle[1024];
             memset(sectiontitle,0,1024);
             strncpy(sectiontitle,start+1,strlen(start)-2);
             section = g15daemon_cfg_load_section(list,sectiontitle);
         }else{
             /*section keys */
+            if(section==NULL){
+                /* create an internal section "Global" which is the default for items not under a [section] header */
+                section=g15daemon_cfg_load_section(list,"Global");
+            }
             char *foo=NULL;
-            char *key = uf_remove_whitespace( strtok_r(start,":",&foo) );
-            char *val = uf_remove_whitespace( strtok_r(NULL,":", &foo) );
-
+            char *key = uf_remove_whitespace( strtok_r(start,":=",&foo) );
+            char *val = uf_remove_whitespace( strtok_r(NULL,":=", &foo) );
+            
             g15daemon_cfg_write_string(section,key,val);
         }        
         free(sect);
