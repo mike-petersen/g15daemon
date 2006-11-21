@@ -272,6 +272,8 @@ int uf_conf_write(g15daemon_t *list,char *filename)
     config_section_t *foo=list->config->sections;
     config_items_t * item=NULL;
     char line[1024];
+    
+    
     config_fd = open(filename,O_CREAT|O_RDWR|O_TRUNC);
     if(config_fd){
     snprintf(line,1024,"# G15Daemon Configuration File\n");
@@ -284,8 +286,10 @@ int uf_conf_write(g15daemon_t *list,char *filename)
             write(config_fd,line,strlen(line));
             while(item!=NULL){
                 memset(line,0,1024);
-                snprintf(line,1024,"%s: %s\n",item->key, item->value);
-                write(config_fd,line,strlen(line));
+                if(item->key!=NULL){
+                    snprintf(line,1024,"%s: %s\n",item->key, item->value);
+                    write(config_fd,line,strlen(line));
+                }
                 item=item->next;
             }
         }
@@ -363,7 +367,6 @@ int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val){
     if(section==NULL)
         return -1;
 
-    
     if((uf_search_confitem(section, key))){
         free(new);
         new=uf_search_confitem(section, key);
@@ -372,15 +375,67 @@ int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val){
         new=g15daemon_xmalloc(sizeof(config_items_t));
         new->head=new;
         new->next=NULL;
+        
         new->key=strdup(key);
         new->value=strdup(val);
         if(!section->items){
+            new->prev=NULL;
             section->items=new;
             section->items->head=new;
         }else{
+            new->prev=section->items->head;
             section->items->head->next=new;
             section->items->head=new;
         }
+    }
+    return 0;
+}
+
+/* remoe a key/value pair from named section */
+int g15daemon_cfg_remove_key(config_section_t *section, char *key){
+    
+    config_items_t *new = NULL;
+    config_items_t *next = NULL;
+    config_items_t *prev = NULL;
+    if(section==NULL)
+        return -1;
+    
+    if((uf_search_confitem(section, key))){
+        new=uf_search_confitem(section, key);
+        prev=new->prev;
+        next=new->next;
+        if(prev){
+            prev->next=new->next;
+        }else{
+             if(!next) {
+                    free(section->items);
+                    section->items=NULL;
+                }
+                else
+                    section->items=next;
+            }
+
+        if(new->head==new){
+            if(prev){
+                prev->head = prev;
+                section->items->head=prev;
+            }
+            if(!prev){
+                if(!next) {
+                    free(section->items);
+                    section->items=NULL;
+                }
+            }
+        }
+        if(next){
+            if(prev)
+            	next->prev=prev;
+            else
+                next->prev=NULL;
+        }
+        free(new->key);
+        free(new->value);
+        free(new);
     }
     return 0;
 }
@@ -409,9 +464,10 @@ int g15daemon_cfg_write_bool(config_section_t *section, char *key, unsigned int 
 /* return bool as int from key in sectionname */
 int g15daemon_cfg_read_bool(config_section_t *section, char *key, int defaultval) {
     
+    int retval=0;
     config_items_t *item = uf_search_confitem(section, key);
     if(item){
-        int retval= 1^retval?(strncmp(item->value,"On",2)==0):1;
+        retval = 1^retval?(strncmp(item->value,"On",2)==0):1;
            return retval;
     }
     g15daemon_cfg_write_bool(section, key, defaultval);
@@ -500,7 +556,7 @@ int uf_conf_open(g15daemon_t *list, char *filename) {
             section = g15daemon_cfg_load_section(list,sectiontitle);
         }else{
             /*section keys */
-            char *foo;
+            char *foo=NULL;
             char *key = uf_remove_whitespace( strtok_r(start,":",&foo) );
             char *val = uf_remove_whitespace( strtok_r(NULL,":", &foo) );
 
@@ -509,6 +565,7 @@ int uf_conf_open(g15daemon_t *list, char *filename) {
         free(sect);
         lines=strtok_r(NULL,"\n",&bar);
     }
+
     free(buffer);
     return 0;
 }
