@@ -282,10 +282,7 @@ int uf_conf_write(g15daemon_t *list,char *filename)
         memset(line,0,1024);
         if(foo->sectionname!=NULL){
             snprintf(line,1024,"\n[%s]\n",foo->sectionname);
-            if(strcmp(foo->sectionname,"Global")!=0) // hide global section header.. 
             write(config_fd,line,strlen(line));
-            else
-                write(config_fd,"\n",strlen("\n"));
             while(item!=NULL){
                 memset(line,0,1024);
                 if(item->key!=NULL){
