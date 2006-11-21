@@ -248,7 +248,7 @@ int main (int argc, char *argv[])
     int i;
     int cycle_cmdline_override=0;
     struct sigaction new_action;
-    cycle_key = G15_KEY_MR;
+    cycle_key = G15_KEY_L1;
     unsigned char user[256];
     
     pthread_t keyboard_thread;
@@ -281,7 +281,7 @@ int main (int argc, char *argv[])
         }
 
         if (!strncmp(daemonargs, "-s",2) || !strncmp(daemonargs, "--switch",8)) {
-            cycle_key = G15_KEY_L1;
+            cycle_key = G15_KEY_MR;
             cycle_cmdline_override=1;
         }
 
