@@ -115,6 +115,7 @@ typedef struct configfile_s 	configfile_t;
 typedef struct config_items_s
 {
     config_items_t *next;
+    config_items_t *prev;
     config_items_t *head;
     char *key;
     char *value;
@@ -148,6 +149,7 @@ typedef struct plugin_info_s
     int *(*event_handler) (void *);
     /* init func if there is one else NULL*/
     int *(*plugin_init) (void *);
+    char *filename;
 } plugin_info_s;
 
 typedef struct plugin_s 
@@ -232,6 +234,8 @@ int uf_conf_open(g15daemon_t *list, char *filename);
 int uf_conf_write(g15daemon_t *list,char *filename);
 /* free all memory used by the config subsystem */
 void uf_conf_free(g15daemon_t *list);
+/* search the list for valid key called "key" in section named "section" return pointer to item or NULL */
+config_items_t* uf_search_confitem(config_section_t *section, char *key);
 /* generic handler for net clients */
 int internal_generic_eventhandler(plugin_event_t *myevent);
 #endif
@@ -253,6 +257,8 @@ int g15daemon_cfg_write_float(config_section_t *section, char *key, double val);
 int g15daemon_cfg_write_int(config_section_t *section, char *key, int val);
 /* simply write value as On or Off depending on whether val>0 */
 int g15daemon_cfg_write_bool(config_section_t *section, char *key, unsigned int val);
+/* remoe a key/value pair from named section */
+int g15daemon_cfg_remove_key(config_section_t *section, char *key);
 
 /* send event to foreground client's eventlistener */
 int g15daemon_send_event(void *caller, unsigned int event, unsigned long value);
