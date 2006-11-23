@@ -169,15 +169,19 @@ int g15_send(int sock, char *buf, unsigned int len)
     while(total < len && !leaving) {
         memset(pfd,0,sizeof(pfd));
         pfd[0].fd = sock;
-        pfd[0].events = POLLOUT;
+        pfd[0].events = POLLOUT | POLLERR | POLLHUP | POLLNVAL;
         if(poll(pfd,1,500)>0) {
-            if(pfd[0].revents & POLLOUT) {
+            if(pfd[0].revents & POLLOUT && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) {
                 retval = send(sock, buf+total, bytesleft, 0);
                 if (retval == -1) { 
                     break; 
                 }
                 bytesleft -= retval;
                 total += retval;
+            }
+            if((pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)){
+                retval=-1;
+                break;
             }
         }
     }
@@ -197,17 +201,17 @@ int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
     while(total < len  && !leaving) {
         memset(pfd,0,sizeof(pfd));
         pfd[0].fd = sock;
-        pfd[0].events = POLLIN | POLLPRI;
+        pfd[0].events = POLLIN | POLLPRI | POLLERR | POLLHUP | POLLNVAL;
         if(poll(pfd,1,500)>0){
-            if(pfd[0].revents & POLLPRI) { /* receive out-of-band request from client and deal with it */
+            if(pfd[0].revents & POLLPRI && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) { /* receive out-of-band request from client and deal with it */
                 memset(msgbuf,0,20);
                 msgret = recv(sock, msgbuf, 10 , MSG_OOB);
                 if (msgret < 1) {
                     break;
                 }
-                process_client_cmds(lcdnode, sock, msgbuf,len);
+           	process_client_cmds(lcdnode, sock, msgbuf,len);
             }
-            else if(pfd[0].revents & POLLIN) {
+            else if(pfd[0].revents & POLLIN && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) {
 
                 retval = recv(sock, buf+total, bytesleft, 0);
                 if (retval < 1) { 
@@ -216,10 +220,15 @@ int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
                 total += retval;
                 bytesleft -= retval;
             }
+            if((pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)){
+               retval=-1;
+               break;
+            }
         }
     }
     return total;
 } 
+
 
 /* the client must send 6880 bytes for each lcd screen.  This thread will continue to copy data
 * into the clients LCD buffer for as long as the connection remains open. 
