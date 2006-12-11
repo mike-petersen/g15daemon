@@ -247,10 +247,13 @@ static int draw_analog(g15canvas *c)
   else 
     strftime(time,sizeof(time),"%r",t);
   
-  g15r_renderString(c, (unsigned char*)time,  0, G15_TEXT_LARGE, 60, 5);
-  g15r_renderString(c, (unsigned char*)day,   1, G15_TEXT_LARGE, 60, 5);
-  g15r_renderString(c, (unsigned char*)date,  2, G15_TEXT_LARGE, 60, 5);
-  g15r_renderString(c, (unsigned char*)year,  3, G15_TEXT_LARGE, 60, 5);
+  if(showdate) {
+  	g15r_renderString(c, (unsigned char*)time,  0, G15_TEXT_LARGE, 60, 5);
+  	g15r_renderString(c, (unsigned char*)day,   1, G15_TEXT_LARGE, 60, 5);
+  	g15r_renderString(c, (unsigned char*)date,  2, G15_TEXT_LARGE, 60, 5);
+  	g15r_renderString(c, (unsigned char*)year,  3, G15_TEXT_LARGE, 60, 5);
+  } else 
+	g15r_renderString(c, (unsigned char*)time, 0, G15_TEXT_LARGE, 60, 18);
 
   return G15_PLUGIN_OK;
 }
