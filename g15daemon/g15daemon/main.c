@@ -259,13 +259,14 @@ int main (int argc, char *argv[])
 
         /* init stuff here..  */
         retval = initLibG15();
-        setLCDContrast(1); 
-        setLEDs(0);
-        
         if(retval != G15_NO_ERROR){
             daemon_log(LOG_ERR,"Unable to find G15 keyboard or the keyboard is already handled. Exiting");
             daemon_retval_send(2);
             goto exitnow;
+
+        setLCDContrast(1); 
+        setLEDs(0);
+        
         }
 #ifdef HAVE_LINUX_UINPUT_H
         retval = g15_init_uinput();
