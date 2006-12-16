@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <ctype.h>
 
 #include <config.h>
 #include <libg15.h>
@@ -293,6 +294,11 @@ int main (int argc, char *argv[])
 
         if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",7)) {
             g15daemon_debug = 1;
+            if((argv[i+1])!=NULL)
+             if(isdigit(argv[i+1][0])){
+              g15daemon_debug = atoi(argv[i+1]);
+              if(g15daemon_debug==0) g15daemon_debug = 1;
+            }
         }
         
         if (!strncmp(daemonargs, "-u",2) || !strncmp(daemonargs, "--user",7)) {
