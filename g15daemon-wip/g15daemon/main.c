@@ -301,6 +301,10 @@ int main (int argc, char *argv[])
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
         exit(0);
     }
+
+    /* set libg15 debugging to our debug setting */
+    if(LIBG15_VERSION>=1200)
+        libg15Debug(g15daemon_debug);
     
     /* init stuff here..  */
     if((retval=initLibG15())==G15_ERROR_OPENING_USB_DEVICE){
@@ -333,6 +337,7 @@ int main (int argc, char *argv[])
         
         setLCDContrast(1); 
         setLEDs(0);
+        setLCDBrightness(1);
         
         /* initialise the linked list */
         lcdlist = ll_lcdlist_init();
@@ -400,7 +405,8 @@ int main (int argc, char *argv[])
 
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
-
+        /* switch off the lcd backlight */
+        setLCDBrightness(0);
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1100
         exitLibG15(); 
