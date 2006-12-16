@@ -80,6 +80,15 @@ static void *keyboard_watch_thread(void *lcdlist){
                 lastkeypresses = keypresses;
             }
         }
+        if(retval == -ENODEV && LIBG15_VERSION>=1200) {
+          pthread_mutex_lock(&g15lib_mutex);
+          while((retval=re_initLibG15() != G15_NO_ERROR) && !leaving){
+           sleep(1);
+          }
+          if(!leaving) { displaylist->current->lcd->state_changed=1; displaylist->current->lcd->ident=random();}
+          pthread_mutex_unlock(&g15lib_mutex); 
+        }
+
         pthread_msleep(10);
     }
     return NULL;
