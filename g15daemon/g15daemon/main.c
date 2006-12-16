@@ -257,17 +257,22 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
 
+        /* set libg15 debugging to our debug setting */
+        if(LIBG15_VERSION>=1200)
+          libg15Debug(g15daemon_debug);
+
         /* init stuff here..  */
         retval = initLibG15();
         if(retval != G15_NO_ERROR){
             daemon_log(LOG_ERR,"Unable to find G15 keyboard or the keyboard is already handled. Exiting");
             daemon_retval_send(2);
             goto exitnow;
+        }
 
         setLCDContrast(1); 
         setLEDs(0);
-        
-        }
+        setLCDBrightness(1);        
+
 #ifdef HAVE_LINUX_UINPUT_H
         retval = g15_init_uinput();
 #else
@@ -290,7 +295,7 @@ int main (int argc, char *argv[])
             seteuid(nobody->pw_uid);
             setegid(nobody->pw_gid);
         }
-                                                    
+
         /* initialise the linked list */
         lcdlist = lcdlist_init();
         pthread_mutex_init(&g15lib_mutex, NULL);
@@ -346,6 +351,9 @@ int main (int argc, char *argv[])
         pthread_join(server_thread,NULL);
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
+        /* new kernels auto-suspend devices without drivers, so we turn off the backlight to save having a blank screen */
+        setLCDBrightness(0);                
+
 #ifdef HAVE_LINUX_UINPUT_H
         g15_exit_uinput();
 #endif
@@ -361,7 +369,6 @@ exitnow:
     /* return to root privilages for the final countdown */
     seteuid(0);
     setegid(0);
-                
     daemon_retval_done();
     daemon_pid_file_remove();
     return 0;
