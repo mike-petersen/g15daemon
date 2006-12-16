@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
-            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n",argv[0]);
+            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) <level> or -v (--version)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR \n -v show version\n",argv[0]);
             exit(0);
         }
 
@@ -203,7 +203,13 @@ int main (int argc, char *argv[])
 
         if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",7)) {
             g15daemon_debug = 1;
+            if((argv[i+1])!=NULL)
+             if(isdigit(argv[i+1][0])){
+              g15daemon_debug = atoi(argv[i+1]);
+              if(g15daemon_debug==0) g15daemon_debug = 1;
+            }
         }
+
     }
 
     if ((daemonpid = daemon_pid_file_is_running()) >= 0) {
