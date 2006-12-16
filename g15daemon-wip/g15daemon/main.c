@@ -172,9 +172,15 @@ static void *keyboard_watch_thread(void *lcdlist){
             g15daemon_send_event(masterlist->current->lcd, 
                                  G15_EVENT_KEYPRESS, keypresses);
         }
-        if(retval == G15_ERROR_READING_USB_DEVICE){
-            //g15daemon_log(LOG_WARNING,"Error reading the keyboard");
+        if(retval == -ENODEV && LIBG15_VERSION>=1200) {
+          pthread_mutex_lock(&g15lib_mutex);
+          while((retval=re_initLibG15() != G15_NO_ERROR) && !leaving){
+           sleep(1);
+          }
+          if(!leaving) { masterlist->current->lcd->state_changed=1; masterlist->current->lcd->ident=random();}
+          pthread_mutex_unlock(&g15lib_mutex); 
         }
+
         g15daemon_msleep(10);
     }
     
