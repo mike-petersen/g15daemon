@@ -191,6 +191,15 @@ int main (int argc, char *argv[])
                     daemon_log(LOG_WARNING, "Failed to kill daemon");
             return retval < 0 ? 1 : 0;
         }
+        if (!strncmp(daemonargs, "-K",2) || !strncmp(daemonargs, "--KILL",6)) {
+#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
+            if ((retval = daemon_pid_file_kill_wait(SIGUSR1, 15)) != 0)
+#else
+                if ((retval = daemon_pid_file_kill(SIGUSR1)) != 0)
+#endif
+                    daemon_log(LOG_WARNING, "Failed to kill daemon");
+            return retval < 0 ? 1 : 0;
+        }
         if (!strncmp(daemonargs, "-v",2) || !strncmp(daemonargs, "--version",9)) {
             float lg15ver = LIBG15_VERSION;
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
@@ -200,8 +209,15 @@ int main (int argc, char *argv[])
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
-            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) <level> or -v (--version)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR \n -v show version\n",argv[0]);
+            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation",argv[0]);
+            #ifdef LIBG15_VERSION
+            #if LIBG15_VERSION >= 1200
+            printf(", if uppercase -K or -KILL turn off the keyboard backlight on the way out.");
+            #endif
+            #endif
+            printf("\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n");
             exit(0);
+
         }
 
         if (!strncmp(daemonargs, "-s",2) || !strncmp(daemonargs, "--switch",8)) {
@@ -263,6 +279,7 @@ int main (int argc, char *argv[])
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
         struct passwd *nobody;
+        int disable_kb_backlight_onexit = 0;      
         
         nobody = getpwnam("nobody");
             
@@ -287,6 +304,11 @@ int main (int argc, char *argv[])
         setLCDContrast(1); 
         setLEDs(0);
         setLCDBrightness(1);        
+        #ifdef LIBG15_VERSION
+        #if LIBG15_VERSION >= 1200
+            setKBBrightness(1);
+        #endif
+        #endif
 
 #ifdef HAVE_LINUX_UINPUT_H
         retval = g15_init_uinput();
@@ -299,7 +321,7 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
     
-        if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,0) <0){
+        if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,SIGUSR1,0) <0){
             daemon_log(LOG_ERR,"Unable to register signal handler. Exiting");
             daemon_retval_send(4);
             goto exitnow;
@@ -351,6 +373,8 @@ int main (int argc, char *argv[])
                 int sig;
                 sig = daemon_signal_next();
                 switch(sig){
+                    case SIGUSR1:
+                        disable_kb_backlight_onexit=1;
                     case SIGINT:
                     case SIGQUIT:
                         leaving = 1;
@@ -368,6 +392,12 @@ int main (int argc, char *argv[])
         pthread_join(keyboard_thread,NULL);
         /* new kernels auto-suspend devices without drivers, so we turn off the backlight to save having a blank screen */
         setLCDBrightness(0);                
+#ifdef LIBG15_VERSION
+#if LIBG15_VERSION >= 1200
+        if(disable_kb_backlight_onexit)
+          setKBBrightness(0);
+#endif
+#endif
 
 #ifdef HAVE_LINUX_UINPUT_H
         g15_exit_uinput();
