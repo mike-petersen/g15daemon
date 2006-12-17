@@ -49,6 +49,7 @@
 
 /* all threads will exit if leaving >0 */
 int leaving = 0;
+int keyboard_backlight_off_onexit = 0;
 unsigned int g15daemon_debug = 0;
 unsigned int cycle_key;
 unsigned int client_handles_keys = 0;
@@ -238,6 +239,8 @@ static void *lcd_draw_thread(void *lcdlist){
 
 void g15daemon_sighandler(int sig) {
     switch(sig){
+         case SIGUSR1:
+              keyboard_backlight_off_onexit = 1;
          case SIGINT:
          case SIGQUIT:
               leaving = 1;
@@ -274,6 +277,14 @@ int main (int argc, char *argv[])
                        printf("G15Daemon not running\n");
  		   exit(0);
         }
+        if (!strncmp(daemonargs, "-K",2) || !strncmp(daemonargs, "--KILL",6)) {
+                   daemonpid = uf_return_running();
+                   if(daemonpid>0) {
+                       kill(daemonpid,SIGUSR1);
+                   } else
+                       printf("G15Daemon not running\n");
+ 		   exit(0);
+        }
         if (!strncmp(daemonargs, "-v",2) || !strncmp(daemonargs, "--version",9)) {
             float lg15ver = LIBG15_VERSION;
             printf("G15Daemon version %s - %s\n",VERSION,uf_return_running() >= 0 ?"Loaded & Running":"Not Running");
@@ -283,7 +294,13 @@ int main (int argc, char *argv[])
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,uf_return_running() >= 0 ?"Loaded & Running":"Not Running");
-            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation,\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n",argv[0]);
+            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation",argv[0]);
+            #ifdef LIBG15_VERSION
+            #if LIBG15_VERSION >= 1200
+            printf(", if uppercase -K or -KILL turn off the keyboard backlight on the way out.");
+            #endif
+            #endif
+            printf("\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n");
             exit(0);
         }
 
@@ -319,11 +336,11 @@ int main (int argc, char *argv[])
         libg15Debug(g15daemon_debug);
     
     /* init stuff here..  */
-    if((retval=initLibG15())==G15_ERROR_OPENING_USB_DEVICE){
+    if((retval=initLibG15())!=G15_NO_ERROR){
         g15daemon_log(LOG_ERR,"Unable to attach to the G15 Keyboard... exiting");
         exit(1);
     }
-        
+
     if(!g15daemon_debug)
         daemon(0,0);
 
@@ -350,7 +367,12 @@ int main (int argc, char *argv[])
         setLCDContrast(1); 
         setLEDs(0);
         setLCDBrightness(1);
-        
+
+#ifdef LIBG15_VERSION
+#if LIBG15_VERSION >= 1200
+        setKBBrightness(1);
+#endif
+#endif                      
         /* initialise the linked list */
         lcdlist = ll_lcdlist_init();
         lcdlist->nobody = nobody;
@@ -407,6 +429,7 @@ int main (int argc, char *argv[])
         new_action.sa_flags = 0;
         sigaction(SIGINT, &new_action, NULL);
     	sigaction(SIGQUIT, &new_action, NULL);
+    	sigaction(SIGUSR1, &new_action, NULL);
         
         do {
             sleep(1);
@@ -420,6 +443,14 @@ int main (int argc, char *argv[])
         /* switch off the lcd backlight */
         setLCDBrightness(0);
 #ifdef LIBG15_VERSION
+#if LIBG15_VERSION >= 1200
+        /* if SIGUSR1 was sent to kill us, switch off the keyboard backlight as well */
+        if(keyboard_backlight_off_onexit==1)
+          setKBBrightness(0);
+#endif
+#endif
+            
+#ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1100
         exitLibG15(); 
 #endif
@@ -427,8 +458,8 @@ int main (int argc, char *argv[])
         ll_lcdlist_destroy(&lcdlist);
 
 exitnow:
-        /* return to root privilages for the final countdown */
-        seteuid(0);
+    /* return to root privilages for the final countdown */
+    seteuid(0);
     setegid(0);
     closelog();
     uf_conf_write(lcdlist,"/etc/g15daemon.conf");
