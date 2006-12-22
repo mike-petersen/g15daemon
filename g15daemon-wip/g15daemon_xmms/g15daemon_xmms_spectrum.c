@@ -39,7 +39,8 @@
 #include <xmms/configfile.h>
 #include <libg15.h>
 #include <libg15render.h>
-
+#include <X11/Xlib.h>
+#include <X11/XF86keysym.h>
 #define NUM_BANDS 16        
 
 static gint16 bar_heights[NUM_BANDS];
@@ -53,14 +54,21 @@ static void g15analyser_render_pcm(gint16 data[2][512]);
 static void g15analyser_render_freq(gint16 data[2][256]);
 
 g15canvas *canvas;
-static unsigned int leaving=0;
+
 static unsigned int vis_type=0;
 static unsigned int playing=0, paused=0;
-pthread_t g15send_thread_hd;
-pthread_t g15keys_thread_hd;
 static int g15screen_fd = -1;
 
 pthread_mutex_t g15buf_mutex;
+
+static Display *dpy;
+static Window root_win;
+
+static int mmedia_timeout_handle;
+static int g15keys_timeout_handle;
+static int g15disp_timeout_handle;
+
+static int lastvolume;
 
 VisPlugin g15analyser_vp = {
     NULL,
@@ -120,84 +128,79 @@ void g15spectrum_write_config(void)
     g_free(filename);
 }
 
-void *g15keys_thread() {
+static int poll_g15keys() {
     int keystate = 0;
     struct pollfd fds;
 
     fds.fd = g15screen_fd;
     fds.events = POLLIN;
+                                                
+    if ((poll(&fds, 1, 5)) > 0);
+        read (g15screen_fd, &keystate, sizeof (keystate));
 
-    while(!leaving){
-	if ((poll(&fds, 1, 5)) > 0);
-	  read (g15screen_fd, &keystate, sizeof (keystate));
-	if (keystate)
-	  {
-		pthread_mutex_lock (&g15buf_mutex);
-		switch (keystate)
+    if (keystate) {
+        pthread_mutex_lock (&g15buf_mutex);
+	switch (keystate)
 		  {
 		  	case G15_KEY_L1:
 			  vis_type = 1 - vis_type;
                           g15spectrum_write_config(); // save as default next time
 			  break;
-			case G15_KEY_L2:
-			  {
-			  	if (playing)
-				  {
-				  	if (paused)
-					  {
-					  	xmms_remote_play(0);
-						paused = 0;
-					  }
-					else
-					  {
-					  	xmms_remote_pause(0);
-						paused = 1;
-					  }
-				  }
-				else
-				  xmms_remote_play(0);
-				break;
-			  }
-			case G15_KEY_L3:
-			  {
-			  	if (playing)
-				  xmms_remote_stop(0);
-				break;
-			  }
-			case G15_KEY_L4:
-			  {
-			  	if (playing)
-				  xmms_remote_playlist_prev(0);
-				break;
-			  }
-			case G15_KEY_L5:
-			  {
-			  	if (playing)
-				  xmms_remote_playlist_next(0);
-				break;
-			  }
 			default:
 			  break;
 		  }
 		keystate = 0;
 		pthread_mutex_unlock (&g15buf_mutex);
 	  }
-        xmms_usleep(25000);
-    }
-    return NULL;
+    return TRUE;
 }
 
-void *g15send_thread() {
+static int poll_mmediakeys()
+{
+    long mask = KeyPressMask;
+    XEvent event;
+
+    while (XCheckMaskEvent(dpy, mask, &event)){
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPlay)) {
+          if(playing) {
+	    if (paused)  {
+	  	xmms_remote_play(0);
+		paused = 0;
+	    } else {
+	  	xmms_remote_pause(0);
+		paused = 1;
+            }
+          } else
+	      xmms_remote_play(0);
+       }
+
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioStop))
+           xmms_remote_stop(0);
+
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioNext))
+           if (playing)
+              xmms_remote_playlist_next(0);
+                                                     
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPrev))
+           if (playing)
+              xmms_remote_playlist_prev(0);
+                            
+    }
+      return TRUE;
+}
+
+
+static int g15send_func() {
     int i;
     int playlist_pos;
     char *title;
     char *artist;
     char *song;
     char *strtok_ptr;
-
-    while(!leaving){
-        pthread_mutex_lock (&g15buf_mutex);
-	g15r_clearScreen (canvas, G15_COLOR_WHITE);
+    static int vol_timeout=0;
+    
+    pthread_mutex_lock (&g15buf_mutex);
+    g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
 	if (xmms_remote_get_playlist_length(0) > 0)
 	  {
@@ -250,16 +253,28 @@ void *g15send_thread() {
 	else
 	  g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
 
+        if(lastvolume!=xmms_remote_get_main_volume(0) || vol_timeout!=0) {
+          if(lastvolume!=xmms_remote_get_main_volume(0))
+            vol_timeout=10;
+          else
+            vol_timeout--;
+
+          lastvolume = xmms_remote_get_main_volume(0);
+
+          g15r_drawBar (canvas, 10, 15, 149, 28, G15_COLOR_BLACK, lastvolume, 100, 1);
+          canvas->mode_xor=1;
+          g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 18);
+          canvas->mode_xor=0;
+        }
+
         if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
              /* connection error occurred - try to reconnect to the daemon */
-            while((g15screen_fd=new_g15_screen(G15_G15RBUF))<0 && !leaving){
+            while((g15screen_fd=new_g15_screen(G15_G15RBUF))<0){
               xmms_usleep(150000);
             }
         }
         pthread_mutex_unlock(&g15buf_mutex);
-        xmms_usleep(25000);
-    }
-    return NULL;
+    return TRUE;
 }
 
 
@@ -267,7 +282,26 @@ static void g15analyser_init(void) {
 
     pthread_mutex_init(&g15buf_mutex, NULL);        
     pthread_mutex_lock(&g15buf_mutex);
-    
+                                            
+    dpy = XOpenDisplay(getenv("DISPLAY"));
+    if (!dpy) {
+        printf("Can't open display\n");
+        return;
+    }
+    root_win = DefaultRootWindow(dpy);
+    if (!root_win) {
+        printf("Cant find root window\n");
+        return;
+    }
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPlay), AnyModifier, root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioStop), AnyModifier, root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPrev), AnyModifier, root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioNext), AnyModifier, root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         return;
     }
@@ -279,8 +313,7 @@ static void g15analyser_init(void) {
 	canvas->mode_reverse = 0;
 	canvas->mode_xor = 0;
       }
-
-    leaving = 0;
+    
     g15spectrum_read_config();
     pthread_mutex_unlock(&g15buf_mutex);
     /* increase lcd drive voltage/contrast for this client */
@@ -290,17 +323,14 @@ static void g15analyser_init(void) {
     memset(&attr,0,sizeof(pthread_attr_t));
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-    pthread_create(&g15send_thread_hd, &attr, g15send_thread, 0);
-    pthread_create(&g15keys_thread_hd, &attr, g15keys_thread, 0);
+    
+    mmedia_timeout_handle = g_timeout_add(100, poll_mmediakeys, NULL);
+    g15keys_timeout_handle = g_timeout_add(100, poll_g15keys, NULL);
+    g15disp_timeout_handle = g_timeout_add(50, g15send_func, NULL);
+    
  }
 
 static void g15analyser_cleanup(void) {
-    
-    pthread_mutex_lock (&g15buf_mutex);
-    leaving=1;
-    pthread_mutex_unlock (&g15buf_mutex);
-    pthread_join (g15send_thread_hd, NULL);
-    pthread_join (g15keys_thread_hd, NULL);
     
     pthread_mutex_lock (&g15buf_mutex);
     if (canvas != NULL)
@@ -308,6 +338,17 @@ static void g15analyser_cleanup(void) {
     if(g15screen_fd)
       close(g15screen_fd);
     pthread_mutex_unlock (&g15buf_mutex);
+    
+    XUngrabKey(dpy, XF86XK_AudioPrev, AnyModifier, root_win);
+    XUngrabKey(dpy, XF86XK_AudioNext, AnyModifier, root_win);
+    XUngrabKey(dpy, XF86XK_AudioPlay, AnyModifier, root_win);
+    XUngrabKey(dpy, XF86XK_AudioStop, AnyModifier, root_win);
+
+    gtk_timeout_remove(mmedia_timeout_handle);
+    gtk_timeout_remove(g15keys_timeout_handle);
+    gtk_timeout_remove(g15disp_timeout_handle);
+    XCloseDisplay(dpy);
+    
     return;
 }
 
@@ -334,7 +375,7 @@ static void g15analyser_playback_stop(void) {
 static void g15analyser_render_pcm(gint16 data[2][512]) {
     pthread_mutex_lock (&g15buf_mutex);
 
-    if (playing && !leaving)
+    if (playing)
       {
 	    gint i;
 	    gint max;
@@ -360,7 +401,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
     
     pthread_mutex_lock(&g15buf_mutex);
 
-    if (playing && !leaving)
+    if (playing)
       {
 	    gint i;
 	    gdouble y;
