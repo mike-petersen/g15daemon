@@ -269,9 +269,7 @@ static int g15send_func() {
 
         if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
              /* connection error occurred - try to reconnect to the daemon */
-            while((g15screen_fd=new_g15_screen(G15_G15RBUF))<0){
-              xmms_usleep(150000);
-            }
+            g15screen_fd=new_g15_screen(G15_G15RBUF);
         }
         pthread_mutex_unlock(&g15buf_mutex);
     return TRUE;
@@ -326,7 +324,7 @@ static void g15analyser_init(void) {
     
     mmedia_timeout_handle = g_timeout_add(100, poll_mmediakeys, NULL);
     g15keys_timeout_handle = g_timeout_add(100, poll_g15keys, NULL);
-    g15disp_timeout_handle = g_timeout_add(50, g15send_func, NULL);
+    g15disp_timeout_handle = g_timeout_add(75, g15send_func, NULL);
     
  }
 
