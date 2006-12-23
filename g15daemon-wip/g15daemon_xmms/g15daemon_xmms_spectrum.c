@@ -225,6 +225,8 @@ static int g15send_func() {
     char *song;
     char *strtok_ptr;
     static int vol_timeout=0;
+    long chksum=0;
+    static long last_chksum;
     
     pthread_mutex_lock (&g15buf_mutex);
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
@@ -293,12 +295,19 @@ static int g15send_func() {
           g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 18);
           canvas->mode_xor=0;
         }
-
-        if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
-          perror("lost connection, tryng again\n");
+        /* do a quicky checksum - only send frame if different */
+        for(i=0;i<G15_BUFFER_LEN;i++){
+            chksum+=canvas->buffer[i]*i;
+        }
+        if(last_chksum!=chksum) {
+          if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
+            perror("lost connection, tryng again\n");
              /* connection error occurred - try to reconnect to the daemon */
             g15screen_fd=new_g15_screen(G15_G15RBUF);
+          }
         }
+        last_chksum=chksum;
+        
         pthread_mutex_unlock(&g15buf_mutex);
     return TRUE;
 }
