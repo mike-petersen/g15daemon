@@ -69,6 +69,7 @@ static int g15keys_timeout_handle;
 static int g15disp_timeout_handle;
 
 static int lastvolume;
+static int volume;
 
 VisPlugin g15analyser_vp = {
     NULL,
@@ -177,6 +178,32 @@ static int poll_mmediakeys()
        if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioStop))
            xmms_remote_stop(g15analyser_vp.xmms_session);
 
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume)){
+             volume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+             if(volume<1)
+                volume=1;
+             xmms_remote_set_main_volume(g15analyser_vp.xmms_session, --volume);
+       }
+
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume)){
+             volume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+             if(volume>99)
+               volume=99;
+             xmms_remote_set_main_volume(g15analyser_vp.xmms_session, ++volume);
+       }
+
+       if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioMute)){
+             if(xmms_remote_get_main_volume(g15analyser_vp.xmms_session)!=0){
+               lastvolume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+               volume = 0;
+             }
+             else {
+               volume = lastvolume;
+             }
+               
+             xmms_remote_set_main_volume(g15analyser_vp.xmms_session, volume);
+       }
+       
        if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioNext))
            if (playing)
               xmms_remote_playlist_next(g15analyser_vp.xmms_session);
@@ -198,6 +225,8 @@ static int g15send_func() {
     char *song;
     char *strtok_ptr;
     static int vol_timeout=0;
+    long chksum=0;
+    static long last_chksum;
     
     pthread_mutex_lock (&g15buf_mutex);
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
@@ -253,7 +282,7 @@ static int g15send_func() {
 	else
 	  g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
 
-        if(lastvolume!=xmms_remote_get_main_volume(g15analyser_vp.xmms_session) || vol_timeout!=0) {
+        if(lastvolume!=xmms_remote_get_main_volume(g15analyser_vp.xmms_session) || vol_timeout>=0) {
           if(lastvolume!=xmms_remote_get_main_volume(g15analyser_vp.xmms_session))
             vol_timeout=10;
           else
@@ -266,14 +295,28 @@ static int g15send_func() {
           g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 18);
           canvas->mode_xor=0;
         }
-
-        if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
-          perror("lost connection, tryng again\n");
+        /* do a quicky checksum - only send frame if different */
+        for(i=0;i<G15_BUFFER_LEN;i++){
+            chksum+=canvas->buffer[i]*i;
+        }
+        if(last_chksum!=chksum) {
+          if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
+            perror("lost connection, tryng again\n");
              /* connection error occurred - try to reconnect to the daemon */
             g15screen_fd=new_g15_screen(G15_G15RBUF);
+          }
         }
+        last_chksum=chksum;
+        
         pthread_mutex_unlock(&g15buf_mutex);
     return TRUE;
+}
+
+
+int myx_error_handler(Display *dpy, XErrorEvent *err){
+
+  printf("error (%i) occured - ignoring\n",err->error_code);
+  return 0;
 }
 
 
@@ -292,6 +335,11 @@ static void g15analyser_init(void) {
         printf("Cant find root window\n");
         return;
     }
+
+    /* completely ignore errors and carry on */
+    XSetErrorHandler(myx_error_handler);
+    XFlush(dpy);
+
     XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPlay), AnyModifier, root_win,
             False, GrabModeAsync, GrabModeAsync);                                     
     XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioStop), AnyModifier, root_win,
@@ -299,6 +347,12 @@ static void g15analyser_init(void) {
     XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPrev), AnyModifier, root_win,
             False, GrabModeAsync, GrabModeAsync);                                     
     XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioNext), AnyModifier, root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume),Mod2Mask , root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume), Mod2Mask, root_win,
+            False, GrabModeAsync, GrabModeAsync);                                     
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioMute), Mod2Mask, root_win,
             False, GrabModeAsync, GrabModeAsync);                                     
 
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
@@ -342,6 +396,9 @@ static void g15analyser_cleanup(void) {
     XUngrabKey(dpy, XF86XK_AudioNext, AnyModifier, root_win);
     XUngrabKey(dpy, XF86XK_AudioPlay, AnyModifier, root_win);
     XUngrabKey(dpy, XF86XK_AudioStop, AnyModifier, root_win);
+    XUngrabKey(dpy, XF86XK_AudioLowerVolume, Mod2Mask, root_win);
+    XUngrabKey(dpy, XF86XK_AudioRaiseVolume, Mod2Mask, root_win);
+    XUngrabKey(dpy, XF86XK_AudioMute, AnyModifier, root_win);
 
     gtk_timeout_remove(mmedia_timeout_handle);
     gtk_timeout_remove(g15keys_timeout_handle);
