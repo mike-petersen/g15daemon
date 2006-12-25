@@ -1,0 +1,18 @@
+A very simple spectrum analyser for xmms.  
+Improvements and patches are welcome.
+
+This plugin depends on glib devel and xmms + X11 devel packages.
+
+To compile, run the configure script in the g15daemon source directory 
+and make, make install.
+
+New in version 0.2:
+- artist name & track name are displayed
+- now a 16 bar analyser, pretty useful :)
+- now includes oscilloscope (swap between scope and analyser with L1) 
+  (hold L1 for more than 1 second to switch)
+- Playback control with L2-L5 (L2=play/pause, L3=stop, L4=prev, L5=next)
+- Media keys are now used 
+New in version 2.0
+- Volume bar is displayed when volume changed
+- Media keys are now used 
