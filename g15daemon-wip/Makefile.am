@@ -1,6 +1,6 @@
 LLIBDIR=@LIBDIR@
 
-SUBDIRS =  libg15daemon_client g15daemon plugins g15daemon_xmms
+SUBDIRS =  libg15daemon_client g15daemon plugins
 INCLUDES =  -I$(top_srcdir)/libg15daemon_client -I$(top_srcdir)/g15daemon
 EXTRA_DIST = debian contrib Documentation lang-bindings patches rpm README.usage FAQ LICENSE images
 
@@ -17,7 +17,6 @@ dist-hook:
 	rm -rf `find $(distdir)/debian -name .svn`
 	rm -rf `find $(distdir)/contrib -name .svn`
 	rm -rf `find $(distdir)/Documentation -name .svn`
-	rm -rf `find $(distdir)/g15daemon_xmms -name .svn`
 	rm -rf `find $(distdir)/lang_bindings -name .svn`
 	rm -rf `find $(distdir)/patches -name .svn`
 	rm -rf `find $(distdir)/rpm -name .svn`

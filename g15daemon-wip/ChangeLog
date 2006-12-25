@@ -94,3 +94,4 @@ allow clients use of all 'L' keys.
 - dependency on libdaemon is now removed
 - g15daemon is now dependant on libg15render.
 - Clock now includes analog clock thanks to Rasta Freak <igor.jusic@zg.t-com.hr>
+- Moved g15daemon_xmms_spectrum plugin to separate package

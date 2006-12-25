@@ -16,7 +16,7 @@ Currently, patches to enable support for the daemon are available
 for  libgraphlcd, which in turn enables support for lcdproc, vdr,
 and any other applications able to use that  library.   A  simple
 xmms  spectrum analyser plugin, based on the finespectrum plugin,
-is also available in the package.
+is available separately.
 
 G15daemon depends on libg15 from G15tools.
 
