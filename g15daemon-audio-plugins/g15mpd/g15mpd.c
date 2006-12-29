@@ -386,10 +386,15 @@ int main(int argc, char **argv)
     if(!mpd_connect(obj))
     {
         char buffer[20];
+        pthread_attr_t attr;
+
         mpd_send_password(obj);
         memset(buffer, '\0', 20);
-        pthread_create(&Xkeys, NULL,poll_mmediakeys , NULL);
-        pthread_create(&Lkeys, NULL,Lkeys_thread , NULL);
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr,32*1024); /* set stack to 64k - dont need 8Mb !! */
+
+        pthread_create(&Xkeys, &attr, poll_mmediakeys, NULL);
+        pthread_create(&Lkeys, &attr, Lkeys_thread, NULL);
 
         do{
             mpd_status_update(obj);
