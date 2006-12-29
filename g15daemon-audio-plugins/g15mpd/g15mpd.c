@@ -170,6 +170,8 @@ static void* poll_mmediakeys()
     return NULL;
 }
 
+pthread_mutex_t lockit;
+
 void status_changed(MpdObj *mi, ChangedStatusType what)
 {
     long chksum=0;
@@ -178,9 +180,11 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     static char artist[100];
     static char title[100];
 
+    pthread_mutex_lock(&lockit);
     mpd_Song *song = mpd_playlist_get_current_song(mi);
     if(song) {
-       g15r_pixelBox (canvas, 0, 0, 160, 22, G15_COLOR_WHITE, 1, 1);
+       g15r_pixelBox (canvas, 0, 0, 159, 20, G15_COLOR_WHITE, 1, 1);
+       
        if(song->artist!=NULL)
           strncpy(artist,song->artist,99);
        if(song->title!=NULL)
@@ -254,18 +258,20 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
                 break;
         }
     }
-    g15r_pixelBox (canvas, 1, 34, 160 , 43, G15_COLOR_WHITE, 1, 1);
-    g15r_pixelBox (canvas, 10, 34, 27, 43, G15_COLOR_BLACK, 1, 1);
+
+    g15r_pixelBox (canvas, 1, 34, 158 , 41, G15_COLOR_WHITE, 1, 1);
+    g15r_pixelBox (canvas, 10, 34, 27, 42, G15_COLOR_BLACK, 1, 1);
     canvas->mode_xor=1;
     g15r_renderString (canvas, (unsigned char *)"mode", 0, G15_TEXT_SMALL, 11, 36);
     canvas->mode_xor=0;
     
     if(menulevel==0){
         if(mpd_player_get_random(mi)){
+        g15r_drawLine (canvas, 0, 42, 158, 42,G15_COLOR_WHITE);
             canvas->mode_xor=1;
-            g15r_pixelBox (canvas, 104, 34, 125 , 43, G15_COLOR_BLACK, 1, 1);
+            g15r_pixelBox (canvas, 104, 34, 125 , 42, G15_COLOR_BLACK, 1, 1);
         }else
-            g15r_pixelBox (canvas, 104, 34, 125 , 43, G15_COLOR_BLACK, 1, 0);
+            g15r_pixelBox (canvas, 104, 34, 125 , 42, G15_COLOR_BLACK, 1, 0);
             
             g15r_renderString (canvas, (unsigned char *)"Rndm", 0, G15_TEXT_SMALL, 108, 36);
             if(mpd_player_get_random(mi))
@@ -273,27 +279,27 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
                         
             if(mpd_player_get_repeat(mi)){
                 canvas->mode_xor=1;
-                g15r_pixelBox (canvas, 130, 34, 149 , 43, G15_COLOR_BLACK, 1, 1);
+                g15r_pixelBox (canvas, 130, 34, 149 , 42, G15_COLOR_BLACK, 1, 1);
             }else
-                g15r_pixelBox (canvas, 130, 34, 149 , 43, G15_COLOR_BLACK, 1, 0);
+                g15r_pixelBox (canvas, 130, 34, 149 , 42, G15_COLOR_BLACK, 1, 0);
             
                 g15r_renderString (canvas, (unsigned char *)"Rpt", 0, G15_TEXT_SMALL, 136, 36);
                 if(mpd_player_get_repeat(mi))
                     canvas->mode_xor=0;
 	// 2nd box from left - if you want it...
-        //g15r_pixelBox (canvas, 34, 34, 54 , 43, G15_COLOR_BLACK, 1, 0);
+        //g15r_pixelBox (canvas, 34, 34, 54 , 42, G15_COLOR_BLACK, 1, 0);
         //g15r_renderString (canvas, (unsigned char *)"test", 0, G15_TEXT_SMALL, 36, 36);
     }
     
     if(menulevel==1){
-        g15r_pixelBox (canvas, 104, 34, 125 , 43, G15_COLOR_BLACK, 1, 0);
+        g15r_pixelBox (canvas, 104, 34, 125 , 42, G15_COLOR_BLACK, 1, 0);
         g15r_renderString (canvas, (unsigned char *)"Vol-", 0, G15_TEXT_SMALL, 108, 36);
     
-        g15r_pixelBox (canvas, 130, 34, 149 , 43, G15_COLOR_BLACK, 1, 0);
+        g15r_pixelBox (canvas, 130, 34, 149 , 42, G15_COLOR_BLACK, 1, 0);
         g15r_renderString (canvas, (unsigned char *)"Vol+", 0, G15_TEXT_SMALL, 132, 36);
 	
         // 2nd box from left - if you want it...
-        //g15r_pixelBox (canvas, 34, 34, 54 , 43, G15_COLOR_BLACK, 1, 0);
+        //g15r_pixelBox (canvas, 34, 34, 54 , 42, G15_COLOR_BLACK, 1, 0);
         //g15r_renderString (canvas, (unsigned char *)"test", 0, G15_TEXT_SMALL, 36, 36);
     }
     
@@ -310,6 +316,7 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
         }
     }
     last_chksum=chksum;
+    pthread_mutex_unlock(&lockit);
 }
 
 
@@ -327,6 +334,7 @@ int main(int argc, char **argv)
     char *hostname = getenv("MPD_HOST");
     char *port = getenv("MPD_PORT");
     char *password = getenv("MPD_PASSWORD");
+    pthread_mutex_init(&lockit,NULL);
     /* Make the input non blocking */
 
     /* set correct hostname */	
@@ -413,6 +421,8 @@ int main(int argc, char **argv)
     XUngrabKey(dpy, XF86XK_AudioNext, AnyModifier, root_win);
     XUngrabKey(dpy, XF86XK_AudioPlay, AnyModifier, root_win);
     XUngrabKey(dpy, XF86XK_AudioStop, AnyModifier, root_win);
-
+    
+    pthread_mutex_destroy(&lockit);
+    
     return 1;
 }
