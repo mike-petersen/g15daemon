@@ -1,0 +1,5 @@
+G15mpd:
+
+A simple frontend for the MPD Media Player Daemon, for use with g15daemon.
+
+Requires X11, libg15render, and libmpd to compile.
