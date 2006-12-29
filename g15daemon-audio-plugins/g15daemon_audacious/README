@@ -1,0 +1,13 @@
+A very simple spectrum analyser and oscilloscoe for audacious.  
+Improvements and patches are welcome.
+
+This plugin depends on glib devel and audacious devel packages.
+
+To compile, run the configure script and make, make install.
+
+New in version 1.0pre:
+- artist name & track name are displayed
+- now a 16 bar analyser, pretty useful :)
+- now includes oscilloscope (swap between scope and analyser with L1)
+- Playback control with L2-L5 (L2=play/pause, L3=stop, L4=prev, L5=next)
+

@@ -1,0 +1,62 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+# $Revision: 157 $ -  $Date: 2006-11-15 23:12:39 -0500 (Wed, 15 Nov 2006) $ $Author: aneurysm9 $
+
+AC_PREREQ(2.59)
+AC_INIT(g15daemon_audacious_spectrum, [1.0pre], [mirabeaj@gmail.com])
+AC_PREFIX_DEFAULT(/usr)
+AC_CONFIG_AUX_DIR(config)
+AM_INIT_AUTOMAKE()
+AC_CONFIG_HEADER([config.h])
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_LIBTOOL
+
+# Checks for libraries.
+AC_CHECK_LIB([g15daemon_client], [g15_send],,AC_MSG_ERROR(["libg15daemon_client (or its devel package) not found. please install it"]))
+AC_CHECK_LIB([g15], [initLibG15],,AC_MSG_ERROR(["libg15 (or its devel package) not found. please install it"]))
+AC_CHECK_LIB([g15render], [g15r_loadWbmpSplash],,AC_MSG_ERROR([">=libg15render-1.2 (or its devel package) not found.  please install it"]))
+AC_CHECK_LIB([m], [sin])
+AC_CHECK_LIB([pthread], [pthread_mutex_init])
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([ fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h libg15render.h], [], [], [])
+
+dnl check for xmms devel headers
+AC_PATH_X
+
+dnl Check for Audacious
+
+PKG_CHECK_MODULES(AUDACIOUS, [audacious >= 1.1.99],
+    [],
+    [AC_MSG_ERROR([Cannot find Audacious, have you installed audacious yet?])]
+)
+
+dnl Check for GTK/GLib/GThread/Pango
+
+PKG_CHECK_MODULES(GTK, [glib-2.0 >= 2.6.0 gtk+-2.0 >= 2.6.0 gthread-2.0 pango],
+    [],
+    [AC_MSG_ERROR([Cannot find glib2/gtk2/pango])]
+)
+
+LIBS="$LIBS $GTK_LIBS"
+CPPFLAGS=$CPPFLAGS_save
+
+CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+
+# Checks for library functions.
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_SELECT_ARGTYPES
+AC_FUNC_STRFTIME
+AC_CHECK_FUNCS([memset select socket strerror])
+
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
