@@ -163,7 +163,7 @@ static void* poll_mmediakeys()
             if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPrev))
                 mpd_player_prev(obj);
         }
-        usleep(10);
+        usleep(1000);
         if(voltimeout)
             voltimeout--;
     }
@@ -175,20 +175,20 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     long chksum=0;
     static long last_chksum;
     int i;
+    static char artist[100];
+    static char title[100];
 
-
-    if(what&MPD_CST_SONGID)
-    {
-        mpd_Song *song = mpd_playlist_get_current_song(mi);
-        if(song)
-        {
-            g15r_pixelBox (canvas, 0, 0, 160, 22, G15_COLOR_WHITE, 1, 1);
-            if(song->artist!=NULL)
-                g15r_renderString (canvas, (unsigned char *)song->artist, 0, G15_TEXT_LARGE, 80-(strlen(song->artist)*8)/2, 2);
-            if(song->title!=NULL)
-                g15r_renderString (canvas, (unsigned char *)song->title, 0, G15_TEXT_MED, 80-(strlen(song->title)*5)/2, 12);
-        }
+    mpd_Song *song = mpd_playlist_get_current_song(mi);
+    if(song) {
+       g15r_pixelBox (canvas, 0, 0, 160, 22, G15_COLOR_WHITE, 1, 1);
+       if(song->artist!=NULL)
+          strncpy(artist,song->artist,99);
+       if(song->title!=NULL)
+          strncpy(title,song->title,99);
     }
+
+    g15r_renderString (canvas, (unsigned char *)artist, 0, G15_TEXT_LARGE, 80-(strlen(artist)*8)/2, 2);
+    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 80-(strlen(title)*5)/2, 12);
 
     if(what&MPD_CST_CROSSFADE){
 	// printf(GREEN"X-Fade:"RESET" %i sec.\n",mpd_status_get_crossfade(mi));
@@ -202,12 +202,17 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     if(what&MPD_CST_ELAPSED_TIME){
         unsigned char time_elapsed[41];
         unsigned char time_total[41];
+        int elapsed = mpd_status_get_elapsed_song_time(mi);
+        int total = mpd_status_get_total_song_time(mi);
+
         memset(time_elapsed,0,41);
         memset(time_total,0,41);
-        snprintf((char*)time_elapsed,40,"%02i:%02i",mpd_status_get_elapsed_song_time(mi)/60, mpd_status_get_elapsed_song_time(mi)%60);
-        snprintf((char*)time_total,40,"%02i:%02i",mpd_status_get_total_song_time(mi)/60, mpd_status_get_total_song_time(mi)%60);
+        snprintf((char*)time_elapsed,40,"%02i:%02i",elapsed/60, elapsed%60);
+        snprintf((char*)time_total,40,"%02i:%02i",total/60, total%60);
+
+        if(elapsed>0&&total>0)
+          g15r_drawBar (canvas, 10, 22, 149, 30, G15_COLOR_BLACK, elapsed, total, 1);
         
-        g15r_drawBar (canvas, 10, 22, 149, 30, G15_COLOR_BLACK, mpd_status_get_elapsed_song_time(mi), mpd_status_get_total_song_time(mi), 1);
         canvas->mode_xor=1;
         g15r_renderString (canvas,(unsigned char*)time_elapsed,0,G15_TEXT_MED,12,23);
         g15r_renderString (canvas,(unsigned char*)time_total,0,G15_TEXT_MED,124,23);
