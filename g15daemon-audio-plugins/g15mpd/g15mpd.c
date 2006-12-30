@@ -72,19 +72,20 @@ void *Lkeys_thread() {
     char ver[5];
     int foo;
     strncpy(ver,G15DAEMON_VERSION,3);
-    float g15version;
-    sscanf(ver,"%f",&g15version);
+    float g15v;
+    sscanf(ver,"%f",&g15v);
 
     fds.fd = g15screen_fd;
     fds.events = POLLIN;
     
     while(!leaving){
         /* g15daemon series 1.2 need key request packets */
-        if(g15version<1.9)
+        if((g15v*10)<=18) 
           keystate = g15_send_cmd (g15screen_fd, G15DAEMON_GET_KEYSTATE, foo);
         else        
           if ((poll(&fds, 1, 5)) > 0)
             read (g15screen_fd, &keystate, sizeof (keystate));
+
         if (keystate)
         {
             switch (keystate)
