@@ -163,7 +163,7 @@ static void* poll_mmediakeys()
             if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPrev))
                 mpd_player_prev(obj);
         }
-        usleep(1000);
+        usleep(100*1000);
         if(voltimeout)
             voltimeout--;
     }
@@ -202,8 +202,8 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     {
 	// printf(GREEN"Playlist changed"RESET"\n");
     }
-    
-    if(what&MPD_CST_ELAPSED_TIME){
+
+    if(what&MPD_CST_ELAPSED_TIME && !voltimeout){
         unsigned char time_elapsed[41];
         unsigned char time_total[41];
         int elapsed = mpd_status_get_elapsed_song_time(mi);
@@ -224,15 +224,18 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     }
 
     if(what&MPD_CST_VOLUME||voltimeout>0){
-        if(what&MPD_CST_VOLUME)
-            voltimeout=500;
+        static int volume;
+        if(what&MPD_CST_VOLUME){
+            voltimeout=5;
+            volume = mpd_status_get_volume(mi);
+        }
         if(voltimeout<0)
             voltimeout=0;
-        g15r_drawBar (canvas,10, 22, 149, 30, G15_COLOR_BLACK, mpd_status_get_volume(mi), 100, 1);
+        
+        g15r_drawBar (canvas,10, 22, 149, 30, G15_COLOR_BLACK, volume, 100, 1);
         canvas->mode_xor=1;
         g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 23);
         canvas->mode_xor=0;
-
     }
 
     if(what&MPD_CST_STATE)
@@ -267,7 +270,7 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     
     if(menulevel==0){
         if(mpd_player_get_random(mi)){
-        g15r_drawLine (canvas, 0, 42, 158, 42,G15_COLOR_WHITE);
+        g15r_drawLine (canvas, 43, 42, 158, 42,G15_COLOR_WHITE);
             canvas->mode_xor=1;
             g15r_pixelBox (canvas, 104, 34, 125 , 42, G15_COLOR_BLACK, 1, 1);
         }else
@@ -304,6 +307,7 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     }
     
     /* do a quicky checksum - only send frame if different */
+    chksum=0;
     for(i=0;i<G15_BUFFER_LEN;i++){
         chksum+=canvas->buffer[i]*i;
     }
@@ -317,6 +321,7 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     }
     last_chksum=chksum;
     pthread_mutex_unlock(&lockit);
+    usleep(100*1000);
 }
 
 
