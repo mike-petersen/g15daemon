@@ -59,36 +59,25 @@ plugin_info_t lcdclient_info[] = {
 
 static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgbuf, unsigned int len)
 {
-    /* int msgret;
-    if(msgbuf[0] == CLIENT_CMD_GET_KEYSTATE) 
-     { // client wants keypresses - FIXME this is redundant with the new event based architecture 
-         if(lcdnode->list->current == lcdnode){
-             // send the keystate inband back to the client 
-             if((msgret = send(sock,(void *)&current_key_state,sizeof(current_key_state),0))<0) 
-                 g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
-             current_key_state = 0;
-         }
-         else{
-             memset(msgbuf,0,4); // client isn't currently being displayed.. tell them nothing 
-             msgret=send(sock,(void *)msgbuf,sizeof(current_key_state),0);
-         }
-     } else */
-    if(msgbuf[0] == CLIENT_CMD_SWITCH_PRIORITIES){
+
+    switch(msgbuf[0]){
+    case CLIENT_CMD_SWITCH_PRIORITIES: {
         g15daemon_send_event(lcdnode,G15_EVENT_REQ_PRIORITY,1);
+        break;
     }
-    else if(msgbuf[0] == CLIENT_CMD_IS_FOREGROUND) 
-    { /* client wants to know if it's currently viewable */
+    case CLIENT_CMD_IS_FOREGROUND:  { /* client wants to know if it's currently viewable */
         pthread_mutex_lock(&lcdlist_mutex);
+        memset(msgbuf,0,2);
         if(lcdnode->list->current == lcdnode){
             msgbuf[0] = '1';
         }else{
             msgbuf[0] = '0';
         }
         pthread_mutex_unlock(&lcdlist_mutex);
-        send(sock,msgbuf,1,0);
+        send(sock,msgbuf,1,MSG_OOB);
+        break;
     } 
-    else if (msgbuf[0] == CLIENT_CMD_IS_USER_SELECTED) 
-    { /* client wants to know if it was set to foreground by the user */
+    case CLIENT_CMD_IS_USER_SELECTED: { /* client wants to know if it was set to foreground by the user */
         pthread_mutex_lock(&lcdlist_mutex);
         if(lcdnode->lcd->usr_foreground)  /* user manually selected this lcd */
             msgbuf[0] = '1';
@@ -96,23 +85,25 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
             msgbuf[0] = '0';
         pthread_mutex_unlock(&lcdlist_mutex);
         send(sock,msgbuf,1,0);
+        break;
     } 
-    else if (msgbuf[0] & CLIENT_CMD_BACKLIGHT) 
-    { /* client wants to change the backlight */
+    case CLIENT_CMD_BACKLIGHT: { /* client wants to change the backlight */
         lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
         lcdnode->lcd->state_changed = 1;
+        break;
     } 
-    else if (msgbuf[0] & CLIENT_CMD_CONTRAST) 
-    { /* client wants to change the LCD contrast */
+    case CLIENT_CMD_CONTRAST: { /* client wants to change the LCD contrast */
         lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
         lcdnode->lcd->state_changed = 1;
+        break;
     } 
-    else if (msgbuf[0] & CLIENT_CMD_MKEY_LIGHTS) 
-    { /* client wants to change the M-key backlights */
-        lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
-        lcdnode->lcd->state_changed = 1;
-    } /*else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
-    { 
+    default:
+       if(msgbuf[0] & CLIENT_CMD_MKEY_LIGHTS) 
+       { /* client wants to change the M-key backlights */
+          lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
+          lcdnode->lcd->state_changed = 1;
+       } /*else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
+      { 
         g15daemon_log(LOG_WARNING, "Client is taking over keystate");
         
         client_handles_keys=1;
@@ -120,7 +111,8 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         keyhandler->connection = sock;
         
         g15daemon_log(LOG_WARNING, "Client has taken over keystate");
-    }*/
+      }*/
+    }
     
 }
 
