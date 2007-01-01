@@ -66,7 +66,9 @@ int g15_recv(int sock, char *buf, unsigned int len);
 
 /* send a command (defined above) to the daemon.  any replies from the daemon are returned */
 int g15_send_cmd (int sock, unsigned char command, unsigned char value);
-
+/* receive an oob byte from the daemon, used internally by g15_send_cmd, but useful elsewhere */
+#define G15_FOREGROUND_SENT_OOB 1
+int g15_recv_oob_answer(int sock);
 #ifdef __cplusplus
 }
 #endif
