@@ -43,7 +43,9 @@
 #include <poll.h>
 #include <pthread.h>
 #include <X11/Xlib.h>
+#ifdef HAVE_X11_EXTENSIONS_XTEST_H
 #include <X11/extensions/XTest.h>
+#endif
 #include <X11/XF86keysym.h>
 
         extern int debug_level;
@@ -253,14 +255,14 @@ void xkey_handler(XEvent *event){
         XUngrabKeyboard(dpy,CurrentTime);
         XFlush(dpy);
     }
-
+#ifdef HAVE_X11_EXTENSIONS_XTEST_H
     if(have_xtest) { // send the keypress elsewhere 
         if(event->type==KeyPress){
             XTestFakeKeyEvent(dpy, keycode, True, CurrentTime);
         }
         XFlush(dpy);
     }
-
+#endif
     if(own_keyboard && have_xtest) { // we only regrab if the XTEST extension is available.
         XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
     }
@@ -617,13 +619,13 @@ int main(int argc, char **argv)
         printf("Cant find root window\n");
         return 1;
     }
-
+#ifdef HAVE_X11_EXTENSIONS_XTEST_H
     have_xtest = XTestQueryExtension(dpy, &dummy, &dummy, &xtest_major_version, &xtest_minor_version);
     if(have_xtest == False || xtest_major_version < 2 || (xtest_major_version <= 2 && xtest_minor_version < 2))
     {
         printf("XTEST extension not supported");
     }
-
+#endif
     /* completely ignore errors and carry on */
     XSetErrorHandler(myx_error_handler);
     XFlush(dpy);
