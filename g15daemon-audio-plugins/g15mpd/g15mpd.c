@@ -305,33 +305,42 @@ void *g15display_thread(){
     unsigned char time_elapsed[41];
     unsigned char time_total[41];
     static int current = 0;
-
+int changed =0;
     while(!leaving){
         if(playlist_mode){
     
             int y=0;
             int offset=2;
+            changed = 0;
+            
             if(track_info.currentsong>-1){
                 current=track_info.currentsong;
                 track_info.currentsong = -1;
+                changed = 1;
             }
 
             if(playlist_selection>0){
-                if(current+1<mpd_playlist_get_playlist_length(obj))
+                if(current+1<mpd_playlist_get_playlist_length(obj)){
                     current+=playlist_selection;
+                    changed = 1;
+                }
                 playlist_selection=0;
             }
             if(playlist_selection<0){
-                if(current)
+                if(current) {
                     current--;
+                    changed = 1;
+                }
                 playlist_selection=0;
             }
 
-            g15r_pixelBox (canvas, 0, 0, 159, 42, G15_COLOR_WHITE, 1, 1);
+
 
             if(current-offset<0)
                 offset-=current;
-
+            
+            if(changed){
+                g15r_pixelBox (canvas, 0, 0, 159, 42, G15_COLOR_WHITE, 1, 1);
             for(i=current-offset;i<current+6;i++){
                 char title[100];
                 mpd_Song *song;
@@ -365,6 +374,7 @@ void *g15display_thread(){
                 g15r_renderString (canvas, (unsigned char *)title, y, G15_TEXT_MED, 1, 1);
                 canvas->mode_xor=0;
                 y++;
+            }
             }
         }else{
             /* track info */
