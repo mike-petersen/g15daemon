@@ -108,11 +108,29 @@ void *Lkeys_thread() {
     fds.events = POLLIN;
     
     while(!leaving){
+       int foo=0;
+       int current_fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
+       static int last_fg_check = 0;
+       if(playlist_mode && last_fg_check != current_fg_check){
+         if(own_keyboard){
+           if(current_fg_check==0){
+               own_keyboard=0;
+               XUngrabKeyboard(dpy,CurrentTime);
+               XFlush(dpy);
+            }
+         }else if(current_fg_check && !own_keyboard) {
+            own_keyboard=1;
+            XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+         }
+         last_fg_check = current_fg_check;   
+       }
+    
+
         /* g15daemon series 1.2 need key request packets */
-        pthread_mutex_lock(&daemon_mutex);
-        if((g15v*10)<=18) {
+       pthread_mutex_lock(&daemon_mutex);
+       if((g15v*10)<=18) {
             keystate = g15_send_cmd (g15screen_fd, G15DAEMON_GET_KEYSTATE, foo);
-        } else {
+       } else {
             if ((poll(&fds, 1, 5)) > 0)
                 read (g15screen_fd, &keystate, sizeof (keystate));
         }
@@ -305,7 +323,7 @@ void *g15display_thread(){
     unsigned char time_elapsed[41];
     unsigned char time_total[41];
     static int current = 0;
-int changed =0;
+    int changed =0;
     while(!leaving){
         if(playlist_mode){
     
@@ -496,6 +514,7 @@ int changed =0;
             usleep(75*1000);
 
     }
+    return NULL;
 }
 
 void status_changed(MpdObj *mi, ChangedStatusType what)
