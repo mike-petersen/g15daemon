@@ -206,8 +206,6 @@ int g15_send_cmd (int sock, unsigned char command, unsigned char value)
             retval = send( sock, packet, 1, MSG_OOB );
             break;
         case G15DAEMON_MKEYLEDS:
-            if (value > G15_LED_MR)
-                value = G15_LED_MR;
             packet[0] = command | value;
             retval = send( sock, packet, 1, MSG_OOB );
             break;
