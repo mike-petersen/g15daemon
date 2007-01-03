@@ -1,0 +1,33 @@
+G15message:
+
+A simple message/alert tool for g15daemon and the Logitech G15.
+By default (with no additional options) it will display the text on the
+commandline for 5seconds, then exit.
+
+Requires libg15render devel package to compile.
+
+Usage:
+
+To display a simple alert, with a title, which closes after 5 seconds:
+$ g15message -t "My Title" "this is my message"
+
+To center messagetext:
+$ g15message -c -t "My Title" "This is my centered message.  It will be centered regardless of length."
+
+To display an alert which remains for 15 seconds  (default is to timeout after 5 seconds):
+$ g15message -d 15 -t "My Title" "This is my message.."
+
+To display an alert requiring a button press:
+$ g15message -o "this message requires that you click Ok"
+
+To display an alert message with a title that requires either a Yes or No response:
+$ g15message -y -t "My Title" "Please press Yes or No.  Is this simple to use?"
+
+g15message will return either 1 or 0, depending on whether Yes or No was
+clicked. 
+
+To display an alert which is always on top - the user cannot switch away
+until the question is answered:
+$ g15message -y -f -t "My Title" "You must answer Yes or No to this question
+- no other client can be seen until you do."
+
