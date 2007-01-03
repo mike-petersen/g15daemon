@@ -75,6 +75,11 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                     int *(*keyboard_handler)(plugin_event_t *newevent) = (void*)lcd->masterlist->keyboard_handler;
                     (*keyboard_handler)((void*)newevent);
                 }
+                if(value & G15_KEY_LIGHT){ // the backlight key was pressed - maintain user-selected state 
+                  lcd->masterlist->kb_backlight_state++;
+                  if(lcd->masterlist->kb_backlight_state>2)
+                    lcd->masterlist->kb_backlight_state=0;
+                }
                 free(newevent);
             }else{
                 /* hacky attempt to double-time the use of L1, if the key is pressed less than half a second, it cycles the screens.  If held for longer, the key is sent to the application for use instead */
@@ -221,11 +226,14 @@ static void *lcd_draw_thread(void *lcdlist){
             }
         }
         
-        if(displaying->state_changed ){
+        if(displaying->state_changed){
             pthread_mutex_lock(&g15lib_mutex);
             setLCDContrast(displaying->contrast_state);
             setLEDs(displaying->mkey_state);
-            setLCDBrightness(displaying->backlight_state);
+            if(masterlist->kb_backlight_state)
+              setLCDBrightness(displaying->backlight_state);
+            else
+              setLCDBrightness(masterlist->kb_backlight_state);
             pthread_mutex_unlock(&g15lib_mutex);
             displaying->state_changed = 0;
         }
@@ -364,18 +372,20 @@ int main (int argc, char *argv[])
             g15daemon_log(LOG_WARNING,"BEWARE: running as effective uid %i\n",nobody->pw_uid);
         }
         
-        setLCDContrast(1); 
-        setLEDs(0);
-        setLCDBrightness(1);
-
-#ifdef LIBG15_VERSION
-#if LIBG15_VERSION >= 1200
-        setKBBrightness(1);
-#endif
-#endif                      
         /* initialise the linked list */
         lcdlist = ll_lcdlist_init();
         lcdlist->nobody = nobody;
+
+        setLCDContrast(1); 
+        setLEDs(0);
+        lcdlist->kb_backlight_state=1;
+        setLCDBrightness(lcdlist->kb_backlight_state);
+
+#ifdef LIBG15_VERSION
+#if LIBG15_VERSION >= 1200
+        setKBBrightness(lcdlist->kb_backlight_state);
+#endif
+#endif                      
         
         uf_conf_open(lcdlist, "/etc/g15daemon.conf");
         global_cfg=g15daemon_cfg_load_section(lcdlist,"Global");

@@ -48,6 +48,7 @@
 #define CLIENT_CMD_IS_FOREGROUND 'v'
 #define CLIENT_CMD_IS_USER_SELECTED 'u'
 #define CLIENT_CMD_BACKLIGHT 0x80
+#define CLIENT_CMD_KB_BACKLIGHT 0x8
 #define CLIENT_CMD_CONTRAST 0x40
 #define CLIENT_CMD_MKEY_LIGHTS 0x20
 /* if the following CMD is sent from a client, G15Daemon will not send any MR or G? keypresses via uinput, 
@@ -207,6 +208,7 @@ struct g15daemon_s
     struct passwd *nobody;
     volatile unsigned long numclients;
     configfile_t *config;
+    unsigned int kb_backlight_state; // master state
 }g15daemon_s;
 
 pthread_mutex_t lcdlist_mutex;

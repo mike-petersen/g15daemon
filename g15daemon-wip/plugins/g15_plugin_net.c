@@ -87,12 +87,20 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         send(sock,msgbuf,1,0);
         break;
     } 
-    case CLIENT_CMD_BACKLIGHT: { /* client wants to change the backlight */
+    case CLIENT_CMD_BACKLIGHT: { /* client wants to change the LCD backlight */
+        /* return current state to the client then implement the new state */
+        send(sock,&lcdnode->lcd->backlight_state,1,MSG_OOB);
         lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
         lcdnode->lcd->state_changed = 1;
         break;
     } 
+    case CLIENT_CMD_KB_BACKLIGHT: { /* client wants to change the KB backlight */
+        setKBBrightness((unsigned int)msgbuf[0]-0x80);
+        break;
+    } 
     case CLIENT_CMD_CONTRAST: { /* client wants to change the LCD contrast */
+        /* send current state to the client */
+        send(sock,&lcdnode->lcd->contrast_state,1,MSG_OOB);
         lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
         lcdnode->lcd->state_changed = 1;
         break;
@@ -307,7 +315,7 @@ void *lcd_client_thread(void *display) {
         }
     }
 exitthread:
-        close(client_sock);
+    close(client_sock);
     free(tmpbuf);
     g15daemon_lcdnode_remove(display);
     

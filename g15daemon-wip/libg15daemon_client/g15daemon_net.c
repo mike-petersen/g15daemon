@@ -189,9 +189,17 @@ int g15_send_cmd (int sock, unsigned char command, unsigned char value)
             if (value > G15_CONTRAST_HIGH)
                 value = G15_CONTRAST_HIGH;
             packet[0] = command | value;
-            retval = send( sock, packet, 1, MSG_OOB );
+            send( sock, packet, 1, MSG_OOB );
+            retval = g15_recv_oob_answer(sock);
             break;
         case G15DAEMON_BACKLIGHT:
+            if (value > G15_BRIGHTNESS_BRIGHT)
+                value = G15_BRIGHTNESS_BRIGHT;
+            packet[0] = command | value;
+            send( sock, packet, 1, MSG_OOB );
+            retval = g15_recv_oob_answer(sock);
+            break;
+        case G15DAEMON_KB_BACKLIGHT:
             if (value > G15_BRIGHTNESS_BRIGHT)
                 value = G15_BRIGHTNESS_BRIGHT;
             packet[0] = command | value;
