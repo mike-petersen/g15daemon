@@ -110,16 +110,16 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
        { /* client wants to change the M-key backlights */
           lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
           lcdnode->lcd->state_changed = 1;
-       } /*else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
+          //if the client is the keyhandler, allow full, direct control over the mled status
+          if(lcdnode->lcd->masterlist->remote_keyhandler_sock==lcdnode->lcd->connection)
+            setLEDs(msgbuf[0]-0x20);
+       } else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
       { 
         g15daemon_log(LOG_WARNING, "Client is taking over keystate");
         
-        client_handles_keys=1;
-        keyhandler = &lcdnode->lcd;
-        keyhandler->connection = sock;
-        
+        lcdnode->list->remote_keyhandler_sock = sock;
         g15daemon_log(LOG_WARNING, "Client has taken over keystate");
-      }*/
+      }
     }
     
 }
@@ -315,6 +315,8 @@ void *lcd_client_thread(void *display) {
         }
     }
 exitthread:
+    if(client_lcd->masterlist->remote_keyhandler_sock==client_sock)
+      client_lcd->masterlist->remote_keyhandler_sock=0;
     close(client_sock);
     free(tmpbuf);
     g15daemon_lcdnode_remove(display);
@@ -402,7 +404,7 @@ int server_events(plugin_event_t *event) {
     switch (event->event)
     {
         case G15_EVENT_KEYPRESS:{
-            if(lcd->connection) { /* server client */
+            if(lcd->connection && lcd->masterlist->remote_keyhandler_sock!=lcd->connection) { /* server client */
                 if((send(lcd->connection,(void *)&event->value,sizeof(event->value),0))<0) 
                     g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
             }

@@ -71,9 +71,14 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                 (*plugin_listener)((void*)newevent);
         	/* hack - keyboard events are always sent from the foreground even when they aren't 
                 send keypress event to the OS keyboard_handler plugin */
-                if(lcd->masterlist->keyboard_handler != NULL) {
+                if(lcd->masterlist->keyboard_handler != NULL && lcd->masterlist->remote_keyhandler_sock==0) {
                     int *(*keyboard_handler)(plugin_event_t *newevent) = (void*)lcd->masterlist->keyboard_handler;
                     (*keyboard_handler)((void*)newevent);
+                }
+                // if we have a remote keyhandler, send the key. FIXME: we should do this from the net plugin
+                if(lcd->masterlist->remote_keyhandler_sock!=0) {
+                          if((send(lcd->masterlist->remote_keyhandler_sock,(void *)&newevent->value,sizeof(newevent->value),0))<0)
+                                              g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
                 }
                 if(value & G15_KEY_LIGHT){ // the backlight key was pressed - maintain user-selected state 
                   lcd->masterlist->kb_backlight_state++;
@@ -229,7 +234,8 @@ static void *lcd_draw_thread(void *lcdlist){
         if(displaying->state_changed){
             pthread_mutex_lock(&g15lib_mutex);
             setLCDContrast(displaying->contrast_state);
-            setLEDs(displaying->mkey_state);
+            if(displaying->masterlist->remote_keyhandler_sock==0) // only allow mled control if the macro recorder isnt running
+              setLEDs(displaying->mkey_state);
             if(masterlist->kb_backlight_state)
               setLCDBrightness(displaying->backlight_state);
             else

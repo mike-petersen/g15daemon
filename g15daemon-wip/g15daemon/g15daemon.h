@@ -209,6 +209,7 @@ struct g15daemon_s
     volatile unsigned long numclients;
     configfile_t *config;
     unsigned int kb_backlight_state; // master state
+    unsigned int remote_keyhandler_sock;
 }g15daemon_s;
 
 pthread_mutex_t lcdlist_mutex;

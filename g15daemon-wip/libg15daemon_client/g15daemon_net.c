@@ -182,52 +182,52 @@ int g15_send_cmd (int sock, unsigned char command, unsigned char value)
         case G15DAEMON_KEY_HANDLER:
             if (value > G15_LED_MR)
                 value = G15_LED_MR;
-            packet[0] = command | value;
+            packet[0] = (unsigned char)command | (unsigned char)value;            
             retval = send( sock, packet, 1, MSG_OOB );
             break;
         case G15DAEMON_CONTRAST:
             if (value > G15_CONTRAST_HIGH)
                 value = G15_CONTRAST_HIGH;
-            packet[0] = command | value;
+            packet[0] = (unsigned char)command | (unsigned char)value;       
             send( sock, packet, 1, MSG_OOB );
             retval = g15_recv_oob_answer(sock);
             break;
         case G15DAEMON_BACKLIGHT:
             if (value > G15_BRIGHTNESS_BRIGHT)
                 value = G15_BRIGHTNESS_BRIGHT;
-            packet[0] = command | value;
+            packet[0] = (unsigned char)command | (unsigned char)value;
             send( sock, packet, 1, MSG_OOB );
             retval = g15_recv_oob_answer(sock);
             break;
         case G15DAEMON_KB_BACKLIGHT:
             if (value > G15_BRIGHTNESS_BRIGHT)
                 value = G15_BRIGHTNESS_BRIGHT;
-            packet[0] = command | value;
+            packet[0] = (unsigned char)command | (unsigned char)value;
             retval = send( sock, packet, 1, MSG_OOB );
             break;
         case G15DAEMON_MKEYLEDS:
-            packet[0] = command | value;
+            packet[0] = (unsigned char)command|(unsigned char)value;
             retval = send( sock, packet, 1, MSG_OOB );
             break;
         case G15DAEMON_SWITCH_PRIORITIES:
-            packet[0] = command;
+            packet[0] = (unsigned char)command;
             retval = send( sock, packet, 1, MSG_OOB );
             break;
         case G15DAEMON_GET_KEYSTATE:{
             retval = 0;
-            packet[0] = command;
+            packet[0] = (unsigned char)command;
             send( sock, packet, 1, MSG_OOB );
             recv(sock, &retval, sizeof(retval),0);
             break;
         }
         case G15DAEMON_IS_FOREGROUND:{
-            packet[0] = command;
+            packet[0] = (unsigned char)command;
             send( sock, packet, 1, MSG_OOB );
             retval = g15_recv_oob_answer(sock) - 48;
             break;
         }
         case G15DAEMON_IS_USER_SELECTED:{
-            packet[0] = command;
+            packet[0] = (unsigned char)command;
             send( sock, packet, 1, MSG_OOB );
             retval = g15_recv_oob_answer(sock) - 48;
             break;
