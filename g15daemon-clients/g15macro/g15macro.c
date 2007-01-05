@@ -48,7 +48,9 @@
 #include <libg15.h>
 #include <libg15render.h>
 
-#define  XK_MISCELLANY 1
+#define  XK_MISCELLANY 
+#define XK_LATIN1
+#define XK_LATIN2
 #include <X11/keysymdef.h>
         
 int g15screen_fd;
@@ -64,7 +66,7 @@ int display_timeout=500;
 unsigned char recstring[1024];
 
 static int mled_state = G15_LED_M1;
-static int mkey_state = 1;
+static int mkey_state = 0;
 static int recording = 0;
 
 typedef struct keypress_s {
@@ -86,9 +88,11 @@ typedef struct gkeys_s{
     keysequence_t keysequence;
 }gkeys_t;
 
-struct mstates {
+typedef struct mstates_s {
     gkeys_t gkeys[18];
-}mstates[3];
+}mstates_t; 
+
+mstates_t *mstates[3];
 
 struct current_recording {
     keypress_t recorded_keypress[128];
@@ -96,7 +100,9 @@ struct current_recording {
 
 unsigned int rec_index=0;
 const char *gkeystring[] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16","G17","G18","Unknown" };
+/* because this is an X11 client, we can work around the kernel limitations on key numbers */
 const long gkeydefaults[] = {
+    /* M1 palette */
     XF86XK_Launch4,
     XF86XK_Launch5,
     XF86XK_Launch6,
@@ -114,14 +120,52 @@ const long gkeydefaults[] = {
     XF86XK_Support, 
     XF86XK_Word, 
     XF86XK_Messenger, 
-    XF86XK_WebCam
+    XF86XK_WebCam,
+    /* M2 palette */
+    XK_F13,
+    XK_F14,
+    XK_F15,
+    XK_F16,
+    XK_F17,
+    XK_F18,
+    XK_F19,
+    XK_F20,
+    XK_F21,
+    XK_F22,
+    XK_F23,
+    XK_F24,
+    XK_F25,
+    XK_F26,
+    XK_F27,
+    XK_F28,
+    XK_F29,
+    XK_F30,
+    /* M3 palette */
+    XK_Tcedilla,
+    XK_racute,
+    XK_abreve,
+    XK_lacute,
+    XK_cacute,
+    XK_ccaron,
+    XK_eogonek,
+    XK_ecaron,
+    XK_dcaron,
+    XK_dstroke,
+    XK_nacute,
+    XK_ncaron,
+    XK_odoubleacute,
+    XK_udoubleacute,
+    XK_rcaron,
+    XK_uring,
+    XK_scaron,
+    XK_abovedot
 };
 
 pthread_mutex_t daemon_mutex;
 pthread_mutex_t lockit;
 
 int map_gkey(keystate){
-    int retval = 18;
+    int retval = -1;
     switch(keystate){
         case G15_KEY_G1:  retval = 0;   break;
         case G15_KEY_G2:  retval = 1;   break;
@@ -154,11 +198,11 @@ void record_complete(unsigned long keystate)
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
 
     if(!rec_index) // nothing recorded - delete prior recording
-        memset(mstates[mkey_state].gkeys[gkey].keysequence.recorded_keypress,0,sizeof(keysequence_t));
+        memset(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress,0,sizeof(keysequence_t));
     else
-        memcpy(mstates[mkey_state].gkeys[gkey].keysequence.recorded_keypress, &current_recording, sizeof(keysequence_t));
+        memcpy(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress, &current_recording, sizeof(keysequence_t));
 
-    mstates[mkey_state].gkeys[gkey].keysequence.record_steps=rec_index;
+    mstates[mkey_state]->gkeys[gkey].keysequence.record_steps=rec_index;
 
     memset(canvas->buffer,0,G15_BUFFER_LEN);
     if(rec_index){
@@ -185,17 +229,45 @@ void macro_playback(unsigned long keystate)
 {
     int i = 0;
     int gkey = map_gkey(keystate);
+    if(gkey<0)
+      return;
     /* if no macro has been recorded for this key, send the g15daemon default keycode */
-    if(mstates[mkey_state].gkeys[gkey].keysequence.record_steps==0){
-         XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey]),True, CurrentTime);
-         XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey]),False, CurrentTime);
-         return;
+    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+        int mkey_offset=0;
+        switch(mkey_state){
+          case 1:
+            mkey_offset = 0;
+            break;
+          case 2:
+            mkey_offset = 18;
+            break;
+          case 3:
+            mkey_offset = 36;
+            break;
+          default:
+            mkey_offset=0;
+        }
+        XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),True, CurrentTime);
+        XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),False, CurrentTime);
+        return;
     }
+    for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
+        XTestFakeKeyEvent(dpy, mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode, 
+                          mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed, CurrentTime);
+    }
+}
 
-    for(i=0;i<mstates[mkey_state].gkeys[gkey].keysequence.record_steps;i++){
-        XTestFakeKeyEvent(dpy, mstates[mkey_state].gkeys[gkey].keysequence.recorded_keypress[i].keycode, 
-                          mstates[mkey_state].gkeys[gkey].keysequence.recorded_keypress[i].pressed, CurrentTime);
+void change_keymap(int offset){
+    static int previous_mkey_offset=0;
+    int i=0,j=0;
+    for(i=offset;i<offset+18;i++,j++)
+    {
+      KeySym newmap[1];
+      newmap[0]=gkeydefaults[i];
+      XChangeKeyboardMapping (dpy, XKeysymToKeycode(dpy,gkeydefaults[j+previous_mkey_offset] ), 1, newmap, 1);
     }
+    XFlush(dpy);
+    previous_mkey_offset=offset;
 }
 
 void *Lkeys_thread() {
@@ -227,7 +299,7 @@ void *Lkeys_thread() {
                 case G15_KEY_L5:{
                     int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
                     if(fg_check)
-                    leaving = 1;
+                      leaving = 1;
                     break;
                 }
                 case G15_KEY_MR:
@@ -246,22 +318,25 @@ void *Lkeys_thread() {
                     memset(&current_recording,0,sizeof(current_recording));
                     break;
                 case G15_KEY_M1:
-                    mkey_state = 1;
+                    mkey_state = 0;
                     mled_state = G15_LED_M1;
                     recording = 0;
                     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,G15_LED_M1);
+                    change_keymap(0);
                     break;
                 case G15_KEY_M2:
-                    mkey_state = 2;
+                    mkey_state = 1;
                     mled_state = G15_LED_M2;
                     recording = 0;
                     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,G15_LED_M2);
+                    change_keymap(18);
                     break;
                 case G15_KEY_M3:
-                    mkey_state = 3;
+                    mkey_state = 2;
                     mled_state = G15_LED_M3;
                     recording = 0;
                     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,G15_LED_M3);
+                    change_keymap(36);
                     break;
                 default:
                     if(keystate >=G15_KEY_G1 && keystate <=G15_KEY_G18){
@@ -427,10 +502,19 @@ int main(int argc, char **argv)
     mkdir(configpath,777);
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
 
-    config_fd = open(configpath,O_CREAT|O_RDONLY|O_SYNC);
-    read(config_fd,mstates,sizeof(mstates)*3);
-    close(config_fd);
+    config_fd = open(configpath,O_RDONLY|O_SYNC);
 
+    mstates[0] = malloc(sizeof(mstates_t));
+    mstates[1] = (mstates_t*)malloc(sizeof(mstates_t));
+    mstates[2] = (mstates_t*)malloc(sizeof(mstates_t));
+
+    if(config_fd) {
+      read(config_fd,mstates[0],sizeof(mstates_t));
+      read(config_fd,mstates[1],sizeof(mstates_t));
+      read(config_fd,mstates[2],sizeof(mstates_t));
+      close(config_fd);
+    }else 
+      memset(mstates,0,sizeof(mstates)*4);
     g15_send_cmd (g15screen_fd,G15DAEMON_KEY_HANDLER, dummy);
     usleep(1000);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
@@ -463,15 +547,19 @@ int main(int argc, char **argv)
 
     /* completely ignore errors and carry on */
     XSetErrorHandler(myx_error_handler);
+    change_keymap(0);
     XFlush(dpy);
+    
     new_action.sa_handler = g15macro_sighandler;
     new_action.sa_flags = 0;
     sigaction(SIGINT, &new_action, NULL);
     sigaction(SIGQUIT, &new_action, NULL);
+    
     snprintf((char*)splashpath,1024,"%s/%s",DATADIR,"g15macro/splash/g15macro.wbmp");
     g15r_loadWbmpSplash(canvas, splashpath);
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
     usleep(1000);
+    
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setstacksize(&attr,32*1024); /* set stack to 64k - dont need 8Mb !! */
@@ -483,13 +571,14 @@ int main(int argc, char **argv)
         if(display_timeout<0) display_timeout=-1;
         if(recording)
             display_timeout=500;
-        if(display_timeout==0){
+        if(display_timeout<=0){
             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
-            if(fg_check==1) { // foreground 
+            if (fg_check==1) { // foreground 
                     g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
             	    g15r_loadWbmpSplash(canvas, splashpath);
             }
-            usleep(500*1000);
+
+           usleep(500*1000);
         }
     }while(!usleep(1000) &&  !leaving);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,0);
@@ -499,11 +588,15 @@ int main(int argc, char **argv)
         XUngrabKeyboard(dpy,CurrentTime);
     }
     config_fd = open(configpath,O_CREAT|O_WRONLY|O_SYNC,0600);
-    write(config_fd,mstates,sizeof(mstates)*3);
+    write(config_fd,mstates[0],sizeof(mstates_t));
+    write(config_fd,mstates[1],sizeof(mstates_t));
+    write(config_fd,mstates[2],sizeof(mstates_t));
+
     close(config_fd);
     pthread_join(Xkeys,NULL);
     pthread_join(Lkeys,NULL);
-    
+    change_keymap(0);
+    XCloseDisplay(dpy);    
     close(g15screen_fd);
     
     pthread_mutex_destroy(&lockit);
