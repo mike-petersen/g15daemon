@@ -161,9 +161,6 @@ const long gkeydefaults[] = {
     XK_abovedot
 };
 
-pthread_mutex_t daemon_mutex;
-pthread_mutex_t lockit;
-
 int map_gkey(keystate){
     int retval = -1;
     switch(keystate){
@@ -235,13 +232,13 @@ void macro_playback(unsigned long keystate)
     if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
         int mkey_offset=0;
         switch(mkey_state){
-          case 1:
+          case 0:
             mkey_offset = 0;
             break;
-          case 2:
+          case 1:
             mkey_offset = 18;
             break;
-          case 3:
+          case 2:
             mkey_offset = 36;
             break;
           default:
@@ -490,7 +487,6 @@ int main(int argc, char **argv)
     char splashpath[1024];
 
     int have_xtest = 0;
-    pthread_mutex_init(&lockit,NULL);
 
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
@@ -513,8 +509,11 @@ int main(int argc, char **argv)
       read(config_fd,mstates[1],sizeof(mstates_t));
       read(config_fd,mstates[2],sizeof(mstates_t));
       close(config_fd);
-    }else 
-      memset(mstates,0,sizeof(mstates)*4);
+    }else {
+      memset(mstates[0],0,sizeof(mstates));
+      memset(mstates[1],0,sizeof(mstates));
+      memset(mstates[2],0,sizeof(mstates));
+    }
     g15_send_cmd (g15screen_fd,G15DAEMON_KEY_HANDLER, dummy);
     usleep(1000);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
@@ -595,11 +594,10 @@ int main(int argc, char **argv)
     close(config_fd);
     pthread_join(Xkeys,NULL);
     pthread_join(Lkeys,NULL);
+    /* revert the keymap to g15daemon default on exit */
     change_keymap(0);
+
     XCloseDisplay(dpy);    
     close(g15screen_fd);
-    
-    pthread_mutex_destroy(&lockit);
-    
     return 1;
 }
