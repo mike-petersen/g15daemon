@@ -280,9 +280,11 @@ void record_complete(unsigned long keystate)
 void macro_playback(unsigned long keystate)
 {
     int i = 0;
+    KeySym key;
     int gkey = map_gkey(keystate);
     if(gkey<0)
       return;
+    
     /* if no macro has been recorded for this key, send the g15daemon default keycode */
     if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
         int mkey_offset=0;
@@ -308,6 +310,26 @@ void macro_playback(unsigned long keystate)
         fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
                           mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed,
                           mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].modifiers);
+
+        pthread_mutex_lock(&x11mutex);
+        key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
+        pthread_mutex_unlock(&x11mutex);
+        
+        switch (key) {
+            case XK_Control_L:
+            case XK_Control_R:
+            case XK_Meta_L:
+            case XK_Meta_R:
+            case XK_Alt_L:
+            case XK_Alt_R:
+            case XK_Super_L:
+            case XK_Super_R:
+            case XK_Hyper_L:
+            case XK_Hyper_R:
+              usleep(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].time_ms*1000); 
+              break;          
+        }
+
     }
 }
 
