@@ -42,7 +42,6 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <X11/XF86keysym.h>
-#include <X11/XF86keysym.h>
 
 #include <g15daemon_client.h>
 #include <libg15.h>
@@ -100,6 +99,19 @@ struct current_recording {
 
 unsigned int rec_index=0;
 const char *gkeystring[] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16","G17","G18","Unknown" };
+
+const int gkeycodes[] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
+
+const int mmedia_codes[] = {164, 162, 144, 153, 174, 176};
+
+const long mmedia_defaults[] = {
+    XF86XK_AudioStop,
+    XF86XK_AudioPlay,
+    XF86XK_AudioPrev,
+    XF86XK_AudioNext,
+    XF86XK_AudioLowerVolume,
+    XF86XK_AudioRaiseVolume
+};
 /* because this is an X11 client, we can work around the kernel limitations on key numbers */
 const long gkeydefaults[] = {
     /* M1 palette */
@@ -255,16 +267,26 @@ void macro_playback(unsigned long keystate)
 }
 
 void change_keymap(int offset){
-    static int previous_mkey_offset=0;
     int i=0,j=0;
     for(i=offset;i<offset+18;i++,j++)
     {
       KeySym newmap[1];
       newmap[0]=gkeydefaults[i];
-      XChangeKeyboardMapping (dpy, XKeysymToKeycode(dpy,gkeydefaults[j+previous_mkey_offset] ), 1, newmap, 1);
+      XChangeKeyboardMapping (dpy, gkeycodes[j], 1, newmap, 1);
     }
     XFlush(dpy);
-    previous_mkey_offset=offset;
+}
+
+/* ensure that the multimedia keys are configured */
+void configure_mmediakeys(){
+
+   KeySym newmap[1];
+   int i=0;
+   for(i=0;i<6;i++){
+     newmap[0]=mmedia_defaults[i];
+     XChangeKeyboardMapping (dpy, mmedia_codes[i], 1, newmap, 1);
+   }
+   XFlush(dpy);
 }
 
 void *Lkeys_thread() {
@@ -546,6 +568,7 @@ int main(int argc, char **argv)
 
     /* completely ignore errors and carry on */
     XSetErrorHandler(myx_error_handler);
+    configure_mmediakeys();
     change_keymap(0);
     XFlush(dpy);
     
