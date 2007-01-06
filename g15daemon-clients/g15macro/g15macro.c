@@ -517,7 +517,7 @@ int main(int argc, char **argv)
 
     strncpy(configpath,getenv("HOME"),1024);
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
-    mkdir(configpath,777);
+    mkdir(configpath,0777);
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
 
     config_fd = open(configpath,O_RDONLY|O_SYNC);
