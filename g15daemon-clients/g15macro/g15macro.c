@@ -59,6 +59,8 @@ g15canvas *canvas;
 static Display *dpy;
 static Window root_win;
 
+pthread_mutex_t x11mutex;
+
 int leaving = 0;
 int display_timeout=500;
 
@@ -256,18 +258,24 @@ void macro_playback(unsigned long keystate)
           default:
             mkey_offset=0;
         }
+        pthread_mutex_lock(&x11mutex);
         XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),True, CurrentTime);
         XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),False, CurrentTime);
+        pthread_mutex_unlock(&x11mutex);
         return;
     }
+    pthread_mutex_lock(&x11mutex);
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
         XTestFakeKeyEvent(dpy, mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode, 
                           mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed, CurrentTime);
     }
+    pthread_mutex_unlock(&x11mutex);
+
 }
 
 void change_keymap(int offset){
     int i=0,j=0;
+    pthread_mutex_lock(&x11mutex);
     for(i=offset;i<offset+18;i++,j++)
     {
       KeySym newmap[1];
@@ -275,6 +283,8 @@ void change_keymap(int offset){
       XChangeKeyboardMapping (dpy, gkeycodes[j], 1, newmap, 1);
     }
     XFlush(dpy);
+    pthread_mutex_unlock(&x11mutex);
+
 }
 
 /* ensure that the multimedia keys are configured */
@@ -282,11 +292,14 @@ void configure_mmediakeys(){
 
    KeySym newmap[1];
    int i=0;
+   pthread_mutex_lock(&x11mutex);
    for(i=0;i<6;i++){
      newmap[0]=mmedia_defaults[i];
      XChangeKeyboardMapping (dpy, mmedia_codes[i], 1, newmap, 1);
    }
    XFlush(dpy);
+   pthread_mutex_unlock(&x11mutex);
+   
 }
 
 void *Lkeys_thread() {
@@ -362,8 +375,10 @@ void *Lkeys_thread() {
                         if(recording==1){
                             record_complete(keystate);
                             recording = 0;
-                            XUngrabKeyboard(dpy,CurrentTime);
-                            XFlush(dpy);
+                             pthread_mutex_lock(&x11mutex);
+                             XUngrabKeyboard(dpy,CurrentTime);
+                             XFlush(dpy);
+                             pthread_mutex_unlock(&x11mutex);
                         } else {
                             macro_playback(keystate);
                         }
@@ -390,7 +405,10 @@ void xkey_handler(XEvent *event) {
     int press = True;
 
     if(event->type==KeyRelease){ // we only do keyreleases for some keys
-        switch (XKeycodeToKeysym(dpy, keycode, 0)) {
+      pthread_mutex_lock(&x11mutex);
+      KeySym key = XKeycodeToKeysym(dpy, keycode, 0);
+      pthread_mutex_unlock(&x11mutex);
+        switch (key) {
             case XK_Shift_L:
             case XK_Shift_R:
             case XK_Control_L:
@@ -422,12 +440,13 @@ void xkey_handler(XEvent *event) {
         rec_index++;
 
         /* now the default stuff */
+        pthread_mutex_lock(&x11mutex);        
         XUngrabKeyboard(dpy,CurrentTime);
         XTestFakeKeyEvent(dpy, keycode, press, CurrentTime);
         XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
         XFlush(dpy);
-
         strcpy((char*)keytext,XKeysymToString(XKeycodeToKeysym(dpy, keycode, 0)));
+        pthread_mutex_unlock(&x11mutex);        
         if(0==strcmp((char*)keytext,"space"))
             strcpy((char*)keytext," ");
         strcat((char*)recstring,(char*)keytext);
@@ -444,11 +463,15 @@ static void* xevent_thread()
 {
     XEvent event;
     long event_mask = KeyPressMask|KeyReleaseMask|FocusChangeMask|SubstructureNotifyMask;
-
+    int retval=0;
+    pthread_mutex_lock(&x11mutex);
     XSelectInput(dpy, root_win, event_mask);
-
+    pthread_mutex_unlock(&x11mutex);
     while(!leaving){
-        if(XCheckMaskEvent(dpy, event_mask, &event)){
+        pthread_mutex_lock(&x11mutex);        
+        retval = XCheckMaskEvent(dpy, event_mask, &event);
+        pthread_mutex_unlock(&x11mutex);
+        if(retval){
             switch(event.type) {
                 case KeyPress:
                 case KeyRelease: {
@@ -467,9 +490,12 @@ static void* xevent_thread()
                 case DestroyNotify:
                     break;
                 case ReparentNotify: {
-                        if(recording)
+                        if(recording) {
+                            pthread_mutex_lock(&x11mutex);
                             XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
-                        XFlush(dpy);
+                            XFlush(dpy);
+                            pthread_mutex_unlock(&x11mutex);
+                        }
                         break;
                     }
                 default:
@@ -581,7 +607,7 @@ int main(int argc, char **argv)
     g15r_loadWbmpSplash(canvas, splashpath);
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
     usleep(1000);
-    
+    pthread_mutex_init(&x11mutex,NULL);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setstacksize(&attr,32*1024); /* set stack to 64k - dont need 8Mb !! */
@@ -617,6 +643,7 @@ int main(int argc, char **argv)
     close(config_fd);
     pthread_join(Xkeys,NULL);
     pthread_join(Lkeys,NULL);
+    pthread_mutex_destroy(&x11mutex);
     /* revert the keymap to g15daemon default on exit */
     change_keymap(0);
 
