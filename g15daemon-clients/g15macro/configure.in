@@ -17,7 +17,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(g15daemon_client.h libg15render.h,,AC_MSG_ERROR(["libg15daemon_client (or its devel package) could not be found.  please install it"]))
 AC_CHECK_HEADERS(X11/Xlib.h X11/XF86keysym.h,,AC_MSG_ERROR(["Xorg development files could not be found.  please install the devel package"]))
-AC_CHECK_HEADERS(X11/extensions/XTest.h,,AC_MSG_ERROR(["Xorg XTEST Extension devel headers could not be found. please install the devel package"]))
+AC_CHECK_HEADERS(X11/extensions/XTest.h,,AC_MSG_WARN(["Xorg XTEST Extension devel headers could not be found. Reverting to XSendEvent()"]))
 AC_PATH_X
 
 CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'

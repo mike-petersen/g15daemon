@@ -39,8 +39,11 @@
 
 #include <pthread.h>
 #include <sys/time.h>
+#include <config.h>
 #include <X11/Xlib.h>
+#ifdef HAVE_X11_EXTENSIONS_XTEST_H
 #include <X11/extensions/XTest.h>
+#endif
 #include <X11/XF86keysym.h>
 
 #include <g15daemon_client.h>
@@ -63,6 +66,7 @@ pthread_mutex_t x11mutex;
 
 int leaving = 0;
 int display_timeout=500;
+int have_xtest = False;
 
 unsigned char recstring[1024];
 
@@ -74,6 +78,7 @@ typedef struct keypress_s {
     unsigned long keycode;
     unsigned long time_ms;
     unsigned char pressed;
+    unsigned long modifiers;
     unsigned int mouse_x;
     unsigned int mouse_y;
     unsigned int buttons;
@@ -100,6 +105,7 @@ struct current_recording {
 }current_recording;
 
 unsigned int rec_index=0;
+
 const char *gkeystring[] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16","G17","G18","Unknown" };
 
 const int gkeycodes[] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
@@ -200,6 +206,41 @@ int map_gkey(keystate){
     return retval;
 }
 
+void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
+
+  if(have_xtest) {
+    #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
+    pthread_mutex_lock(&x11mutex);
+     XTestFakeKeyEvent(dpy, keycode,keydown, CurrentTime);
+    pthread_mutex_unlock(&x11mutex);
+     #endif        
+  } else {
+    XKeyEvent event;
+    Window current_focus;
+    int dummy = 0;
+    int key = 0;
+    pthread_mutex_lock(&x11mutex);
+    XGetInputFocus(dpy,&current_focus, &dummy);
+    key = XKeycodeToKeysym(dpy,keycode,0);
+    if(keydown)
+      event.type=KeyPress;
+    else
+      event.type=KeyRelease;
+    event.keycode = keycode;
+    event.serial = 0;
+    event.send_event = False;
+    event.display = dpy;
+    event.x = event.y = event.x_root = event.y_root = 0;
+    event.time = CurrentTime;
+    event.same_screen = True;
+    event.subwindow = None;
+    event.window = current_focus;
+    event.root = root_win;
+    event.state = modifiers;
+    XSendEvent(dpy,current_focus,False,0xfff,(XEvent*)&event);
+    pthread_mutex_unlock(&x11mutex);
+  }
+}
 
 void record_complete(unsigned long keystate)
 {
@@ -258,19 +299,16 @@ void macro_playback(unsigned long keystate)
           default:
             mkey_offset=0;
         }
-        pthread_mutex_lock(&x11mutex);
-        XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),True, CurrentTime);
-        XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),False, CurrentTime);
-        pthread_mutex_unlock(&x11mutex);
+        fake_keyevent(XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),True,None);
+        fake_keyevent(XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),False,None);
         return;
     }
-    pthread_mutex_lock(&x11mutex);
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
-        XTestFakeKeyEvent(dpy, mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode, 
-                          mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed, CurrentTime);
-    }
-    pthread_mutex_unlock(&x11mutex);
 
+        fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
+                          mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed,
+                          mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].modifiers);
+    }
 }
 
 void change_keymap(int offset){
@@ -429,10 +467,11 @@ void xkey_handler(XEvent *event) {
         }
 
         press = False;
-    }    
+    }
     if(recording){
         current_recording.recorded_keypress[rec_index].keycode = keycode;
         current_recording.recorded_keypress[rec_index].pressed = press;
+        current_recording.recorded_keypress[rec_index].modifiers = event->xkey.state;
         if(rec_index==0)
             current_recording.recorded_keypress[rec_index].time_ms=0;
         else
@@ -442,7 +481,11 @@ void xkey_handler(XEvent *event) {
         /* now the default stuff */
         pthread_mutex_lock(&x11mutex);        
         XUngrabKeyboard(dpy,CurrentTime);
-        XTestFakeKeyEvent(dpy, keycode, press, CurrentTime);
+        pthread_mutex_unlock(&x11mutex);
+        
+        fake_keyevent(keycode,press,event->xkey.state);
+        
+        pthread_mutex_lock(&x11mutex);
         XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
         XFlush(dpy);
         strcpy((char*)keytext,XKeysymToString(XKeycodeToKeysym(dpy, keycode, 0)));
@@ -534,8 +577,6 @@ int main(int argc, char **argv)
     char configpath[1024];
     char splashpath[1024];
 
-    int have_xtest = 0;
-
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
         return 1;
@@ -585,11 +626,12 @@ int main(int argc, char **argv)
         printf("Cant find root window\n");
         return 1;
     }
-
+#ifdef HAVE_X11_EXTENSIONS_XTEST_H    
     have_xtest = XTestQueryExtension(dpy, &dummy, &dummy, &xtest_major_version, &xtest_minor_version);
+#endif
     if(have_xtest == False || xtest_major_version < 2 || (xtest_major_version <= 2 && xtest_minor_version < 2))
     {
-        printf("XTEST extension not supported\n\nExiting\n");
+        printf("XTEST extension not supported\nReverting to XSendEvent for keypress emulation\n");
     }
 
     /* completely ignore errors and carry on */
