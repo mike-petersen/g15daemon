@@ -885,7 +885,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
 	      (i==0       ? y : bar_heights[i-1]) +
 	      (i==WIDTH-1 ? y : bar_heights[i+1])) / dif; /* Add some diffusion */
 	y = ((tau-1)*bar_heights[i] + y) / tau; /* Add some dynamics */
-	bar_heights[i] = (gint16)y; /* amplification non mi CAMBIA!!! */
+	bar_heights[i] = (gint16)y;
       }
       
     }

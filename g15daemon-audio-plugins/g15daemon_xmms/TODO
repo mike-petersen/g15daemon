@@ -1,0 +1,20 @@
+*********************************************************
+* TODO list for G15daemon Visualization Plugin - v. 2.5 *
+*********************************************************
+
+Not in any particular order:
+
+- Check the values for gui params especially for tau, 
+  linearity and analog_step
+
+- Improve gui to show current values over the bars
+
+- Add "reset" button in config dialog to reset to the 
+  defaults values.
+
+- Add more visuals (analog vu-meter?)
+
+- Give the possibility to hide the name of the song,
+  the progress bar and other messages by the gui.
+
+--
