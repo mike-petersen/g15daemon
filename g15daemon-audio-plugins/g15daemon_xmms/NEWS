@@ -1,0 +1,11 @@
+03/21/2007 - robynhub@users.sf.net
+Added many improvments:
+
+- Added a configuration gtk dialog
+- Added a about gtk dialog
+- Added Signal Peak visualization mode
+- Added Analog visualization mode
+- Keybindings are disabled by default (sometimes xmms to hang if enabled)
+- Added some bugfixes
+
+--
