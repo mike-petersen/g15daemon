@@ -59,10 +59,10 @@
 
 /* Time factor of the band dinamics. 3 means that the coefficient of the
    last value is half of the current one's. (see source) */
-#define tau 3 /*4.5*/
+#define tau 4.5
 /* Factor used for the diffusion. 4 means that half of the height is
    added to the neighbouring bars */
-#define dif 4 /*3*/
+#define dif 3 
 
 
 /* BEGIN CONFIG VARIABLES */ 
@@ -71,7 +71,7 @@
 /* Float. Linearity of the amplitude scale (0.5 for linear, keep in [0.1, 0.49]) */
 static float linearity;
 
-/* Integer. Amplification of the scale. Cannot be negative. +-30 is a reasonable range */
+/* Integer. Amplification of the scale. Can be negative. +-30 is a reasonable range */
 static int amplification;
 
 /* Integer. limit (in px) of max length of bars avoid overlap */
@@ -260,6 +260,7 @@ void g15spectrum_write_config(void)
 }
 
 void g15analyser_conf_apply(void){
+  /* Apply gui values */
   pthread_mutex_lock (&g15buf_mutex);
   if (GTK_TOGGLE_BUTTON(t_options_bars_radio)->active)
     vis_type = 0;
@@ -290,6 +291,7 @@ void g15analyser_conf_apply(void){
 }
 
 void g15analyser_conf_reset(void){
+  /* Apply default values */
   pthread_mutex_lock (&g15buf_mutex);
   vis_type = def_vis_type;
   num_bars = def_num_bars;
@@ -309,7 +311,7 @@ void g15analyser_conf_reset(void){
 }
 
 static void g15analyser_conf_reset_defaults_gui(void){
-  
+  /* Apply defaults values to the gui only */
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_bars_radio),def_vis_type == 0);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_scope_radio),def_vis_type == 1);
   
@@ -339,6 +341,7 @@ static void g15analyser_conf_reset_defaults_gui(void){
 static void g15analyzer_adj_changed(GtkWidget *w, int *a)
 {
   if (a == &tmp_bars){
+    /* FIXME: Something better than this ? */
     if (tmp_bars != (int) GTK_ADJUSTMENT(w)->value){
       if ((int) GTK_ADJUSTMENT(w)->value > tmp_bars)
 	tmp_bars *= 2;
@@ -357,22 +360,25 @@ static void g15analyzer_adj_changed_float(GtkWidget *w, float *a)
 }
 
 void g15analyser_conf_ok(GtkWidget *w, gpointer data){
-  g15analyser_conf_apply();
-  g15spectrum_write_config();
-  gtk_widget_destroy(configure_win);
+  /* Ok button routine */
+  g15analyser_conf_apply(); /* Apply */
+  g15spectrum_write_config(); /* Save Config */
+  gtk_widget_destroy(configure_win); /* exit */
   return;
 }
 
 void g15analyser_conf_cancel(){
-  g15spectrum_read_config();
-  gtk_widget_destroy(configure_win);
+  /* Cancel button routine: */
+   g15spectrum_read_config(); /* restore as saved */
+  gtk_widget_destroy(configure_win); /* exit */
   return;
 }
 
 void g15analyser_conf(void){
+  /* some labels */
   GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step;
-  /*int bar_value = (log(num_bars)/log(2));*/
-  tmp_bars = num_bars;
+  tmp_bars = num_bars; /* needed to approx in g15analyzer_adj_changed */
+
   if(configure_win)
     return;
   configure_win = gtk_window_new(GTK_WINDOW_DIALOG);
@@ -434,7 +440,7 @@ void g15analyser_conf(void){
   g_options_frame_bars = gtk_frame_new("Spectrum bars options:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame), 5);
   t_options_bars = gtk_vbox_new(FALSE, 5);
-  
+  /* number of the bars */
   label_bars=gtk_label_new("Num Bars:");
   gtk_misc_set_alignment(GTK_MISC (label_bars), 0, 0);
   gtk_misc_set_padding(GTK_MISC (label_bars),5,0);
@@ -447,19 +453,19 @@ void g15analyser_conf(void){
   gtk_widget_show(scale_bars);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_bars, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_bars), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_bars);
-  
+  /* Amplification linearity bar */
   label_lin=gtk_label_new("Amplification linearity:");
   gtk_misc_set_alignment(GTK_MISC (label_lin), 0, 5);
   gtk_misc_set_padding(GTK_MISC (label_lin),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_lin, TRUE, TRUE, 4);
   gtk_widget_show(label_lin);
-  adj_lin=gtk_adjustment_new(linearity, 0.10 , 0.49 , 0.1, 0.1, 0);
+  adj_lin=gtk_adjustment_new(linearity, 0.1 , 0.49 , 1, 1, 0);
   scale_lin=gtk_hscale_new(GTK_ADJUSTMENT(adj_lin));
   gtk_scale_set_draw_value(GTK_SCALE(scale_lin), TRUE);
   gtk_widget_show(scale_lin);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_lin, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_lin), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed_float), &tmp_lin);
-  
+  /* Amplification bar */
   label_ampli=gtk_label_new("Amplification:");
   gtk_misc_set_alignment(GTK_MISC (label_ampli), 0, 5);
   gtk_misc_set_padding(GTK_MISC (label_ampli),5,0);
@@ -468,10 +474,10 @@ void g15analyser_conf(void){
   adj_ampli=gtk_adjustment_new(amplification, -30, 30, 1, 1, 0);
   scale_ampli=gtk_hscale_new(GTK_ADJUSTMENT(adj_ampli));
   gtk_scale_set_draw_value(GTK_SCALE(scale_ampli), TRUE);
+  gtk_scale_set_digits ((GtkScale *)scale_ampli, 0);
   gtk_widget_show(scale_ampli);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_ampli, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_ampli), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_ampli);
-  
   /* draw frame */
   gtk_container_add(GTK_CONTAINER(g_options_frame_bars), t_options_bars); 
   gtk_widget_show(t_options_bars);
@@ -515,6 +521,7 @@ void g15analyser_conf(void){
   adj_step=gtk_adjustment_new(analog_step, 2, 9, 1, 1, 0);
   scale_step=gtk_hscale_new(GTK_ADJUSTMENT(adj_step));
   gtk_scale_set_draw_value(GTK_SCALE(scale_step), TRUE);
+  gtk_scale_set_digits ((GtkScale *)scale_step, 0);	
   gtk_widget_show(scale_step);
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), scale_step, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_step), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_step);
@@ -574,7 +581,7 @@ void g15analyser_about(void){
   gtk_window_set_policy(GTK_WINDOW(dialog), FALSE, FALSE, FALSE);
   gtk_container_border_width(GTK_CONTAINER(dialog), 5);
   
-  
+  /* Something about us... */
   label = gtk_label_new (PLUGIN_NAME"\n\
 v. " PLUGIN_VERSION "\n\
 \n\
@@ -731,6 +738,9 @@ static int g15send_func() {
 	  if (vis_type == 0)
 	    {
 	      int bar_width =  G15_LCD_WIDTH / num_bars;
+	      int bottom_line = G15_LCD_HEIGHT-(INFERIOR_SPACE*show_pbar); /* line where bars starts */
+	      
+	      if (!show_pbar) bottom_line--;  /* we don't draw pixel 0 */
 	      
 	      for(i = 0; i < G15_LCD_WIDTH; i+=bar_width){
 		int y1 = bar_heights[i];
@@ -744,37 +754,40 @@ static int g15send_func() {
 		    bar_heights_peak[i]--;              
 		  }
 		}
+		/* check bars length anyway */
 		if (y1 > limit)
 		  y1 = limit;
 		if (y1 < 0)
 		  y1 = 0;
-		y1 =  G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - y1 - 1; /* always show bottom of the bars */
+
+		y1 = bottom_line - y1; /* always show bottom of the bars */
 		
-		/* if Analog Mode */
+		/* Analog Mode */
 		if (analog_mode){
-		  int end =  (y1 % analog_step == 0 ? y1 : y1 - (y1 % analog_step)); /* Approx to multiple */
+		  int end =  y1 - (y1 % analog_step); /* Approx to multiple */
 		  for(j = G15_LCD_HEIGHT - SUPERIOR_SPACE*show_pbar ; j > end ; j-= analog_step){
+		    /* draw leds :-) */
 		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i+bar_width-2, j , G15_COLOR_BLACK, 1, 1); 
 		  }		  
 		} else
-		  g15r_pixelBox (canvas, i, y1 + show_pbar, i + bar_width - 2, G15_LCD_HEIGHT-INFERIOR_SPACE*show_pbar, G15_COLOR_BLACK, 1, 1);
+		  g15r_pixelBox (canvas, i, y1  , i + bar_width - 2, bottom_line, G15_COLOR_BLACK, 1, 1);
 		
-		/* if enable peak*/
+		/* Enable peak*/
 		if (enable_peak && ! analog_mode){        
-		  int peak1, peak2;
+		  int peak;
 		  /* superior limit */
 		  if (bar_heights_peak[i] < limit){     
-		    peak1 = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - bar_heights_peak[i] - detached_peak*3;
-		    peak2 = peak1;
+		    peak = bottom_line - bar_heights_peak[i] - detached_peak*2; /* height of peak */
 		    /* inferior limit */
 		    if ( bar_heights_peak[i] > 0)                    
-		      g15r_pixelBox (canvas, i, peak1  , i + bar_width - 2, peak2, G15_COLOR_BLACK, 1, 1);
+		      g15r_pixelBox (canvas, i, peak  , i + bar_width - 2, peak, G15_COLOR_BLACK, 1, 1);
 		  }
 		}
 	      }
 	    }
 	  else
 	    {
+	      /* render scope */
 	      int y1, y2=(25 - scope_data[0]);
 	      for (i = 0; i < 160; i++)
 		{
@@ -796,7 +809,7 @@ static int g15send_func() {
       vol_timeout=10;
     else
       vol_timeout--;
-    
+    /* render volume */
     lastvolume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
     if (lastvolume >= 0)	
       g15r_drawBar (canvas, 10, 15, 149, 28, G15_COLOR_BLACK, lastvolume, 100, 1);
@@ -976,12 +989,13 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
   
   if (playing)
     {
-      gint i;
+      gint i,drawable_space;
       gdouble y;
       /* code from version 0.1 */
       
       /* dynamically calculate the scale (maybe changed in config) */
-      scale = (G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title + amplification) / ( log((1 - linearity) / linearity) *2 );  
+      drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title + amplification;
+      scale = drawable_space / ( log((1 - linearity) / linearity) *2 );  
       x00 = linearity*linearity*32768.0/(2 * linearity - 1);
       y00 = -log(-x00) * scale;
       
