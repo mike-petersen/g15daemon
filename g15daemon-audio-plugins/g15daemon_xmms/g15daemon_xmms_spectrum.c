@@ -15,7 +15,7 @@
   along with g15daemon; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   
-  (c) 2006 Mike Lampard, Philip Lawatsch, and others
+  (c) 2006 Mike Lampard, Philip Lawatsch, Antonio Bartolini, and others
   
   This daemon listens on localhost port 15550 for client connections,
   and arbitrates LCD display.  Allows for multiple simultaneous clients.
@@ -748,7 +748,7 @@ static int g15send_func() {
 		  y1 = limit;
 		if (y1 < 0)
 		  y1 = 0;
-		y1 =  G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - y1;
+		y1 =  G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - y1 - 1; /* always show bottom of the bars */
 		
 		/* if Analog Mode */
 		if (analog_mode){
@@ -757,17 +757,17 @@ static int g15send_func() {
 		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i+bar_width-2, j , G15_COLOR_BLACK, 1, 1); 
 		  }		  
 		} else
-		  g15r_pixelBox (canvas, i, y1 , i + bar_width - 2, G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar, G15_COLOR_BLACK, 1, 1);
+		  g15r_pixelBox (canvas, i, y1 + show_pbar, i + bar_width - 2, G15_LCD_HEIGHT-INFERIOR_SPACE*show_pbar, G15_COLOR_BLACK, 1, 1);
 		
 		/* if enable peak*/
 		if (enable_peak && ! analog_mode){        
 		  int peak1, peak2;
 		  /* superior limit */
 		  if (bar_heights_peak[i] < limit){     
-		    peak1 = G15_LCD_HEIGHT - SUPERIOR_SPACE*show_pbar - bar_heights_peak[i] - detached_peak;
+		    peak1 = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - bar_heights_peak[i] - detached_peak*3;
 		    peak2 = peak1;
 		    /* inferior limit */
-		    if ( peak2 < 34 )                    
+		    if ( bar_heights_peak[i] > 0)                    
 		      g15r_pixelBox (canvas, i, peak1  , i + bar_width - 2, peak2, G15_COLOR_BLACK, 1, 1);
 		  }
 		}
