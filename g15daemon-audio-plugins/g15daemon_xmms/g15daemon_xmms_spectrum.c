@@ -98,20 +98,28 @@ static unsigned int analog_mode;
 /* Integer. Step for leds in Analog Mode. Min value:  2 */
 static unsigned int analog_step;
 
+/* Boolean. Show Title */
+static unsigned int show_title;
+
+/* Boolean. Show bar */
+static unsigned int show_pbar;
+
 /* END CONFIG VARIABLES */
 
 /* Set here defaults values */
-static int def_vis_type = 0;
-static int def_num_bars = 32;
+static unsigned int def_vis_type = 0;
+static unsigned int def_num_bars = 32;
 static float def_linearity = 0.3;
 static int def_amplification = 0;
-static int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;
-static int def_enable_peak = 1;
-static int def_detached_peak = 1;
-static int def_analog_mode = 0;
-static int def_analog_step = 2;
-static int def_enable_keybindings = 0;
-/* end default values */
+static unsigned int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;
+static unsigned int def_enable_peak = 1;
+static unsigned int def_detached_peak = 1;
+static unsigned int def_analog_mode = FALSE;
+static unsigned int def_analog_step = 2;
+static unsigned int def_enable_keybindings = FALSE;
+static unsigned int def_show_title = TRUE;
+static unsigned int def_show_pbar = TRUE;
+
 
 static gint16 bar_heights[WIDTH];
 static gint16 bar_heights_peak[WIDTH];
@@ -158,6 +166,7 @@ static GtkWidget *t_options_effect_no, *t_options_effect_peak, *t_options_effect
 static GtkWidget *t_options_vistype;
 static GtkWidget *t_options_bars, *t_options_bars_effects;
 static GtkWidget *g_options_frame ,*g_options_enable_keybindings, *g_options_enable_dpeak;
+static GtkWidget *g_options_show_title, *g_options_show_pbar;
 static GtkWidget *g_options_frame_bars;
 static GtkWidget *g_options_frame_bars_effects;
 static GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step;
@@ -212,6 +221,8 @@ void g15spectrum_read_config(void)
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "analog_mode", (int*)&analog_mode);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "analog_step", (int*)&analog_step);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
+      xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_title", (int*)&show_title);
+      xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_pbar", (int*)&show_pbar);
       
       xmms_cfg_free(cfg);
       
@@ -240,6 +251,8 @@ void g15spectrum_write_config(void)
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "analog_mode", analog_mode);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "analog_step", analog_step);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "enable_keybindings", enable_keybindings);
+      xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_title", show_title);
+      xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_pbar", show_pbar);
       xmms_cfg_write_file(cfg, filename);
       xmms_cfg_free(cfg);
     }
@@ -269,6 +282,9 @@ void g15analyser_conf_apply(void){
   }
   detached_peak = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_dpeak));
   enable_keybindings =  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings));
+  show_title = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_title));
+  show_pbar = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_pbar));
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -285,6 +301,9 @@ void g15analyser_conf_reset(void){
   analog_mode = def_analog_mode;
   analog_step = def_analog_step;
   enable_keybindings = def_enable_keybindings;
+  show_title = def_show_title;
+  show_pbar = def_show_pbar;
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -312,6 +331,8 @@ static void g15analyser_conf_reset_defaults_gui(void){
   
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_dpeak), def_detached_peak);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings), def_enable_keybindings);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), def_show_title);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), def_show_pbar);
   return;
 }
 
@@ -389,9 +410,21 @@ void g15analyser_conf(void){
   /* put check button in g_options_vbox */
   gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_enable_keybindings, FALSE, FALSE, 0);
   gtk_widget_show(g_options_enable_keybindings);
+  /* create show title button */
+  g_options_show_title = gtk_check_button_new_with_label("Show title");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), show_title);
+  /* put check button in g_options_vbox */
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_title, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_show_title);
+  /* create show progress bar button */
+  g_options_show_pbar = gtk_check_button_new_with_label("Show progress bar");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), show_pbar);
+  /* put check button in g_options_vbox */
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_pbar, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_show_pbar);
+  /* draw frame */
   gtk_container_add(GTK_CONTAINER(g_options_frame), t_options_vistype); 
   gtk_widget_show(t_options_vistype);
-  /* draw frame */
   gtk_box_pack_start(GTK_BOX(vbox), g_options_frame, TRUE, TRUE, 0);
   gtk_widget_show(g_options_frame);
   
@@ -675,7 +708,7 @@ static int g15send_func() {
       playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
       
       title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
-      if(title!=NULL){ //amarok doesnt support providing title info via xmms interface :(
+      if(title!=NULL && show_title ){ //amarok doesnt support providing title info via xmms interface :(
 	if(strlen(title)>32) {
 	  artist = strtok_r(title,"-",&strtok_ptr);
 	  song = strtok_r(NULL,"-",&strtok_ptr);
@@ -690,7 +723,8 @@ static int g15send_func() {
 	} else
 	  g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
       }
-      g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
+      if (show_pbar)
+	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
       
       if (playing)
 	{
@@ -712,23 +746,25 @@ static int g15send_func() {
 		}
 		if (y1 > limit)
 		  y1 = limit;
-		y1 =  G15_LCD_HEIGHT - INFERIOR_SPACE - y1;
+		if (y1 < 0)
+		  y1 = 0;
+		y1 =  G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - y1;
 		
 		/* if Analog Mode */
 		if (analog_mode){
 		  int end =  (y1 % analog_step == 0 ? y1 : y1 - (y1 % analog_step)); /* Approx to multiple */
-		  for(j = G15_LCD_HEIGHT - SUPERIOR_SPACE ; j > end ; j-= analog_step){
+		  for(j = G15_LCD_HEIGHT - SUPERIOR_SPACE*show_pbar ; j > end ; j-= analog_step){
 		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i+bar_width-2, j , G15_COLOR_BLACK, 1, 1); 
 		  }		  
 		} else
-		  g15r_pixelBox (canvas, i, y1 , i + bar_width - 2, 36, G15_COLOR_BLACK, 1, 1);
+		  g15r_pixelBox (canvas, i, y1 , i + bar_width - 2, G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar, G15_COLOR_BLACK, 1, 1);
 		
 		/* if enable peak*/
 		if (enable_peak && ! analog_mode){        
 		  int peak1, peak2;
 		  /* superior limit */
 		  if (bar_heights_peak[i] < limit){     
-		    peak1 = G15_LCD_HEIGHT - SUPERIOR_SPACE - bar_heights_peak[i] - detached_peak;
+		    peak1 = G15_LCD_HEIGHT - SUPERIOR_SPACE*show_pbar - bar_heights_peak[i] - detached_peak;
 		    peak2 = peak1;
 		    /* inferior limit */
 		    if ( peak2 < 34 )                    
@@ -945,7 +981,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
       /* code from version 0.1 */
       
       /* dynamically calculate the scale (maybe changed in config) */
-      scale = (G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE + amplification) / ( log((1 - linearity) / linearity) *2 );  
+      scale = (G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title + amplification) / ( log((1 - linearity) / linearity) *2 );  
       x00 = linearity*linearity*32768.0/(2 * linearity - 1);
       y00 = -log(-x00) * scale;
       
@@ -957,7 +993,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
 	      (i==0       ? y : bar_heights[i-1]) +
 	      (i==WIDTH-1 ? y : bar_heights[i+1])) / dif; /* Add some diffusion */
 	y = ((tau-1)*bar_heights[i] + y) / tau; /* Add some dynamics */
-	bar_heights[i] = (gint16)y; /* amplification non mi CAMBIA!!! */
+	bar_heights[i] = (gint16)y; 
       }
       
     }

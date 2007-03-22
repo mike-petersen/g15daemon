@@ -14,7 +14,7 @@ DONE - Add "reset" button in config dialog to reset to the
 
 - Add more visuals (analog vu-meter?)
 
-- Give the possibility to hide the name of the song,
-  the progress bar and other messages by the gui.
+DONE - Give the possibility to hide the name of the song,
+       the progress bar and other messages by the gui.
 
 --
