@@ -59,47 +59,59 @@
 
 /* Time factor of the band dinamics. 3 means that the coefficient of the
    last value is half of the current one's. (see source) */
-#define tau 4.5
-
-
-
-/* BEGIN CONFIG VARIABLES */
-
-/* Linearity of the amplitude scale (0.5 for linear, keep in [0.1, 0.9]) */
-static float linearity=0.33;
-
-/* Amplification of the scale. Cannot be negative. 0,0.5 is a reasonable range */
-static int amplification=0;
-
+#define tau 3 /*4.5*/
 /* Factor used for the diffusion. 4 means that half of the height is
    added to the neighbouring bars */
-static float dif=3;    
+#define dif 4 /*3*/
 
-/* limit (in px) of max length of bars avoid overlap */
-static unsigned int limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;  
 
-/* Number of Bars - Must be a divisor of 256! allowed: 1 (useless) 2 4 8 16 32 64 128(no space between bars) */   
-static unsigned int num_bars=32;
+/* BEGIN CONFIG VARIABLES */ 
+/* for default values see below */
 
-/* Variable to disable keybindings Default: Disabled */
-static unsigned int enable_keybindings=FALSE;
+/* Float. Linearity of the amplitude scale (0.5 for linear, keep in [0.1, 0.49]) */
+static float linearity;
 
-/* Visualization  type */
-static unsigned int vis_type=0;
+/* Integer. Amplification of the scale. Cannot be negative. +-30 is a reasonable range */
+static int amplification;
 
-/* Peak visualization enable */
-static unsigned int enable_peak=TRUE;
+/* Integer. limit (in px) of max length of bars avoid overlap */
+static unsigned int limit;  
 
-/* Detached peak from bars */
-static unsigned int detached_peak=TRUE;
+/* Integer. Number of Bars - Must be a divisor of 256! allowed: 1 (useless) 2 4 8 16 32 64 128(no space between bars) */   
+static unsigned int num_bars;
 
-/* Enable Analog Mode */
-static unsigned int analog_mode=FALSE;
+/* Boolean. Variable to disable keybindings Default: Disabled */
+static unsigned int enable_keybindings;
 
-/* Step for leds in Analog Mode. Min value:  2 */
-static unsigned int analog_step=2;
+/* Integer. Visualization  type */
+static unsigned int vis_type;
+
+/* Boolean. Peak visualization enable */
+static unsigned int enable_peak;
+
+/* Boolean. Detached peak from bars */
+static unsigned int detached_peak;
+
+/* Boolean. Enable Analog Mode */
+static unsigned int analog_mode;
+
+/* Integer. Step for leds in Analog Mode. Min value:  2 */
+static unsigned int analog_step;
 
 /* END CONFIG VARIABLES */
+
+/* Set here defaults values */
+static int def_vis_type = 0;
+static int def_num_bars = 32;
+static float def_linearity = 0.3;
+static int def_amplification = 0;
+static int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;
+static int def_enable_peak = 1;
+static int def_detached_peak = 1;
+static int def_analog_mode = 0;
+static int def_analog_step = 2;
+static int def_enable_keybindings = 0;
+/* end default values */
 
 static gint16 bar_heights[WIDTH];
 static gint16 bar_heights_peak[WIDTH];
@@ -118,6 +130,7 @@ static void g15analyser_about(void);
 static void g15analyser_conf_ok(GtkWidget *w, gpointer data);
 static void g15analyser_conf_apply(void);
 static void g15analyser_conf_cancel(void);
+static void g15analyser_conf_reset(void);
 
 g15canvas *canvas;
 
@@ -139,7 +152,7 @@ static int volume;
 /* gdk stuff */
 static GtkWidget *configure_win = NULL;
 static GtkWidget *vbox;
-static GtkWidget *bbox, *ok, *cancel, *apply;
+static GtkWidget *bbox, *ok, *cancel, *apply, *defaults;
 static GtkWidget *t_options_bars_radio, *t_options_scope_radio;
 static GtkWidget *t_options_effect_no, *t_options_effect_peak, *t_options_effect_analog;
 static GtkWidget *t_options_vistype;
@@ -147,9 +160,11 @@ static GtkWidget *t_options_bars, *t_options_bars_effects;
 static GtkWidget *g_options_frame ,*g_options_enable_keybindings, *g_options_enable_dpeak;
 static GtkWidget *g_options_frame_bars;
 static GtkWidget *g_options_frame_bars_effects;
+static GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step;
+static GtkObject *adj_bars, *adj_lin, *adj_ampli, *adj_step;
 
-static int tmp_bars=-1, tmp_step=-1, tmp_ampli=-1000; 
-static float tmp_lin=-1;
+static gint tmp_bars=-1, tmp_step=-1, tmp_ampli=-1000; 
+static gfloat tmp_lin=-1;
 
 
 VisPlugin g15analyser_vp = {
@@ -242,7 +257,7 @@ void g15analyser_conf_apply(void){
   if ( tmp_ampli != -1000 )
     amplification = tmp_ampli;
   if ( tmp_bars != -1 )
-    num_bars =  pow(2,tmp_bars);
+    num_bars = (int)tmp_bars;
   if (tmp_step != -1 )
     analog_step = tmp_step;
   if (GTK_TOGGLE_BUTTON(t_options_effect_no)->active){
@@ -258,10 +273,61 @@ void g15analyser_conf_apply(void){
   return;
 }
 
+void g15analyser_conf_reset(void){
+  pthread_mutex_lock (&g15buf_mutex);
+  vis_type = def_vis_type;
+  num_bars = def_num_bars;
+  linearity = def_linearity;
+  amplification = def_amplification;
+  limit = def_limit;
+  enable_peak = def_enable_peak;
+  detached_peak = def_detached_peak;
+  analog_mode = def_analog_mode;
+  analog_step = def_analog_step;
+  enable_keybindings = def_enable_keybindings;
+  pthread_mutex_unlock (&g15buf_mutex);
+  return;
+}
+
+static void g15analyser_conf_reset_defaults_gui(void){
+  
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_bars_radio),def_vis_type == 0);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_scope_radio),def_vis_type == 1);
+  
+  tmp_bars = def_num_bars; 
+  gtk_adjustment_set_value((GtkAdjustment *)adj_bars,tmp_bars);
+  
+  tmp_lin = def_linearity; 
+  gtk_adjustment_set_value((GtkAdjustment *)adj_lin,tmp_lin);
+  
+  tmp_ampli = def_amplification;
+  gtk_adjustment_set_value((GtkAdjustment *)adj_ampli,tmp_ampli);
+  
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no),    !def_enable_peak && !def_analog_mode);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak),   def_enable_peak && !def_analog_mode);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog),!def_enable_peak &&  def_analog_mode);
+  
+  tmp_step = def_analog_step;
+  gtk_adjustment_set_value((GtkAdjustment *)adj_step,tmp_step);
+  
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_dpeak), def_detached_peak);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings), def_enable_keybindings);
+  return;
+}
 
 static void g15analyzer_adj_changed(GtkWidget *w, int *a)
 {
-  *a=(int) GTK_ADJUSTMENT(w)->value;
+  if (a == &tmp_bars){
+    if (tmp_bars != (int) GTK_ADJUSTMENT(w)->value){
+      if ((int) GTK_ADJUSTMENT(w)->value > tmp_bars)
+	tmp_bars *= 2;
+      else
+	tmp_bars /= 2;
+    }
+    gtk_adjustment_set_value((GtkAdjustment *)w,tmp_bars);
+  }    
+  else
+    *a=(int) GTK_ADJUSTMENT(w)->value;
 }
 
 static void g15analyzer_adj_changed_float(GtkWidget *w, float *a)
@@ -284,10 +350,8 @@ void g15analyser_conf_cancel(){
 
 void g15analyser_conf(void){
   GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step;
-  GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step;
-  GtkObject *adj_bars, *adj_lin, *adj_ampli, *adj_step;
-  int bar_value = (log(num_bars)/log(2));
-  printf("%d",bar_value);
+  /*int bar_value = (log(num_bars)/log(2));*/
+  tmp_bars = num_bars;
   if(configure_win)
     return;
   configure_win = gtk_window_new(GTK_WINDOW_DIALOG);
@@ -343,9 +407,10 @@ void g15analyser_conf(void){
   gtk_misc_set_padding(GTK_MISC (label_bars),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_bars, TRUE, TRUE, 4);
   gtk_widget_show(label_bars);
-  adj_bars=gtk_adjustment_new(bar_value, 0, 7, 1, 1, 0);
+  adj_bars=gtk_adjustment_new(num_bars, 1, 128, 2, 2, 0);
   scale_bars=gtk_hscale_new(GTK_ADJUSTMENT(adj_bars));
-  gtk_scale_set_draw_value(GTK_SCALE(scale_bars), FALSE);
+  gtk_scale_set_draw_value(GTK_SCALE(scale_bars), TRUE);
+  gtk_scale_set_digits ((GtkScale *)scale_bars, 0);
   gtk_widget_show(scale_bars);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_bars, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_bars), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_bars);
@@ -357,7 +422,7 @@ void g15analyser_conf(void){
   gtk_widget_show(label_lin);
   adj_lin=gtk_adjustment_new(linearity, 0.10 , 0.49 , 0.1, 0.1, 0);
   scale_lin=gtk_hscale_new(GTK_ADJUSTMENT(adj_lin));
-  gtk_scale_set_draw_value(GTK_SCALE(scale_lin), FALSE);
+  gtk_scale_set_draw_value(GTK_SCALE(scale_lin), TRUE);
   gtk_widget_show(scale_lin);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_lin, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_lin), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed_float), &tmp_lin);
@@ -369,7 +434,7 @@ void g15analyser_conf(void){
   gtk_widget_show(label_ampli);
   adj_ampli=gtk_adjustment_new(amplification, -30, 30, 1, 1, 0);
   scale_ampli=gtk_hscale_new(GTK_ADJUSTMENT(adj_ampli));
-  gtk_scale_set_draw_value(GTK_SCALE(scale_ampli), FALSE);
+  gtk_scale_set_draw_value(GTK_SCALE(scale_ampli), TRUE);
   gtk_widget_show(scale_ampli);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_ampli, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_ampli), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_ampli);
@@ -416,7 +481,7 @@ void g15analyser_conf(void){
   gtk_widget_show(label_step);
   adj_step=gtk_adjustment_new(analog_step, 2, 9, 1, 1, 0);
   scale_step=gtk_hscale_new(GTK_ADJUSTMENT(adj_step));
-  gtk_scale_set_draw_value(GTK_SCALE(scale_step), FALSE);
+  gtk_scale_set_draw_value(GTK_SCALE(scale_step), TRUE);
   gtk_widget_show(scale_step);
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), scale_step, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_step), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_step);
@@ -445,6 +510,12 @@ void g15analyser_conf(void){
   GTK_WIDGET_SET_FLAGS(apply, GTK_CAN_DEFAULT);
   gtk_box_pack_start(GTK_BOX(bbox), apply, TRUE, TRUE, 0);
   gtk_widget_show(apply);
+  
+  defaults = gtk_button_new_with_label(" Reset ");
+  gtk_signal_connect(GTK_OBJECT(defaults), "clicked", GTK_SIGNAL_FUNC(g15analyser_conf_reset_defaults_gui), NULL);
+  GTK_WIDGET_SET_FLAGS(defaults, GTK_CAN_DEFAULT);
+  gtk_box_pack_start(GTK_BOX(bbox), defaults, TRUE, TRUE, 0);
+  gtk_widget_show(defaults);
   
   cancel = gtk_button_new_with_label("Cancel");
   gtk_signal_connect_object(GTK_OBJECT(cancel), "clicked", GTK_SIGNAL_FUNC(g15analyser_conf_cancel), GTK_OBJECT(configure_win));
@@ -724,10 +795,11 @@ int myx_error_handler(Display *dpy, XErrorEvent *err){
 static void g15analyser_init(void) {
   
   pthread_mutex_init(&g15buf_mutex, NULL); 
+  g15analyser_conf_reset();
   g15spectrum_read_config();
-
+  
   pthread_mutex_lock(&g15buf_mutex);
-
+  
   if (enable_keybindings) {
     dpy = XOpenDisplay(getenv("DISPLAY"));
     if (!dpy) {
@@ -771,8 +843,8 @@ static void g15analyser_init(void) {
       canvas->mode_reverse = 0;
       canvas->mode_xor = 0;
     }
-    
-
+  
+  
   pthread_mutex_unlock(&g15buf_mutex);
   /* increase lcd drive voltage/contrast for this client */
   g15_send_cmd(g15screen_fd, G15DAEMON_CONTRAST,2);
@@ -862,8 +934,8 @@ static void g15analyser_render_pcm(gint16 data[2][512]) {
 }
 
 static void g15analyser_render_freq(gint16 data[2][256]) {
-
-
+  
+  
   pthread_mutex_lock(&g15buf_mutex);
   
   if (playing)
@@ -871,12 +943,12 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
       gint i;
       gdouble y;
       /* code from version 0.1 */
-
+      
       /* dynamically calculate the scale (maybe changed in config) */
       scale = (G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE + amplification) / ( log((1 - linearity) / linearity) *2 );  
       x00 = linearity*linearity*32768.0/(2 * linearity - 1);
       y00 = -log(-x00) * scale;
-
+      
       for (i = 0; i < WIDTH; i++) {
 	y = (gdouble)data[0][i] * (i + 1); /* Compensating the energy */  /* FIXME: Use both channels? */
 	y = ( log(y - x00) * scale + y00 ); /* Logarithmic amplitude */
@@ -885,7 +957,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
 	      (i==0       ? y : bar_heights[i-1]) +
 	      (i==WIDTH-1 ? y : bar_heights[i+1])) / dif; /* Add some diffusion */
 	y = ((tau-1)*bar_heights[i] + y) / tau; /* Add some dynamics */
-	bar_heights[i] = (gint16)y;
+	bar_heights[i] = (gint16)y; /* amplification non mi CAMBIA!!! */
       }
       
     }
