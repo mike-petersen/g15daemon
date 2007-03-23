@@ -134,6 +134,7 @@ static void g15analyser_render_pcm(gint16 data[2][512]);
 static void g15analyser_render_freq(gint16 data[2][256]);
 static void g15analyser_conf(void);
 static void g15analyser_about(void);
+static gint g15analyser_disable(gpointer data);
 
 static void g15analyser_conf_ok(GtkWidget *w, gpointer data);
 static void g15analyser_conf_apply(void);
@@ -187,14 +188,17 @@ VisPlugin g15analyser_vp = {
   g15analyser_cleanup,        /* cleanup        */
   g15analyser_about,          /* about          */
   g15analyser_conf,           /* configure      */
-  NULL,                       /* disable_plugin */
+  0,                          /* disable_plugin */
   g15analyser_playback_start, /* playback_start */
   g15analyser_playback_stop,  /* playback_stop  */
   g15analyser_render_pcm,     /* render_pcm     */
   g15analyser_render_freq     /* render_freq    */
 };
 
-
+gint g15analyser_disable(gpointer data){
+  g15analyser_vp.disable_plugin (&g15analyser_vp); /* disable if unusable */
+  return FALSE;
+}
 
 VisPlugin *get_vplugin_info(void) {
   return &g15analyser_vp;
@@ -459,8 +463,9 @@ void g15analyser_conf(void){
   gtk_misc_set_padding(GTK_MISC (label_lin),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_lin, TRUE, TRUE, 4);
   gtk_widget_show(label_lin);
-  adj_lin=gtk_adjustment_new(linearity, 0.1 , 0.49 , 1, 1, 0);
+  adj_lin=gtk_adjustment_new(linearity, 0.1 , 0.49 , 0.01, 0.01, 0);
   scale_lin=gtk_hscale_new(GTK_ADJUSTMENT(adj_lin));
+  gtk_scale_set_digits ((GtkScale *)scale_lin, 2);
   gtk_scale_set_draw_value(GTK_SCALE(scale_lin), TRUE);
   gtk_widget_show(scale_lin);
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_lin, TRUE, TRUE, 4);
@@ -881,7 +886,11 @@ static void g15analyser_init(void) {
 	     False, GrabModeAsync, GrabModeAsync);                                     
   }
   
-  if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
+  g15screen_fd = new_g15_screen(G15_G15RBUF);
+  if(g15screen_fd < 0 ){
+    printf("Cant connect with G15daemon !\n");
+    pthread_mutex_unlock(&g15buf_mutex);
+    gtk_idle_add (g15analyser_disable,NULL);
     return;
   }
   canvas = (g15canvas *) malloc (sizeof (g15canvas));
