@@ -55,7 +55,7 @@
 #define PLUGIN_VERSION "2.5.0"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
-#define SUPERIOR_SPACE 9 /* space between bars and top of lcd   */
+#define SUPERIOR_SPACE 8 /* space between bars and top of lcd   */
 
 /* Time factor of the band dinamics. 3 means that the coefficient of the
    last value is half of the current one's. (see source) */
@@ -289,7 +289,7 @@ void g15analyser_conf_apply(void){
   enable_keybindings =  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings));
   show_title = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_title));
   show_pbar = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_pbar));
-  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title;
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title - 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -309,7 +309,7 @@ void g15analyser_conf_reset(void){
   enable_keybindings = def_enable_keybindings;
   show_title = def_show_title;
   show_pbar = def_show_pbar;
-  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title;
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title - 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -757,8 +757,8 @@ static int g15send_func() {
 		
 		/* if enable peak... calculate it */
 		if (enable_peak && ! analog_mode){
-		  if (y1 > limit - 3)   /* check new limit for bars to show peaks even when max */
-		    y1 = limit - 3;
+		  if (y1 > limit - 2)   /* check new limit for bars to show peaks even when max */
+		    y1 = limit - 2;
 		  /* check for new peak */
 		  if(y1 >= bar_heights_peak[i]) {          
 		    bar_heights_peak[i] = y1;
@@ -771,8 +771,8 @@ static int g15send_func() {
 		
 		/* Analog Mode */
 		if (analog_mode){
-		  int end =  y1  + analog_step - (y1 % analog_step); /* superior approx to multiple */
-		  for(j = bottom_line ; j > end; j-= analog_step){
+		  int end =  y1  + analog_step - (y1 % analog_step) - 1; /* superior approx to multiple */
+		  for(j = bottom_line ; j >= end; j-= analog_step){
 		    /* draw leds :-) */
 		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i + bar_width - 2, j , G15_COLOR_BLACK, 1, 1); 
 		  }		  
