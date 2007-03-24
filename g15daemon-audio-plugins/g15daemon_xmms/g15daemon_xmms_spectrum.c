@@ -55,7 +55,7 @@
 #define PLUGIN_VERSION "2.5.0"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
-#define SUPERIOR_SPACE 8 /* space between bars and top of lcd   */
+#define SUPERIOR_SPACE 9 /* space between bars and top of lcd   */
 
 /* Time factor of the band dinamics. 3 means that the coefficient of the
    last value is half of the current one's. (see source) */
@@ -109,7 +109,7 @@ static unsigned int show_pbar;
 /* Set here defaults values */
 static unsigned int def_vis_type = 0;
 static unsigned int def_num_bars = 32;
-static float def_linearity = 0.3;
+static float def_linearity = 0.37;
 static int def_amplification = 0;
 static unsigned int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;
 static unsigned int def_enable_peak = 1;
@@ -188,7 +188,7 @@ VisPlugin g15analyser_vp = {
   g15analyser_cleanup,        /* cleanup        */
   g15analyser_about,          /* about          */
   g15analyser_conf,           /* configure      */
-  0,                          /* disable_plugin */
+  NULL,                       /* disable_plugin */
   g15analyser_playback_start, /* playback_start */
   g15analyser_playback_stop,  /* playback_stop  */
   g15analyser_render_pcm,     /* render_pcm     */
@@ -373,7 +373,7 @@ void g15analyser_conf_ok(GtkWidget *w, gpointer data){
 
 void g15analyser_conf_cancel(){
   /* Cancel button routine: */
-   g15spectrum_read_config(); /* restore as saved */
+  g15spectrum_read_config(); /* restore as saved */
   gtk_widget_destroy(configure_win); /* exit */
   return;
 }
@@ -382,7 +382,7 @@ void g15analyser_conf(void){
   /* some labels */
   GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step;
   tmp_bars = num_bars; /* needed to approx in g15analyzer_adj_changed */
-
+  
   if(configure_win)
     return;
   configure_win = gtk_window_new(GTK_WINDOW_DIALOG);
@@ -749,33 +749,35 @@ static int g15send_func() {
 	      
 	      for(i = 0; i < G15_LCD_WIDTH; i+=bar_width){
 		int y1 = bar_heights[i];
-		/* if enable peak*/
-		if (enable_peak && ! analog_mode){
-		  /* check for new peak */
-		  if(y1>=bar_heights_peak[i]) {          
-		    bar_heights_peak[i] = y1;
-		  } else {
-		    /* decrement old peak */
-		    bar_heights_peak[i]--;              
-		  }
-		}
 		/* check bars length anyway */
 		if (y1 > limit)
 		  y1 = limit;
 		if (y1 < 0)
 		  y1 = 0;
-
+		
+		/* if enable peak... calculate it */
+		if (enable_peak && ! analog_mode){
+		  if (y1 > limit - 3)   /* check new limit for bars to show peaks even when max */
+		    y1 = limit - 3;
+		  /* check for new peak */
+		  if(y1 >= bar_heights_peak[i]) {          
+		    bar_heights_peak[i] = y1;
+		  } else 
+		    /* decrement old peak */
+		    bar_heights_peak[i]--;              
+		} 
+		
 		y1 = bottom_line - y1; /* always show bottom of the bars */
 		
 		/* Analog Mode */
 		if (analog_mode){
-		  int end =  y1 - (y1 % analog_step); /* Approx to multiple */
-		  for(j = G15_LCD_HEIGHT - SUPERIOR_SPACE*show_pbar ; j > end ; j-= analog_step){
+		  int end =  y1  + analog_step - (y1 % analog_step); /* superior approx to multiple */
+		  for(j = bottom_line ; j > end; j-= analog_step){
 		    /* draw leds :-) */
-		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i+bar_width-2, j , G15_COLOR_BLACK, 1, 1); 
+		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i + bar_width - 2, j , G15_COLOR_BLACK, 1, 1); 
 		  }		  
 		} else
-		  g15r_pixelBox (canvas, i, y1  , i + bar_width - 2, bottom_line, G15_COLOR_BLACK, 1, 1);
+		  g15r_pixelBox (canvas, i, y1 , i + bar_width - 2, bottom_line, G15_COLOR_BLACK, 1, 1);
 		
 		/* Enable peak*/
 		if (enable_peak && ! analog_mode){        
