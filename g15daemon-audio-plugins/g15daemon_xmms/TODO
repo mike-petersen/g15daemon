@@ -17,4 +17,8 @@ DONE - Add "reset" button in config dialog to reset to the
 DONE - Give the possibility to hide the name of the song,
        the progress bar and other messages by the gui.
 
+- Split window for two channels (left, right)
+
+- Give more accuracy of the bars heigth (proportionally at the number of bars)
+
 --
