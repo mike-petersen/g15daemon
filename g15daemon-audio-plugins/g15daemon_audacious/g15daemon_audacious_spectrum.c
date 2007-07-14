@@ -32,11 +32,11 @@
 #include <pthread.h>
 #include <string.h>
 #include <glib.h>
-/** TODO GTK2 
+
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <gdk/gdkx.h>
-*/
+
 #include <audacious/plugin.h>
 #include <audacious/util.h>
 #include <audacious/beepctrl.h>
@@ -134,13 +134,13 @@ static void g15analyser_playback_start(void);
 static void g15analyser_playback_stop(void);
 static void g15analyser_render_pcm(gint16 data[2][512]);
 static void g15analyser_render_freq(gint16 data[2][256]);
-//static void g15analyser_conf(void);
-//static void g15analyser_about(void);
+static void g15analyser_conf(void);
+static void g15analyser_about(void);
 static gint g15analyser_disable(gpointer data);
 
-//static void g15analyser_conf_ok(GtkWidget *w, gpointer data);
-//static void g15analyser_conf_apply(void);
-//static void g15analyser_conf_cancel(void);
+static void g15analyser_conf_ok(GtkWidget *w, gpointer data);
+static void g15analyser_conf_apply(void);
+static void g15analyser_conf_cancel(void);
 static void g15analyser_conf_reset(void);
 
 g15canvas *canvas;
@@ -160,7 +160,7 @@ static int g15disp_timeout_handle;
 static int lastvolume;
 static int volume;
 
-/* gdk stuff 
+/* gdk stuff */
 static GtkWidget *configure_win = NULL;
 static GtkWidget *vbox;
 static GtkWidget *bbox, *ok, *cancel, *apply, *defaults;
@@ -176,7 +176,7 @@ static GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step;
 static GtkObject *adj_bars, *adj_lin, *adj_ampli, *adj_step;
 
 static gint tmp_bars=-1, tmp_step=-1, tmp_ampli=-1000; 
-static gfloat tmp_lin=-1;*/
+static gfloat tmp_lin=-1;
 
 
 VisPlugin g15analyser_vp = {
@@ -188,8 +188,8 @@ VisPlugin g15analyser_vp = {
   1,
   g15analyser_init,           /* init           */
   g15analyser_cleanup,        /* cleanup        */
-  NULL,          /* about          TODO*/
-  NULL,             	      /* configure      TODO*/
+  g15analyser_about,          /* about          */
+  g15analyser_conf,           /* configure      */
   NULL,                       /* disable_plugin */
   g15analyser_playback_start, /* playback_start */
   g15analyser_playback_stop,  /* playback_stop  */
@@ -232,13 +232,13 @@ void g15spectrum_read_config(void)
       
     }
   pthread_mutex_unlock (&g15buf_mutex);
-
+  
 }
 
 void g15spectrum_write_config(void)
 {
   ConfigDb *cfg;
-
+  
   cfg = bmp_cfg_db_open();
   
   if (cfg)
@@ -258,12 +258,12 @@ void g15spectrum_write_config(void)
       //xmms_cfg_write_file(cfg, filename);
       bmp_cfg_db_close(cfg);
     }
-
+  
 }
 
-//void g15analyser_conf_apply(void){
+void g15analyser_conf_apply(void){
   /* Apply gui values */
-/**  pthread_mutex_lock (&g15buf_mutex);
+  pthread_mutex_lock (&g15buf_mutex);
   if (GTK_TOGGLE_BUTTON(t_options_bars_radio)->active)
     vis_type = 0;
   else
@@ -290,7 +290,7 @@ void g15spectrum_write_config(void)
   limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title - 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
-}*/
+}
 
 void g15analyser_conf_reset(void){
   /* Apply default values */
@@ -312,9 +312,9 @@ void g15analyser_conf_reset(void){
   return;
 }
 
-//static void g15analyser_conf_reset_defaults_gui(void){
+static void g15analyser_conf_reset_defaults_gui(void){
   /* Apply defaults values to the gui only */
-/**  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_bars_radio),def_vis_type == 0);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_bars_radio),def_vis_type == 0);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_scope_radio),def_vis_type == 1);
   
   tmp_bars = def_num_bars; 
@@ -338,65 +338,65 @@ void g15analyser_conf_reset(void){
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), def_show_title);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), def_show_pbar);
   return;
-}*/
+}
 
-//static void g15analyzer_adj_changed(GtkWidget *w, int *a)
-//{
-//  if (a == &tmp_bars){
+static void g15analyzer_adj_changed(GtkWidget *w, int *a)
+{
+  if (a == &tmp_bars){
     /* FIXME: Something better than this ? */
-//    if (tmp_bars != (int) GTK_ADJUSTMENT(w)->value){
-//      if ((int) GTK_ADJUSTMENT(w)->value > tmp_bars)
-//	tmp_bars *= 2;
-//      else
-//	tmp_bars /= 2;
-//    }
-//    gtk_adjustment_set_value((GtkAdjustment *)w,tmp_bars);
-//  }    
-//  else
-//    *a=(int) GTK_ADJUSTMENT(w)->value;
-//}
+    if (tmp_bars != (int) GTK_ADJUSTMENT(w)->value){
+      if ((int) GTK_ADJUSTMENT(w)->value > tmp_bars)
+	tmp_bars *= 2;
+      else
+	tmp_bars /= 2;
+    }
+    gtk_adjustment_set_value((GtkAdjustment *)w,tmp_bars);
+  }    
+  else
+    *a=(int) GTK_ADJUSTMENT(w)->value;
+}
 
-//static void g15analyzer_adj_changed_float(GtkWidget *w, float *a)
-//{
-//  *a=(float) GTK_ADJUSTMENT(w)->value;
-//}
+static void g15analyzer_adj_changed_float(GtkWidget *w, float *a)
+{
+  *a=(float) GTK_ADJUSTMENT(w)->value;
+}
 
-//void g15analyser_conf_ok(GtkWidget *w, gpointer data){
+void g15analyser_conf_ok(GtkWidget *w, gpointer data){
   /* Ok button routine */
-//  g15analyser_conf_apply(); /* Apply */
-//  g15spectrum_write_config(); /* Save Config */
-//  gtk_widget_destroy(configure_win); /* exit */
-//  return;
-//}
+  g15analyser_conf_apply(); /* Apply */
+  g15spectrum_write_config(); /* Save Config */
+  gtk_widget_destroy(configure_win); /* exit */
+  return;
+}
 
-//void g15analyser_conf_cancel(){
+void g15analyser_conf_cancel(){
   /* Cancel button routine: */
-//  g15spectrum_read_config(); /* restore as saved */
-//  gtk_widget_destroy(configure_win); /* exit */
-//  return;
-//}
+  g15spectrum_read_config(); /* restore as saved */
+  gtk_widget_destroy(configure_win); /* exit */
+  return;
+}
 
-//TODO: GTK2 PORT
 
-//void g15analyser_conf(void){
+
+void g15analyser_conf(void){
   /* some labels */
-//  GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step;
-//  tmp_bars = num_bars; /* needed to approx in g15analyzer_adj_changed */
-/**  
+  GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step;
+  tmp_bars = num_bars; /* needed to approx in g15analyzer_adj_changed */
+  
   if(configure_win)
     return;
-  configure_win = gtk_window_new(GTK_WINDOW_DIALOG);
+  configure_win = gtk_window_new ( GTK_WINDOW_TOPLEVEL );
   gtk_container_set_border_width(GTK_CONTAINER(configure_win), 10);
   gtk_window_set_title(GTK_WINDOW(configure_win), PLUGIN_NAME " configuration");
   gtk_window_set_policy(GTK_WINDOW(configure_win), FALSE, FALSE, FALSE);
   gtk_window_set_position(GTK_WINDOW(configure_win), GTK_WIN_POS_MOUSE);
   gtk_signal_connect(GTK_OBJECT(configure_win), "destroy", GTK_SIGNAL_FUNC(gtk_widget_destroyed), &configure_win);
   
-  vbox = gtk_vbox_new(FALSE, 5);*/
+  vbox = gtk_vbox_new(FALSE, 5);
   
   /* general config */
   
-/**  g_options_frame = gtk_frame_new("General:");
+  g_options_frame = gtk_frame_new("General:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame), 5);
   t_options_vistype = gtk_vbox_new(FALSE, 5);
   label = gtk_label_new("Visualizion Type:");
@@ -405,47 +405,47 @@ void g15analyser_conf_reset(void){
   gtk_box_pack_start(GTK_BOX(t_options_vistype), label, FALSE, FALSE, 0);
   gtk_widget_show(label);
   t_options_bars_radio = gtk_radio_button_new_with_label(NULL, "Spectrum Bars");
-  t_options_scope_radio = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_bars_radio)), "Scope");*/
+  t_options_scope_radio = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_bars_radio)), "Scope");
   /* Bars radio */
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_bars_radio), vis_type == 0);
-  //gtk_box_pack_start(GTK_BOX(t_options_vistype), t_options_bars_radio, FALSE, FALSE, 0);
-  //gtk_widget_show(t_options_bars_radio);*/
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_bars_radio), vis_type == 0);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), t_options_bars_radio, FALSE, FALSE, 0);
+  gtk_widget_show(t_options_bars_radio);
   /* Spectrum radio */
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_scope_radio), vis_type == 1);
-  //gtk_box_pack_start(GTK_BOX(t_options_vistype), t_options_scope_radio, FALSE, FALSE, 0);
-  //gtk_widget_show(t_options_scope_radio);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_scope_radio), vis_type == 1);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), t_options_scope_radio, FALSE, FALSE, 0);
+  gtk_widget_show(t_options_scope_radio);
   /* create keybindings button */
-  //g_options_enable_keybindings = gtk_check_button_new_with_label("Enable Keybindings (need to restart XMMS)");
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings), enable_keybindings);
+  g_options_enable_keybindings = gtk_check_button_new_with_label("Enable Keybindings (need to restart XMMS)");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings), enable_keybindings);
   /* put check button in g_options_vbox */
-  //gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_enable_keybindings, FALSE, FALSE, 0);
-  //gtk_widget_show(g_options_enable_keybindings);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_enable_keybindings, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_enable_keybindings);
   /* create show title button */
-  //g_options_show_title = gtk_check_button_new_with_label("Show title");
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), show_title);
+  g_options_show_title = gtk_check_button_new_with_label("Show title");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), show_title);
   /* put check button in g_options_vbox */
-  //gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_title, FALSE, FALSE, 0);
-  //gtk_widget_show(g_options_show_title);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_title, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_show_title);
   /* create show progress bar button */
-  //g_options_show_pbar = gtk_check_button_new_with_label("Show progress bar");
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), show_pbar);
+  g_options_show_pbar = gtk_check_button_new_with_label("Show progress bar");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), show_pbar);
   /* put check button in g_options_vbox */
-  //gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_pbar, FALSE, FALSE, 0);
-  //gtk_widget_show(g_options_show_pbar);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_pbar, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_show_pbar);
   /* draw frame */
-  //gtk_container_add(GTK_CONTAINER(g_options_frame), t_options_vistype); 
-  //gtk_widget_show(t_options_vistype);
-  //gtk_box_pack_start(GTK_BOX(vbox), g_options_frame, TRUE, TRUE, 0);
-  //gtk_widget_show(g_options_frame);
+  gtk_container_add(GTK_CONTAINER(g_options_frame), t_options_vistype); 
+  gtk_widget_show(t_options_vistype);
+  gtk_box_pack_start(GTK_BOX(vbox), g_options_frame, TRUE, TRUE, 0);
+  gtk_widget_show(g_options_frame);
   
   
-  /* bars config 
+  /* bars config */
   
   g_options_frame_bars = gtk_frame_new("Spectrum bars options:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame), 5);
   t_options_bars = gtk_vbox_new(FALSE, 5);
   /* number of the bars */
-  /*label_bars=gtk_label_new("Num Bars:");
+  label_bars=gtk_label_new("Num Bars:");
   gtk_misc_set_alignment(GTK_MISC (label_bars), 0, 0);
   gtk_misc_set_padding(GTK_MISC (label_bars),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_bars, TRUE, TRUE, 4);
@@ -458,7 +458,7 @@ void g15analyser_conf_reset(void){
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_bars, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_bars), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_bars);
   /* Amplification linearity bar */
-  /*label_lin=gtk_label_new("Amplification linearity:");
+  label_lin=gtk_label_new("Amplification linearity:");
   gtk_misc_set_alignment(GTK_MISC (label_lin), 0, 5);
   gtk_misc_set_padding(GTK_MISC (label_lin),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_lin, TRUE, TRUE, 4);
@@ -471,7 +471,7 @@ void g15analyser_conf_reset(void){
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_lin, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_lin), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed_float), &tmp_lin);
   /* Amplification bar */
-  /*label_ampli=gtk_label_new("Amplification:");
+  label_ampli=gtk_label_new("Amplification:");
   gtk_misc_set_alignment(GTK_MISC (label_ampli), 0, 5);
   gtk_misc_set_padding(GTK_MISC (label_ampli),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_ampli, TRUE, TRUE, 4);
@@ -484,41 +484,41 @@ void g15analyser_conf_reset(void){
   gtk_box_pack_start(GTK_BOX(t_options_bars), scale_ampli, TRUE, TRUE, 4);
   gtk_signal_connect(GTK_OBJECT(adj_ampli), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_ampli);
   /* draw frame */
-  /*gtk_container_add(GTK_CONTAINER(g_options_frame_bars), t_options_bars); 
+  gtk_container_add(GTK_CONTAINER(g_options_frame_bars), t_options_bars); 
   gtk_widget_show(t_options_bars);
   gtk_box_pack_start(GTK_BOX(vbox), g_options_frame_bars, TRUE, TRUE, 0);
   gtk_widget_show(g_options_frame_bars);
   
   
   /* bars effects */
-  /*g_options_frame_bars_effects = gtk_frame_new("Spectrum bars effects:");
+  g_options_frame_bars_effects = gtk_frame_new("Spectrum bars effects:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame_bars_effects), 5);
   t_options_bars_effects = gtk_vbox_new(FALSE, 5);
   /* radio effect type */
-  /*t_options_effect_no = gtk_radio_button_new_with_label(NULL, "None");
+  t_options_effect_no = gtk_radio_button_new_with_label(NULL, "None");
   t_options_effect_peak = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_effect_no)), "Peaks");
   t_options_effect_analog = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_effect_peak)), "Analog");
   /* no effect radio */
-  /*gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no), (enable_peak == FALSE && analog_mode == FALSE));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no), (enable_peak == FALSE && analog_mode == FALSE));
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_no, FALSE, FALSE, 0);
   gtk_widget_show(t_options_effect_no);
   /* peak effect radio */
-  /*gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak), (enable_peak == TRUE && analog_mode == FALSE));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak), (enable_peak == TRUE && analog_mode == FALSE));
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_peak, FALSE, FALSE, 0);
   gtk_widget_show(t_options_effect_peak);
   /* analog effect radio */
-  /*gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog), (enable_peak == FALSE && analog_mode == TRUE));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog), (enable_peak == FALSE && analog_mode == TRUE));
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_analog, FALSE, FALSE, 0);
   gtk_widget_show(t_options_effect_analog);
   
-  /* peak detached button  
+  /* peak detached button  */
   g_options_enable_dpeak = gtk_check_button_new_with_label("Detach peaks from bars");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_dpeak), detached_peak);
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), g_options_enable_dpeak, FALSE, FALSE, 0);
   gtk_widget_show(g_options_enable_dpeak);
   
   /* analog step bar */
-  /*label_step=gtk_label_new("Analog mode step:");
+  label_step=gtk_label_new("Analog mode step:");
   gtk_misc_set_alignment(GTK_MISC (label_step), 0, 5);
   gtk_misc_set_padding(GTK_MISC (label_step),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), label_step, TRUE, TRUE, 4);
@@ -532,14 +532,14 @@ void g15analyser_conf_reset(void){
   gtk_signal_connect(GTK_OBJECT(adj_step), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_step);
   
   /* draw frame */
-  /*gtk_container_add(GTK_CONTAINER(g_options_frame_bars_effects), t_options_bars_effects); 
+  gtk_container_add(GTK_CONTAINER(g_options_frame_bars_effects), t_options_bars_effects); 
   gtk_widget_show(t_options_bars_effects);
   gtk_box_pack_start(GTK_BOX(vbox), g_options_frame_bars_effects, TRUE, TRUE, 0);
   gtk_widget_show(g_options_frame_bars_effects);
   
   
   /* buttons */
-  /*bbox = gtk_hbutton_box_new();
+  bbox = gtk_hbutton_box_new();
   gtk_button_box_set_layout(GTK_BUTTON_BOX(bbox), GTK_BUTTONBOX_END);   
   gtk_button_box_set_spacing(GTK_BUTTON_BOX(bbox), 5);
   gtk_box_pack_start(GTK_BOX(vbox), bbox, FALSE, FALSE, 0);
@@ -568,7 +568,7 @@ void g15analyser_conf_reset(void){
   gtk_box_pack_start(GTK_BOX(bbox), cancel, TRUE, TRUE, 0);
   
   gtk_container_add(GTK_CONTAINER(configure_win), vbox);
-  /* Show all
+  /* Show all */
   gtk_widget_show(cancel);
   gtk_widget_show(bbox);
   gtk_widget_show(vbox);
@@ -586,18 +586,18 @@ void g15analyser_about(void){
   gtk_window_set_policy(GTK_WINDOW(dialog), FALSE, FALSE, FALSE);
   gtk_container_border_width(GTK_CONTAINER(dialog), 5);
   
-  /* Something about us... 
+  /* Something about us... */
   label = gtk_label_new (PLUGIN_NAME"\n\
-v. " PLUGIN_VERSION "\n\
-\n\
-by Mike Lampard <mlampard@users.sf.net>\n\
-   Anthony J. Mirabella <aneurysm9>\n\
-   Antonio Bartolini <robynhub@users.sf.net>\n\
-   and others...\n\
-\n\
-get the newest version from:\n\
-http://g15daemon.sf.net/\n\
-");
+      v. " PLUGIN_VERSION "\n\
+      \n\
+      by Mike Lampard <mlampard@users.sf.net>\n\
+      Anthony J. Mirabella <aneurysm9>\n\
+      Antonio Bartolini <robynhub@users.sf.net>\n\
+      and others...\n\
+      \n\
+      get the newest version from:\n\
+      http://g15daemon.sf.net/\n\
+      ");
   
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), label, FALSE, FALSE, 0);
   gtk_widget_show(label);
@@ -611,7 +611,7 @@ http://g15daemon.sf.net/\n\
   gtk_widget_grab_focus(button);
   
   return;
-}*/
+}
 
 
 static int poll_g15keys() {
