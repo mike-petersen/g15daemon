@@ -52,7 +52,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.0"
+#define PLUGIN_VERSION "2.5.1"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 8 /* space between bars and top of lcd   */
@@ -596,15 +596,15 @@ void g15analyser_about(void){
   
   /* Something about us... */
   label = gtk_label_new (PLUGIN_NAME"\n\
-v. " PLUGIN_VERSION "\n\
-\n\
-by Mike Lampard <mlampard@users.sf.net>\n\
-   Anthony J. Mirabella <aneurysm9>\n\
-   Antonio Bartolini <robynhub@users.sf.net>\n\
-   and others...\n\
-\n\
-get the newest version from:\n\
-http://g15daemon.sf.net/\n\
+v. " PLUGIN_VERSION "\n		       \
+\n						\
+by Mike Lampard <mlampard@users.sf.net>\n	\
+   Anthony J. Mirabella <aneurysm9>\n		\
+   Antonio Bartolini <robynhub@users.sf.net>\n	\
+   and others...\n				\
+\n						\
+get the newest version from:\n			\
+http://g15daemon.sf.net/\n			\
 ");
   
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), label, FALSE, FALSE, 0);
@@ -734,46 +734,61 @@ static int g15send_func() {
 	//
 	// TODO: gtk interface
 	// 
-	int NumRow, TokenEnd, TokenLen;
+	int NumRow, TokenEnd, TokenLen, SepFind;
 	char RendStr[RENDSTRLEN + 1], RendToken[RENDSTRLEN + 1];
         char *pRendStr, *pRendToken;
 	
 	strncpy (RendStr, title, RENDSTRLEN);
 	if (strlen (title) >= RENDSTRLEN)
-	  RendStr[RENDSTRLEN + 1]= '\0';
+	  RendStr[RENDSTRLEN]= '\0';
 	pRendStr= RendStr;
 	for (NumRow= 0; NumRow < ROWSNUM; NumRow++){
 	  strcpy (RendToken, pRendStr);
-	  pRendToken= strtok_r (RendToken, SEPARATOR, &strtok_ptr);
-	  if (pRendToken == NULL)
-	    pRendToken= "";
-	  
+	  pRendToken= strtok_r (RendToken, SEPARATOR , &strtok_ptr);
+	  if (pRendToken == NULL){
+	    strcpy (RendToken, "");
+	    pRendToken= RendToken;
+	  }
 	  TokenEnd= TokenLen= strlen (pRendToken);
-	  if (strcmp (pRendToken, pRendStr))
+	  
+	  // if is find the '-' char
+	  SepFind= FALSE;
+	  if (strcmp (pRendToken, pRendStr)){
+	    SepFind= TRUE;
+	    // remove space char
+	    if (TokenLen > 0){
+	      if (pRendToken[TokenLen - 1] == ' ')
+		pRendToken[TokenLen - 1]= '\0';
+	      if (*pRendToken == ' ')
+		pRendToken++;
+	    }
 	    TokenEnd++;
-	  if (TokenLen > 0){
-	    if (pRendToken[TokenLen - 1] == ' ')
-	      pRendToken[TokenLen - 1]= '\0';
-	    if (*pRendToken == ' ')
-	      pRendToken++;
 	  }
 	  // automatic new line
 	  TokenLen= strlen (pRendToken);
 	  if (TokenLen > 0){
 	    if (TokenLen > ROWLEN){
-	      TokenEnd= TokenLen= ROWLEN;
-	      pRendToken[TokenLen + 1]= '\0';
+	      TokenLen= ROWLEN;
+	      TokenEnd= (int)(pRendToken - RendToken) + TokenLen;
+	      pRendToken[TokenLen]= '\0';
 	    }
+	    
+	    
 	    
 	    if (*pRendToken != '\0')
 	      g15r_renderString (canvas, (unsigned char *)pRendToken, 0, G15_TEXT_MED, 160 - (TokenLen * 5), NumRow * 8);
 	  }
 	  
           pRendStr= &pRendStr[TokenEnd];
-	  
+	  if (SepFind){
+	    // remove space char
+	    if (*pRendStr == ' ')
+	      pRendStr++;
+	  }
 	} 
-		
+	
       }
+      
       if (show_pbar)
 	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
       
