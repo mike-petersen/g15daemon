@@ -136,6 +136,7 @@ static unsigned int def_show_pbar = TRUE;
 static unsigned int def_rownum = 1;
 static unsigned int def_title_overlay = FALSE;
 
+
 static gint16 bar_heights[WIDTH];
 static gint16 bar_heights_peak[WIDTH];
 static gint16 scope_data[G15_LCD_WIDTH];
@@ -830,27 +831,43 @@ static int g15send_func() {
 	    }
 	  }
 	} else{
-	  
-	  /* title cycle :D */
+	  /* Only one line */
 	  int title_pixel = strlen(title) * 5;
-	  
-	  /* rollin' over my soul... (Oasis) */
-	  text_start++;
-	  text_start2++;
-	  
-	  if (text_start > text_start2){
-	    /* Text 1 first */
-	    text_start2 = text_start - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
-	    text_start = text_start % (title_pixel + G15_LCD_WIDTH);
+	  if (strlen(title) < ROWLEN){
+	    char *artist;
+	    char *song;
+	    if(strlen(title)>32) {
+	      artist = strtok_r(title,"-",&strtok_ptr);
+	      song = strtok_r(NULL,"-",&strtok_ptr);
+	      if(strlen(song)>32)
+		song[32]='\0';
+	      g15r_renderString (canvas, (unsigned char *)song+1, 0, G15_TEXT_MED, 165-(strlen(song)*5), 0);
+	      if(strlen(artist)>32)
+		artist[32]='\0';
+	      if(artist[strlen(artist)-1]==' ')
+		artist[strlen(artist)-1]='\0';
+	      g15r_renderString (canvas, (unsigned char *)artist, 0, G15_TEXT_MED, 160-(strlen(artist)*5), 8);
+	    } else
+	      g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
+	    
 	  } else {
-	    /* Text 2 first */
-	    text_start =  text_start2 - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
-	    text_start2 = text_start2 % (title_pixel + G15_LCD_WIDTH);
+	    /* title cycle :D */
+	    /* rollin' over my soul... (Oasis) */
+	    text_start++;
+	    text_start2++;
+	    
+	    if (text_start > text_start2){
+	      /* Text 1 first */
+	      text_start2 = text_start - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
+	      text_start = text_start % (title_pixel + G15_LCD_WIDTH);
+	    } else {
+	      /* Text 2 first */
+	      text_start =  text_start2 - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
+	      text_start2 = text_start2 % (title_pixel + G15_LCD_WIDTH);
+	    }
+	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start2, 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start, 0);
 	  }
-	  g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start2, 0);
-	  g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start, 0);
-	  
-	  
 	}
       }
       if (show_pbar)
