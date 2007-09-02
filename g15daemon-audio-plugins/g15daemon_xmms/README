@@ -15,4 +15,8 @@ New in version 0.2:
 - Media keys are now used 
 New in version 2.0
 - Volume bar is displayed when volume changed
-- Media keys are now used 
+- Media keys are now used
+New in version 2.5
+- Gtk Interface to configure settings
+- Added Analog Mode
+- Now song title is shown multilined. Thanks to Giuseppe della Bianca. 
