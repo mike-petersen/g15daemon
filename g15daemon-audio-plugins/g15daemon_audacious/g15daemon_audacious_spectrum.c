@@ -54,7 +54,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.0"
+#define PLUGIN_VERSION "2.5.1"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 8 /* space between bars and top of lcd   */
@@ -66,6 +66,14 @@
    added to the neighbouring bars */
 #define dif 3 
 
+/* number of rows of the title. Default: 2 */
+#define ROWSNUM 2
+/* length of the row. Default: 32 */
+#define ROWLEN 32
+/* total lenght of the title */
+#define RENDSTRLEN (ROWLEN * ROWSNUM)
+/* separator of line */
+#define SEPARATOR "-"
 
 /* BEGIN CONFIG VARIABLES */ 
 /* for default values see below */
@@ -385,7 +393,7 @@ void g15analyser_conf(void){
   
   if(configure_win)
     return;
-  configure_win = gtk_window_new ( GTK_WINDOW_TOPLEVEL );
+  configure_win = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_container_set_border_width(GTK_CONTAINER(configure_win), 10);
   gtk_window_set_title(GTK_WINDOW(configure_win), PLUGIN_NAME " configuration");
   gtk_window_set_policy(GTK_WINDOW(configure_win), FALSE, FALSE, FALSE);
@@ -705,8 +713,6 @@ static int g15send_func() {
   int i,j;
   int playlist_pos;
   char *title;
-  char *artist;
-  char *song;
   char *strtok_ptr;
   static int vol_timeout=0;
   long chksum=0;
@@ -720,20 +726,66 @@ static int g15send_func() {
       playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
       
       title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
-      if(title!=NULL && show_title ){ //amarok doesnt support providing title info via xmms interface :(
-	if(strlen(title)>32) {
-	  artist = strtok_r(title,"-",&strtok_ptr);
-	  song = strtok_r(NULL,"-",&strtok_ptr);
-	  if(strlen(song)>32)
-	    song[32]='\0';
-	  g15r_renderString (canvas, (unsigned char *)song+1, 0, G15_TEXT_MED, 165-(strlen(song)*5), 0);
-	  if(strlen(artist)>32)
-	    artist[32]='\0';
-	  if(artist[strlen(artist)-1]==' ')
-	    artist[strlen(artist)-1]='\0';
-	  g15r_renderString (canvas, (unsigned char *)artist, 0, G15_TEXT_MED, 160-(strlen(artist)*5), 8);
-	} else
-	  g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
+      if(title!=NULL && show_title ){ 
+	//amarok doesnt support providing title info via xmms interface
+	//
+	// print multiple line with automatic or forced with 
+	// SEPARATOR char newline. Thanks to Giuseppe della Bianca.
+	//
+	// TODO: gtk interface
+	// 
+	int NumRow, TokenEnd, TokenLen, SepFind;
+	char RendStr[RENDSTRLEN + 1], RendToken[RENDSTRLEN + 1];
+        char *pRendStr, *pRendToken;
+	
+	strncpy (RendStr, title, RENDSTRLEN);
+	if (strlen (title) >= RENDSTRLEN)
+	  RendStr[RENDSTRLEN]= '\0';
+	pRendStr= RendStr;
+	for (NumRow= 0; NumRow < ROWSNUM; NumRow++){
+	  strcpy (RendToken, pRendStr);
+	  pRendToken= strtok_r (RendToken, SEPARATOR , &strtok_ptr);
+	  if (pRendToken == NULL){
+	    strcpy (RendToken, "");
+	    pRendToken= RendToken;
+	  }
+	  TokenEnd= TokenLen= strlen (pRendToken);
+	  
+	  // if is find the '-' char
+	  SepFind= FALSE;
+	  if (strcmp (pRendToken, pRendStr)){
+	    SepFind= TRUE;
+	    // remove space char
+	    if (TokenLen > 0){
+	      if (pRendToken[TokenLen - 1] == ' ')
+		pRendToken[TokenLen - 1]= '\0';
+	      if (*pRendToken == ' ')
+		pRendToken++;
+	    }
+	    TokenEnd++;
+	  }
+	  // automatic new line
+	  TokenLen= strlen (pRendToken);
+	  if (TokenLen > 0){
+	    if (TokenLen > ROWLEN){
+	      TokenLen= ROWLEN;
+	      TokenEnd= (int)(pRendToken - RendToken) + TokenLen;
+	      pRendToken[TokenLen]= '\0';
+	    }
+	    
+	    
+	    
+	    if (*pRendToken != '\0')
+	      g15r_renderString (canvas, (unsigned char *)pRendToken, 0, G15_TEXT_MED, 160 - (TokenLen * 5), NumRow * 8);
+	  }
+	  
+          pRendStr= &pRendStr[TokenEnd];
+	  if (SepFind){
+	    // remove space char
+	    if (*pRendStr == ' ')
+	      pRendStr++;
+	  }
+	} 
       }
       if (show_pbar)
 	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
