@@ -19,4 +19,7 @@ New in version 2.0
 New in version 2.5
 - Gtk Interface to configure settings
 - Added Analog Mode
-- Now song title is shown multilined. Thanks to Giuseppe della Bianca. 
+- Now song title is shown multilined. Thanks to Giuseppe della Bianca.
+New in version 2.5.2
+- Scrollin titles (with Multiline = 1) 
+- some bugfixes

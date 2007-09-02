@@ -130,7 +130,7 @@ static unsigned int def_analog_step = 2;
 static unsigned int def_enable_keybindings = FALSE;
 static unsigned int def_show_title = TRUE;
 static unsigned int def_show_pbar = TRUE;
-static unsigned int def_rownum = 2;
+static unsigned int def_rownum = 1;
 static unsigned int def_title_overlay = FALSE;
 
 
