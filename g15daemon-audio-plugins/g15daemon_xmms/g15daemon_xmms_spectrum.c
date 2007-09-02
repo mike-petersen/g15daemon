@@ -55,7 +55,7 @@
 #define PLUGIN_VERSION "2.5.1"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
-#define SUPERIOR_SPACE 8 /* space between bars and top of lcd   */
+#define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
 
 /* Time factor of the band dinamics. 3 means that the coefficient of the
    last value is half of the current one's. (see source) */
@@ -64,12 +64,8 @@
    added to the neighbouring bars */
 #define dif 3 
 
-/* number of rows of the title. Default: 2 */
-#define ROWSNUM 2
 /* length of the row. Default: 32 */
 #define ROWLEN 32
-/* total lenght of the title */
-#define RENDSTRLEN (ROWLEN * ROWSNUM)
 /* separator of line */
 #define SEPARATOR "-"
 
@@ -112,6 +108,13 @@ static unsigned int show_title;
 /* Boolean. Show bar */
 static unsigned int show_pbar;
 
+/* Integer. Number of row of title */
+static unsigned int rownum;
+
+/* Integer. Title overlay */
+static unsigned int title_overlay;
+
+
 /* END CONFIG VARIABLES */
 
 /* Set here defaults values */
@@ -127,6 +130,8 @@ static unsigned int def_analog_step = 2;
 static unsigned int def_enable_keybindings = FALSE;
 static unsigned int def_show_title = TRUE;
 static unsigned int def_show_pbar = TRUE;
+static unsigned int def_rownum = 2;
+static unsigned int def_title_overlay = FALSE;
 
 
 static gint16 bar_heights[WIDTH];
@@ -175,13 +180,13 @@ static GtkWidget *t_options_effect_no, *t_options_effect_peak, *t_options_effect
 static GtkWidget *t_options_vistype;
 static GtkWidget *t_options_bars, *t_options_bars_effects;
 static GtkWidget *g_options_frame ,*g_options_enable_keybindings, *g_options_enable_dpeak;
-static GtkWidget *g_options_show_title, *g_options_show_pbar;
+static GtkWidget *g_options_show_title, *g_options_show_pbar, *g_options_title_overlay;
 static GtkWidget *g_options_frame_bars;
 static GtkWidget *g_options_frame_bars_effects;
-static GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step;
-static GtkObject *adj_bars, *adj_lin, *adj_ampli, *adj_step;
+static GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step, *scale_rownum;
+static GtkObject *adj_bars, *adj_lin, *adj_ampli, *adj_step, *adj_rownum;
 
-static gint tmp_bars=-1, tmp_step=-1, tmp_ampli=-1000; 
+static gint tmp_bars=-1, tmp_step=-1, tmp_ampli=-1000, tmp_rownum=-1; 
 static gfloat tmp_lin=-1;
 
 
@@ -235,6 +240,8 @@ void g15spectrum_read_config(void)
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_title", (int*)&show_title);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_pbar", (int*)&show_pbar);
+      xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "rownum", (int*)&rownum);
+      xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "title_overlay", (int*)&title_overlay);
       
       xmms_cfg_free(cfg);
       
@@ -265,6 +272,8 @@ void g15spectrum_write_config(void)
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "enable_keybindings", enable_keybindings);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_title", show_title);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_pbar", show_pbar);
+      xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "rownum", rownum);
+      xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "title_overlay", title_overlay);
       xmms_cfg_write_file(cfg, filename);
       xmms_cfg_free(cfg);
     }
@@ -286,6 +295,8 @@ void g15analyser_conf_apply(void){
     num_bars = (int)tmp_bars;
   if (tmp_step != -1 )
     analog_step = tmp_step;
+  if (tmp_rownum != -1 )
+    rownum = tmp_rownum;
   if (GTK_TOGGLE_BUTTON(t_options_effect_no)->active){
     enable_peak = 0;
     analog_mode = 0;
@@ -297,7 +308,8 @@ void g15analyser_conf_apply(void){
   enable_keybindings =  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings));
   show_title = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_title));
   show_pbar = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_pbar));
-  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title - 1;
+  title_overlay = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_title_overlay));
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE * (1 - title_overlay) * show_title * rownum - 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -317,7 +329,9 @@ void g15analyser_conf_reset(void){
   enable_keybindings = def_enable_keybindings;
   show_title = def_show_title;
   show_pbar = def_show_pbar;
-  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title - 1;
+  rownum = def_rownum;
+  title_overlay = def_title_overlay;
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE * (1 - title_overlay) * show_title * rownum- 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -336,9 +350,13 @@ static void g15analyser_conf_reset_defaults_gui(void){
   tmp_ampli = def_amplification;
   gtk_adjustment_set_value((GtkAdjustment *)adj_ampli,tmp_ampli);
   
+  tmp_rownum = def_rownum;
+   gtk_adjustment_set_value((GtkAdjustment *)adj_rownum,tmp_rownum);
+
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no),    !def_enable_peak && !def_analog_mode);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak),   def_enable_peak && !def_analog_mode);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog),!def_enable_peak &&  def_analog_mode);
+  
   
   tmp_step = def_analog_step;
   gtk_adjustment_set_value((GtkAdjustment *)adj_step,tmp_step);
@@ -347,6 +365,8 @@ static void g15analyser_conf_reset_defaults_gui(void){
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings), def_enable_keybindings);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), def_show_title);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), def_show_pbar);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_title_overlay), def_title_overlay);
+  
   return;
 }
 
@@ -388,7 +408,7 @@ void g15analyser_conf_cancel(){
 
 void g15analyser_conf(void){
   /* some labels */
-  GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step;
+  GtkWidget *label,*label_bars, *label_lin, *label_ampli, *label_step, *label_rownum;
   tmp_bars = num_bars; /* needed to approx in g15analyzer_adj_changed */
   
   if(configure_win)
@@ -434,12 +454,32 @@ void g15analyser_conf(void){
   /* put check button in g_options_vbox */
   gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_title, FALSE, FALSE, 0);
   gtk_widget_show(g_options_show_title);
+  /* create title overlay button */
+  g_options_title_overlay = gtk_check_button_new_with_label("Title overlay");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_title_overlay), title_overlay);
+  /* put check button in g_options_vbox */
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_title_overlay, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_title_overlay);
   /* create show progress bar button */
   g_options_show_pbar = gtk_check_button_new_with_label("Show progress bar");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), show_pbar);
   /* put check button in g_options_vbox */
   gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_pbar, FALSE, FALSE, 0);
   gtk_widget_show(g_options_show_pbar);
+  /* Num lines bar */
+  label_rownum=gtk_label_new("Split title in lines:");
+  gtk_misc_set_alignment(GTK_MISC (label_rownum), 0, 0);
+  gtk_misc_set_padding(GTK_MISC (label_rownum),5,0);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), label_rownum, TRUE, TRUE, 4);
+  gtk_widget_show(label_rownum);
+  adj_rownum=gtk_adjustment_new(rownum, 1, 4, 1, 1, 0);
+  scale_rownum=gtk_hscale_new(GTK_ADJUSTMENT(adj_rownum));
+  gtk_scale_set_draw_value(GTK_SCALE(scale_rownum), TRUE);
+  gtk_scale_set_digits ((GtkScale *)scale_rownum, 0);
+  gtk_widget_show(scale_rownum);
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), scale_rownum, TRUE, TRUE, 4);
+  gtk_signal_connect(GTK_OBJECT(adj_rownum), "value-changed", GTK_SIGNAL_FUNC(g15analyzer_adj_changed), &tmp_rownum);
+  
   /* draw frame */
   gtk_container_add(GTK_CONTAINER(g_options_frame), t_options_vistype); 
   gtk_widget_show(t_options_vistype);
@@ -638,7 +678,7 @@ static int poll_g15keys() {
       {
       case G15_KEY_L1:
 	vis_type = 1 - vis_type;
-	g15spectrum_write_config(); // save as default next time
+	g15spectrum_write_config(); /* save as default next time */
 	break;
       default:
 	break;
@@ -714,7 +754,9 @@ static int g15send_func() {
   int playlist_pos;
   char *title;
   char *strtok_ptr;
-  static int vol_timeout=0;
+  /* total length of the string */
+  int rendstrlen = (ROWLEN * rownum);
+    static int vol_timeout=0;
   long chksum=0;
   static long last_chksum;
   
@@ -726,23 +768,24 @@ static int g15send_func() {
       playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
       
       title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
-      if(title!=NULL && show_title ){ 
-	//amarok doesnt support providing title info via xmms interface
-	//
-	// print multiple line with automatic or forced with 
-	// SEPARATOR char newline. Thanks to Giuseppe della Bianca.
-	//
-	// TODO: gtk interface
-	// 
+      if(title!=NULL && show_title){ 
+	/*
+	  amarok doesnt support providing title info via xmms interface
+	  
+	  print multiple line with automatic or forced with 
+	  SEPARATOR char newline. Thanks to Giuseppe della Bianca.
+	  
+	  TODO: gtk interface
+	*/ 
 	int NumRow, TokenEnd, TokenLen, SepFind;
-	char RendStr[RENDSTRLEN + 1], RendToken[RENDSTRLEN + 1];
+	char RendStr[rendstrlen + 1], RendToken[rendstrlen + 1];
         char *pRendStr, *pRendToken;
 	
-	strncpy (RendStr, title, RENDSTRLEN);
-	if (strlen (title) >= RENDSTRLEN)
-	  RendStr[RENDSTRLEN]= '\0';
+	strncpy (RendStr, title, rendstrlen);
+	if (strlen (title) >= rendstrlen)
+	  RendStr[rendstrlen]= '\0';
 	pRendStr= RendStr;
-	for (NumRow= 0; NumRow < ROWSNUM; NumRow++){
+	for (NumRow= 0; NumRow < rownum; NumRow++){
 	  strcpy (RendToken, pRendStr);
 	  pRendToken= strtok_r (RendToken, SEPARATOR , &strtok_ptr);
 	  if (pRendToken == NULL){
@@ -751,11 +794,11 @@ static int g15send_func() {
 	  }
 	  TokenEnd= TokenLen= strlen (pRendToken);
 	  
-	  // if is find the '-' char
+	  /* if is find the '-' char */
 	  SepFind= FALSE;
 	  if (strcmp (pRendToken, pRendStr)){
 	    SepFind= TRUE;
-	    // remove space char
+	    /* remove space char */
 	    if (TokenLen > 0){
 	      if (pRendToken[TokenLen - 1] == ' ')
 		pRendToken[TokenLen - 1]= '\0';
@@ -764,7 +807,7 @@ static int g15send_func() {
 	    }
 	    TokenEnd++;
 	  }
-	  // automatic new line
+	  /* automatic new line */
 	  TokenLen= strlen (pRendToken);
 	  if (TokenLen > 0){
 	    if (TokenLen > ROWLEN){
@@ -781,7 +824,7 @@ static int g15send_func() {
 	  
           pRendStr= &pRendStr[TokenEnd];
 	  if (SepFind){
-	    // remove space char
+	    /* remove space char */
 	    if (*pRendStr == ' ')
 	      pRendStr++;
 	  }
@@ -1057,7 +1100,7 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
       /* code from version 0.1 */
       
       /* dynamically calculate the scale (maybe changed in config) */
-      drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*show_title + amplification;
+      drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*(1-title_overlay)*show_title*rownum + amplification;
       scale = drawable_space / ( log((1 - linearity) / linearity) *2 );  
       x00 = linearity*linearity*32768.0/(2 * linearity - 1);
       y00 = -log(-x00) * scale;
