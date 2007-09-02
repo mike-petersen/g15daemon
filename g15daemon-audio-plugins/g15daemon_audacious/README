@@ -10,4 +10,10 @@ New in version 1.0pre:
 - now a 16 bar analyser, pretty useful :)
 - now includes oscilloscope (swap between scope and analyser with L1)
 - Playback control with L2-L5 (L2=play/pause, L3=stop, L4=prev, L5=next)
-
+New in version 2.0
+- Volume bar is displayed when volume changed
+- Media keys are now used
+New in version 2.5
+- Gtk Interface to configure settings
+- Added Analog Mode
+- Now song title is shown multilined. Thanks to Giuseppe della Bianca. 
