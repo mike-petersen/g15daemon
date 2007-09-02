@@ -133,7 +133,7 @@ static unsigned int def_analog_step = 2;
 static unsigned int def_enable_keybindings = FALSE;
 static unsigned int def_show_title = TRUE;
 static unsigned int def_show_pbar = TRUE;
-static unsigned int def_rownum = 2;
+static unsigned int def_rownum = 1;
 static unsigned int def_title_overlay = FALSE;
 
 static gint16 bar_heights[WIDTH];
@@ -169,6 +169,10 @@ static Window root_win;
 static int mmedia_timeout_handle;
 static int g15keys_timeout_handle;
 static int g15disp_timeout_handle;
+
+/* scrollin text stuff */
+static int text_start = 60;
+static int text_start2 = -1;
 
 static int lastvolume;
 static int volume;
@@ -462,7 +466,7 @@ void g15analyser_conf(void){
   gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_pbar, FALSE, FALSE, 0);
   gtk_widget_show(g_options_show_pbar);
   /* Num lines bar */
-  label_rownum=gtk_label_new("Split title in lines:");
+  label_rownum=gtk_label_new("Split title in lines (1 = cycle):");
   gtk_misc_set_alignment(GTK_MISC (label_rownum), 0, 0);
   gtk_misc_set_padding(GTK_MISC (label_rownum),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_vistype), label_rownum, TRUE, TRUE, 4);
@@ -763,67 +767,91 @@ static int g15send_func() {
       playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
       
       title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
-      if(title!=NULL && show_title){ 
-	/*
-	  amarok doesnt support providing title info via xmms interface
+      if(title!=NULL && show_title){
+	if (rownum != 1) {
+	  /*
+	    amarok doesnt support providing title info via xmms interface
+	    
+	    print multiple line with automatic or forced with 
+	    SEPARATOR char newline. Thanks to Giuseppe della Bianca.
+	    
+	    TODO: gtk interface
+	  */ 
+	  int NumRow, TokenEnd, TokenLen, SepFind;
+	  char RendStr[rendstrlen + 1], RendToken[rendstrlen + 1];
+	  char *pRendStr, *pRendToken;
 	  
-	  print multiple line with automatic or forced with 
-	  SEPARATOR char newline. Thanks to Giuseppe della Bianca.
-	  
-	  TODO: gtk interface
-	*/ 
-	int NumRow, TokenEnd, TokenLen, SepFind;
-	char RendStr[rendstrlen + 1], RendToken[rendstrlen + 1];
-        char *pRendStr, *pRendToken;
-	
-	strncpy (RendStr, title, rendstrlen);
-	if (strlen (title) >= rendstrlen)
-	  RendStr[rendstrlen]= '\0';
-	pRendStr= RendStr;
-	for (NumRow= 0; NumRow < rownum; NumRow++){
-	  strcpy (RendToken, pRendStr);
-	  pRendToken= strtok_r (RendToken, SEPARATOR , &strtok_ptr);
-	  if (pRendToken == NULL){
-	    strcpy (RendToken, "");
-	    pRendToken= RendToken;
-	  }
-	  TokenEnd= TokenLen= strlen (pRendToken);
-	  
-	  /* if is find the '-' char */
-	  SepFind= FALSE;
-	  if (strcmp (pRendToken, pRendStr)){
-	    SepFind= TRUE;
-	    /* remove space char */
+	  strncpy (RendStr, title, rendstrlen);
+	  if (strlen (title) >= rendstrlen)
+	    RendStr[rendstrlen]= '\0';
+	  pRendStr= RendStr;
+	  for (NumRow= 0; NumRow < rownum; NumRow++){
+	    strcpy (RendToken, pRendStr);
+	    pRendToken= strtok_r (RendToken, SEPARATOR , &strtok_ptr);
+	    if (pRendToken == NULL){
+	      strcpy (RendToken, "");
+	      pRendToken= RendToken;
+	    }
+	    TokenEnd= TokenLen= strlen (pRendToken);
+	    
+	    /* if is find the '-' char */
+	    SepFind= FALSE;
+	    if (strcmp (pRendToken, pRendStr)){
+	      SepFind= TRUE;
+	      /* remove space char */
+	      if (TokenLen > 0){
+		if (pRendToken[TokenLen - 1] == ' ')
+		  pRendToken[TokenLen - 1]= '\0';
+		if (*pRendToken == ' ')
+		  pRendToken++;
+	      }
+	      TokenEnd++;
+	    }
+	    /* automatic new line */
+	    TokenLen= strlen (pRendToken);
 	    if (TokenLen > 0){
-	      if (pRendToken[TokenLen - 1] == ' ')
-		pRendToken[TokenLen - 1]= '\0';
-	      if (*pRendToken == ' ')
-		pRendToken++;
-	    }
-	    TokenEnd++;
-	  }
-	  /* automatic new line */
-	  TokenLen= strlen (pRendToken);
-	  if (TokenLen > 0){
-	    if (TokenLen > ROWLEN){
-	      TokenLen= ROWLEN;
-	      TokenEnd= (int)(pRendToken - RendToken) + TokenLen;
-	      pRendToken[TokenLen]= '\0';
+	      if (TokenLen > ROWLEN){
+		TokenLen= ROWLEN;
+		TokenEnd= (int)(pRendToken - RendToken) + TokenLen;
+		pRendToken[TokenLen]= '\0';
+	      }
+	      
+	      
+	      
+	      if (*pRendToken != '\0')
+		g15r_renderString (canvas, (unsigned char *)pRendToken, 0, G15_TEXT_MED, 160 - (TokenLen * 5), NumRow * 8);
 	    }
 	    
-	    
-	    
-	    if (*pRendToken != '\0')
-	      g15r_renderString (canvas, (unsigned char *)pRendToken, 0, G15_TEXT_MED, 160 - (TokenLen * 5), NumRow * 8);
+	    pRendStr= &pRendStr[TokenEnd];
+	    if (SepFind){
+	      /* remove space char */
+	      if (*pRendStr == ' ')
+		pRendStr++;
+	    }
 	  }
+	} else{
 	  
-          pRendStr= &pRendStr[TokenEnd];
-	  if (SepFind){
-	    /* remove space char */
-	    if (*pRendStr == ' ')
-	      pRendStr++;
+	  /* title cycle :D */
+	  int title_pixel = strlen(title) * 5;
+	  
+	  /* rollin' over my soul... (Oasis) */
+	  text_start++;
+	  text_start2++;
+	  
+	  if (text_start > text_start2){
+	    /* Text 1 first */
+	    text_start2 = text_start - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
+	    text_start = text_start % (title_pixel + G15_LCD_WIDTH);
+	  } else {
+	    /* Text 2 first */
+	    text_start =  text_start2 - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
+	    text_start2 = text_start2 % (title_pixel + G15_LCD_WIDTH);
 	  }
-	} 
+	  g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start2, 0);
+	  g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start, 0);
+	  
+	  
+	}
       }
       if (show_pbar)
 	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
