@@ -525,7 +525,7 @@ void g15analyser_conf(void){
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), g_options_enable_dpeak, FALSE, FALSE, 0);
   gtk_widget_show(g_options_enable_dpeak);
   
-  /* analog step bar*/
+  /* analog step bar */
   label_step=gtk_label_new("Analog mode step:");
   gtk_misc_set_alignment(GTK_MISC (label_step), 0, 5);
   gtk_misc_set_padding(GTK_MISC (label_step),5,0);
@@ -576,7 +576,7 @@ void g15analyser_conf(void){
   gtk_box_pack_start(GTK_BOX(bbox), cancel, TRUE, TRUE, 0);
   
   gtk_container_add(GTK_CONTAINER(configure_win), vbox);
-  /* Show all*/
+  /* Show all */
   gtk_widget_show(cancel);
   gtk_widget_show(bbox);
   gtk_widget_show(vbox);
@@ -596,16 +596,16 @@ void g15analyser_about(void){
   
   /* Something about us... */
   label = gtk_label_new (PLUGIN_NAME"\n\
-v. " PLUGIN_VERSION "\n		       \
-\n						\
-by Mike Lampard <mlampard@users.sf.net>\n	\
-   Anthony J. Mirabella <aneurysm9>\n		\
-   Antonio Bartolini <robynhub@users.sf.net>\n	\
-   and others...\n				\
-\n						\
-get the newest version from:\n			\
-http://g15daemon.sf.net/\n			\
-");
+      v. " PLUGIN_VERSION "\n\
+      \n\
+      by Mike Lampard <mlampard@users.sf.net>\n\
+      Anthony J. Mirabella <aneurysm9>\n\
+      Antonio Bartolini <robynhub@users.sf.net>\n\
+      and others...\n\
+      \n\
+      get the newest version from:\n\
+      http://g15daemon.sf.net/\n\
+      ");
   
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), label, FALSE, FALSE, 0);
   gtk_widget_show(label);
@@ -786,9 +786,7 @@ static int g15send_func() {
 	      pRendStr++;
 	  }
 	} 
-	
       }
-      
       if (show_pbar)
 	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
       
