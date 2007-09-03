@@ -838,23 +838,15 @@ static int g15send_func() {
 	  /* Only one line */
 	  int title_pixel = strlen(title) * 5;
 	  if (strlen(title) < ROWLEN){
-	      char *artist;
-	      char *song;
-	    if(strlen(title)>32) {
-	      artist = strtok_r(title,"-",&strtok_ptr);
-	      song = strtok_r(NULL,"-",&strtok_ptr);
-	      if(strlen(song)>32)
-		song[32]='\0';
-	      g15r_renderString (canvas, (unsigned char *)song+1, 0, G15_TEXT_MED, 165-(strlen(song)*5), 0);
-	      if(strlen(artist)>32)
-		artist[32]='\0';
-	      if(artist[strlen(artist)-1]==' ')
-		artist[strlen(artist)-1]='\0';
-	      g15r_renderString (canvas, (unsigned char *)artist, 0, G15_TEXT_MED, 160-(strlen(artist)*5), 8);
-	    } else
-	      g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160-(strlen(title)*5), 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - title_pixel, 0);
 	    
 	  } else {
+	    int i;
+	    // Substitution "_" with " "
+	    for (i = 0 ; i < strlen(title); i++){
+	      if (title[i] == '_')
+		title[i] = ' ';
+	    }
 	    /* title cycle :D */
 	    /* rollin' over my soul... (Oasis) */
 	    text_start++;
