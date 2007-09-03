@@ -837,16 +837,17 @@ static int g15send_func() {
 	} else{
 	  /* Only one line */
 	  int title_pixel = strlen(title) * 5;
+	  int i;
+	  // Substitution "_" with " "
+	  for (i = 0 ; i < strlen(title); i++){
+	    if (title[i] == '_')
+	      title[i] = ' ';
+	  }
 	  if (strlen(title) < ROWLEN){
+
 	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - title_pixel, 0);
 	    
 	  } else {
-	    int i;
-	    // Substitution "_" with " "
-	    for (i = 0 ; i < strlen(title); i++){
-	      if (title[i] == '_')
-		title[i] = ' ';
-	    }
 	    /* title cycle :D */
 	    /* rollin' over my soul... (Oasis) */
 	    text_start++;
