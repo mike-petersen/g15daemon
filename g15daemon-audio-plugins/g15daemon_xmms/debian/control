@@ -1,0 +1,13 @@
+Source: g15daemon-xmms
+Section: unknown
+Priority: extra
+Maintainer: robynhub <robynhub@gmail.com>
+Build-Depends: debhelper (>= 5), autotools-dev
+Standards-Version: 3.7.2
+
+Package: g15daemon-xmms
+Architecture: any
+Depends: g15daemon, libg15daemon-client, libg15render, xmms, ${shlibs:Depends}, ${misc:Depends}
+Description: G15daemon XMMS Visualization Plug-in
+	     This package provides the XMMS plug-in for the
+	     G15 Logitech Keyboard.
