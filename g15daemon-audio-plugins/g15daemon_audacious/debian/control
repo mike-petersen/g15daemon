@@ -1,0 +1,13 @@
+Source: g15daemon-audacious
+Section: unknown
+Priority: extra
+Maintainer: robynhub <robynhub@gmail.com>
+Build-Depends: debhelper (>= 5), autotools-dev
+Standards-Version: 3.7.2
+
+Package: g15daemon-audacious
+Architecture: any
+Depends: g15daemon, libg15daemon-client, libg15render, audacious, ${shlibs:Depends}, ${misc:Depends}
+Description: G15daemon Audacious Visualization Plug-in
+	     This package provides the Audacious plug-in for the
+	     G15 Logitech Keyboard.
