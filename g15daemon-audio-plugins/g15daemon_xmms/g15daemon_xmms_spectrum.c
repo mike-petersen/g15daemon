@@ -431,7 +431,7 @@ void g15analyser_conf(void){
   g_options_frame = gtk_frame_new("General:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame), 5);
   t_options_vistype = gtk_vbox_new(FALSE, 5);
-  label = gtk_label_new("Visualizion Type:");
+  label = gtk_label_new("Visualization Type:");
   gtk_misc_set_alignment(GTK_MISC (label), 0, 0);
   gtk_misc_set_padding(GTK_MISC (label),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_vistype), label, FALSE, FALSE, 0);
