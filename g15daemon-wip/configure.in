@@ -46,6 +46,9 @@ AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/sock
 CPPFLAGS=$CPPFLAGS_save
 CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
 
+AC_SUBST(G15DAEMON_PLUGIN_DIR,["$libdir/g15daemon/$PACKAGE_VERSION/plugins"])
+CPPFLAGS="$CPPFLAGS "'-DPLUGINDIR=\"$(G15DAEMON_PLUGIN_DIR)\"'
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_PID_T

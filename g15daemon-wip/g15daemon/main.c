@@ -437,7 +437,7 @@ int main (int argc, char *argv[])
 	free (canvas);
         uf_write_buf_to_g15(lcdlist->tail->lcd);
 	
-        snprintf((char*)location,1024,"%s/%s",DATADIR,"g15daemon/plugins");
+        snprintf((char*)location,1024,"%s",PLUGINDIR);
 
         g15_open_all_plugins(lcdlist,(char*)location);
 
