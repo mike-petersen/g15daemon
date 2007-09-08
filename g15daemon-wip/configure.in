@@ -7,6 +7,8 @@ AC_PREREQ(2.59)
 AC_INIT(g15daemon, [1.9pre], [mlampard@users.sf.net])
 AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_AUX_DIR(config)
+AC_CANONICAL_TARGET()
+
 AM_INIT_AUTOMAKE()
 AC_CONFIG_HEADER([config.h])
 
@@ -42,6 +44,18 @@ AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/sock
 	)
 	dnl end of uinput version checks
 #endif
+
+case $host_os in
+	*linux*) 
+	  AC_DEFINE([OSTYPE_LINUX], [1],[Target OS is Linux])
+	  ;;
+	*darwin*)
+	  AC_DEFINE([OSTYPE_DARWIN], [1],[Target OS is Darwin])
+	  ;;
+	*) 
+	  AC_DEFINE([OSTYPE_OTHER], [1],[Target OS is unknown])
+	  ;;
+esac
 
 CPPFLAGS=$CPPFLAGS_save
 CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
