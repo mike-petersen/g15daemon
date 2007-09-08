@@ -20,6 +20,11 @@ AC_CHECK_HEADERS(X11/Xlib.h X11/XF86keysym.h,,AC_MSG_ERROR(["Xorg development fi
 AC_CHECK_HEADERS(X11/extensions/XTest.h,,AC_MSG_WARN(["Xorg XTEST Extension devel headers could not be found. Reverting to XSendEvent()"]))
 AC_PATH_X
 
+AC_ARG_ENABLE([xtest],AS_HELP_STRING([--enable-xtest],[enable use of the XTest extension]))
+if test "x$enable_xtest" = "xyes"; then
+  AC_DEFINE([USE_XTEST],[1],[Enable this to use the XTest extension if available])
+fi
+
 CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
 
 AC_OUTPUT(Makefile)

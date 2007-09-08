@@ -36,7 +36,7 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <signal.h>
-
+#include <pwd.h>
 #include <pthread.h>
 #include <sys/time.h>
 #include <config.h>
@@ -212,7 +212,9 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
     #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
     pthread_mutex_lock(&x11mutex);
      XTestFakeKeyEvent(dpy, keycode,keydown, CurrentTime);
+     XFlush(dpy);
     pthread_mutex_unlock(&x11mutex);
+    usleep(2500);
      #endif        
   } else {
     XKeyEvent event;
@@ -220,24 +222,25 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
     int dummy = 0;
     int key = 0;
     pthread_mutex_lock(&x11mutex);
-    XGetInputFocus(dpy,&current_focus, &dummy);
-    key = XKeycodeToKeysym(dpy,keycode,0);
-    if(keydown)
-      event.type=KeyPress;
-    else
-      event.type=KeyRelease;
-    event.keycode = keycode;
-    event.serial = 0;
-    event.send_event = False;
-    event.display = dpy;
-    event.x = event.y = event.x_root = event.y_root = 0;
-    event.time = CurrentTime;
-    event.same_screen = True;
-    event.subwindow = None;
-    event.window = current_focus;
-    event.root = root_win;
-    event.state = modifiers;
-    XSendEvent(dpy,current_focus,False,0xfff,(XEvent*)&event);
+      XGetInputFocus(dpy,&current_focus, &dummy);
+      key = XKeycodeToKeysym(dpy,keycode,0);
+      if(keydown)
+        event.type=KeyPress;
+      else
+        event.type=KeyRelease;
+      event.keycode = keycode;
+      event.serial = 0;
+      event.send_event = False;
+      event.display = dpy;
+      event.x = event.y = event.x_root = event.y_root = 0;
+      event.time = CurrentTime;
+      event.same_screen = True;
+      event.subwindow = None;
+      event.window = current_focus;
+      event.root = root_win;
+      event.state = modifiers;
+      XSendEvent(dpy,current_focus,False,0xfff,(XEvent*)&event);
+      XSync(dpy,False);
     pthread_mutex_unlock(&x11mutex);
   }
 }
@@ -281,6 +284,7 @@ void macro_playback(unsigned long keystate)
 {
     int i = 0;
     KeySym key;
+    int keyevent;
     int gkey = map_gkey(keystate);
     if(gkey<0)
       return;
@@ -301,8 +305,12 @@ void macro_playback(unsigned long keystate)
           default:
             mkey_offset=0;
         }
-        fake_keyevent(XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),True,None);
-        fake_keyevent(XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]),False,None);
+        pthread_mutex_lock(&x11mutex);
+        keyevent=XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]);
+        pthread_mutex_unlock(&x11mutex);
+
+        fake_keyevent(keyevent,True,None);
+        fake_keyevent(keyevent,False,None);
         return;
     }
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
@@ -327,7 +335,10 @@ void macro_playback(unsigned long keystate)
             case XK_Hyper_L:
             case XK_Hyper_R:
               usleep(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].time_ms*1000); 
-              break;          
+              break;
+            default:
+             usleep(1000);
+             
         }
 
     }
@@ -406,7 +417,9 @@ void *Lkeys_thread() {
                     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
 
                     recording = 1;
+                    pthread_mutex_lock(&x11mutex);
                     XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+                    pthread_mutex_unlock(&x11mutex);
                     memset(&current_recording,0,sizeof(current_recording));
                     break;
                 case G15_KEY_M1:
@@ -466,7 +479,7 @@ void xkey_handler(XEvent *event) {
 
     if(event->type==KeyRelease){ // we only do keyreleases for some keys
       pthread_mutex_lock(&x11mutex);
-      KeySym key = XKeycodeToKeysym(dpy, keycode, 0);
+        KeySym key = XKeycodeToKeysym(dpy, keycode, 0);
       pthread_mutex_unlock(&x11mutex);
         switch (key) {
             case XK_Shift_L:
@@ -485,10 +498,11 @@ void xkey_handler(XEvent *event) {
             case XK_Hyper_R:
                 break;
             default: 
-                return;
+                press = False;
+
+            //    return;
         }
 
-        press = False;
     }
     if(recording){
         current_recording.recorded_keypress[rec_index].keycode = keycode;
@@ -500,12 +514,13 @@ void xkey_handler(XEvent *event) {
             current_recording.recorded_keypress[rec_index].time_ms=g15daemon_gettime_ms() - lasttime;
         rec_index++;
 
+        fake_keyevent(keycode,press,event->xkey.state);
+
         /* now the default stuff */
         pthread_mutex_lock(&x11mutex);        
-        XUngrabKeyboard(dpy,CurrentTime);
+          XUngrabKeyboard(dpy,CurrentTime);
         pthread_mutex_unlock(&x11mutex);
         
-        fake_keyevent(keycode,press,event->xkey.state);
         
         pthread_mutex_lock(&x11mutex);
         XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
@@ -514,10 +529,11 @@ void xkey_handler(XEvent *event) {
         pthread_mutex_unlock(&x11mutex);        
         if(0==strcmp((char*)keytext,"space"))
             strcpy((char*)keytext," ");
-        strcat((char*)recstring,(char*)keytext);
-        g15r_renderString (canvas, (unsigned char *)recstring, 0, G15_TEXT_MED, 80-((strlen((char*)recstring)/2)*5), 22);
-        g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-
+        if(press==True){
+          strcat((char*)recstring,(char*)keytext);
+          g15r_renderString (canvas, (unsigned char *)recstring, 0, G15_TEXT_MED, 80-((strlen((char*)recstring)/2)*5), 22);
+          g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+        }
     }else
         rec_index=0;
 
@@ -595,16 +611,56 @@ int main(int argc, char **argv)
     int xtest_major_version = 0;
     int xtest_minor_version = 0;
     struct sigaction new_action;
-    int dummy;
+    int dummy,i;
+    unsigned char user[256];
+    struct passwd *username;
     char configpath[1024];
     char splashpath[1024];
 
-    if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
-        printf("Sorry, cant connect to the G15daemon\n");
-        return 1;
+    do {
+      dpy = XOpenDisplay(getenv("DISPLAY"));
+      if (!dpy) {
+        printf("Unable to open display %s - retrying\n",getenv("DISPLAY"));
+        sleep(2);
+        }
+    }while(!dpy);
+   
+    do {
+      if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
+        printf("Sorry, cant connect to the G15daemon - retrying\n");
+        sleep(2);
+      }
+    }while(g15screen_fd<0);
+
+    memset(user,0,256);
+    for(i=0;i<argc;i++){
+        if (!strncmp(argv[i], "-u",2) || !strncmp(argv[i], "--user",7)) {
+           if(argv[i+1]!=NULL){
+             strncpy((char*)user,argv[i+1],128);
+             i++;
+           }
+        }
     }
 
     strncpy(configpath,getenv("HOME"),1024);
+
+    if(strlen(user)){
+      username = getpwnam((char*)user);
+        if (username==NULL) {
+            username = getpwuid(geteuid());
+            printf("BEWARE: running as effective uid %i\n",username->pw_uid);
+        }
+        else {
+           if(0==setuid(username->pw_uid)) {
+             setgid(username->pw_gid);
+             strncpy(configpath,username->pw_dir,1024);
+             printf("running as user %s\n",username->pw_name);
+           }
+           else
+             printf("Unable to run as user \"%s\" - you dont have permissions for that.\nRunning as \"%s\"\n",username->pw_name,getenv("USER"));
+        }
+    }
+                                                                        
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
     mkdir(configpath,0777);
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
@@ -637,20 +693,20 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    dpy = XOpenDisplay(getenv("DISPLAY"));
-    if (!dpy) {
-        printf("Can't open display\n");
-        return 1;
-    }
 
     root_win = DefaultRootWindow(dpy);
     if (!root_win) {
         printf("Cant find root window\n");
         return 1;
     }
+
+    have_xtest = False;
+#ifdef USE_XTEST
 #ifdef HAVE_X11_EXTENSIONS_XTEST_H    
     have_xtest = XTestQueryExtension(dpy, &dummy, &dummy, &xtest_major_version, &xtest_minor_version);
 #endif
+#endif
+
     if(have_xtest == False || xtest_major_version < 2 || (xtest_major_version <= 2 && xtest_minor_version < 2))
     {
         printf("XTEST extension not supported\nReverting to XSendEvent for keypress emulation\n");
@@ -674,6 +730,8 @@ int main(int argc, char **argv)
     pthread_mutex_init(&x11mutex,NULL);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
+    int thread_policy=SCHED_FIFO;
+    pthread_attr_setschedpolicy(&attr,thread_policy);       
     pthread_attr_setstacksize(&attr,32*1024); /* set stack to 64k - dont need 8Mb !! */
 
     pthread_create(&Xkeys, &attr, xevent_thread, NULL);
