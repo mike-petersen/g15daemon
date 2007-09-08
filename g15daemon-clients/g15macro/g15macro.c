@@ -391,11 +391,13 @@ void *Lkeys_thread() {
             fds.fd = g15screen_fd;
             fds.events = POLLIN;
             fds.revents=0;
-            if ((poll(&fds, 1, 500)) > 0)
-                read (g15screen_fd, &keystate, sizeof (keystate));
+            keystate=0;
+            if ((poll(&fds, 1, 5000)) > 0) {
+                read (g15screen_fd, &keystate, sizeof (keystate));    
+            }
         }
 
-        if (keystate)
+        if (keystate!=0)
         {
             switch (keystate)
             {
@@ -552,7 +554,7 @@ static void* xevent_thread()
         pthread_mutex_lock(&x11mutex);        
         retval = XCheckMaskEvent(dpy, event_mask, &event);
         pthread_mutex_unlock(&x11mutex);
-        if(retval){
+        if(retval == True){
             switch(event.type) {
                 case KeyPress:
                 case KeyRelease: {
@@ -582,8 +584,8 @@ static void* xevent_thread()
                 default:
                     printf("Unhandled event (%i) received\n",event.type);
             }
-        }
-        usleep(1000);
+        }else 
+        usleep(25000);
     }
     return NULL;
 }
@@ -611,7 +613,7 @@ int main(int argc, char **argv)
     int xtest_major_version = 0;
     int xtest_minor_version = 0;
     struct sigaction new_action;
-    int dummy,i;
+    int dummy=0,i=0;
     unsigned char user[256];
     struct passwd *username;
     char configpath[1024];
@@ -732,13 +734,16 @@ int main(int argc, char **argv)
     pthread_attr_init(&attr);
     int thread_policy=SCHED_FIFO;
     pthread_attr_setschedpolicy(&attr,thread_policy);       
-    pthread_attr_setstacksize(&attr,32*1024); /* set stack to 64k - dont need 8Mb !! */
+    pthread_attr_setstacksize(&attr,32*1024); /* set stack to 32k - dont need 8Mb !! */
 
     pthread_create(&Xkeys, &attr, xevent_thread, NULL);
     pthread_create(&Lkeys, &attr, Lkeys_thread, NULL);
     do{
-        display_timeout--;
-        if(display_timeout<0) display_timeout=-1;
+        if(display_timeout<-1)
+          display_timeout=-1;
+        else
+          display_timeout--;
+
         if(recording)
             display_timeout=500;
         if(display_timeout<=0){
