@@ -248,10 +248,10 @@ static int draw_analog(g15canvas *c)
     strftime(time,sizeof(time),"%r",t);
   
   if(showdate) {
-  	g15r_renderString(c, (unsigned char*)time,  0, G15_TEXT_LARGE, 60, 5);
+  	g15r_renderString(c, (unsigned char*)time,  0, G15_TEXT_LARGE, 60, 4);
   	g15r_renderString(c, (unsigned char*)day,   1, G15_TEXT_LARGE, 60, 5);
-  	g15r_renderString(c, (unsigned char*)date,  2, G15_TEXT_LARGE, 60, 5);
-  	g15r_renderString(c, (unsigned char*)year,  3, G15_TEXT_LARGE, 60, 5);
+  	g15r_renderString(c, (unsigned char*)date,  2, G15_TEXT_LARGE, 60, 6);
+  	g15r_renderString(c, (unsigned char*)year,  3, G15_TEXT_LARGE, 60, 7);
   } else 
 	g15r_renderString(c, (unsigned char*)time, 0, G15_TEXT_LARGE, 60, 18);
 
@@ -259,18 +259,20 @@ static int draw_analog(g15canvas *c)
 }
 
 
-static int *lcdclock(lcd_t *lcd)
+static int lcdclock(lcd_t *lcd)
 {
     int ret = 0;
     g15canvas *canvas = (g15canvas *) malloc (sizeof (g15canvas));
 
-    if (canvas != NULL)
-      {
-      	memset(canvas->buffer, 0, G15_BUFFER_LEN);
+    if (canvas == NULL) {
+        g15daemon_log(LOG_ERR, "Unable to allocate canvas");
+        return G15_PLUGIN_QUIT;
+    }
+
+   	memset(canvas->buffer, 0, G15_BUFFER_LEN);
 	canvas->mode_cache = 0;
 	canvas->mode_reverse = 0;
 	canvas->mode_xor = 0;
-      }
 
     memset(lcd->buf,0,G15_BUFFER_LEN);
 
@@ -317,12 +319,13 @@ static int myeventhandler(plugin_event_t *myevent) {
 }
 
 /* completely uncessary function called when plugin is exiting */
-static void *callmewhenimdone(lcd_t *lcd){
-    return NULL;
+static void callmewhenimdone(lcd_t *lcd){
+    if(static_canvas != NULL) free(static_canvas);
+    return;
 }
 
 /* completely unnecessary initialisation function which could just as easily have been set to NULL in the g15plugin_info struct */
-static void *myinithandler(lcd_t *lcd){
+static int myinithandler(lcd_t *lcd){
     config_section_t *clockcfg = g15daemon_cfg_load_section(lcd->masterlist,"Clock");
     mode=g15daemon_cfg_read_bool(clockcfg, "24hrFormat",1);
     showdate=g15daemon_cfg_read_bool(clockcfg, "ShowDate",0);
@@ -338,7 +341,7 @@ static void *myinithandler(lcd_t *lcd){
         draw_static_canvas();
       }
 
-    return NULL;
+    return static_canvas == NULL ? G15_PLUGIN_QUIT : G15_PLUGIN_OK;
 }
 
 /* if no exitfunc or eventhandler, member should be NULL */
