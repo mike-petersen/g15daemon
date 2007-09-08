@@ -31,6 +31,7 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <errno.h>
 #include <libg15.h>

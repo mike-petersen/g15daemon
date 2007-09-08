@@ -37,6 +37,7 @@
 #include "g15logo.h"
 #include <errno.h>
 #include <poll.h>
+#include <unistd.h>
 
 #include <libg15.h>
 
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
     int foo = 0;
     
     if((g15screen_fd = new_g15_screen(G15_PIXELBUF))<0){
-        printf("Sorry, cant connect to the G15daemon\n");
+        printf("Sorry, cannot connect to the G15daemon\n");
         return 5;
     }else
         printf("Connected to g15daemon.  sending image\n");
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
             retval = g15_send(g15screen_fd,(char*)lcdbuffer,6880);
         }
 
-        printf("checking key status - press G1 to exit\n",retval);
+        printf("checking key status - press G1 to exit\n");
         
         while(1){
             keystate = 0;

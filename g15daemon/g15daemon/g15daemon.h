@@ -149,3 +149,4 @@ int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len);
 /* handy function from xine_utils.c */
 void *g15_xmalloc(size_t size);
 
+void send_keystate(lcd_t *client);

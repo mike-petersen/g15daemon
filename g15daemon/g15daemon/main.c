@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <libdaemon/daemon.h>
 #include <pwd.h>
+#include <ctype.h>
 
 #include <config.h>
 #include <libg15.h>
@@ -52,7 +53,7 @@ int leaving = 0;
 unsigned int current_key_state;
 unsigned int cycle_key;
 unsigned int client_handles_keys = 0;
-struct lcd_t *keyhandler = NULL;
+lcd_t *keyhandler = NULL;
 
 extern unsigned int connected_clients;
 

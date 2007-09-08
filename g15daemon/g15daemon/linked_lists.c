@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libdaemon/daemon.h>
+#include <pthread.h>
 #include "g15daemon.h"
 #include <libg15.h>
 
