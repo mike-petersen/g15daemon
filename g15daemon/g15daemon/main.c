@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <libdaemon/daemon.h>
@@ -262,6 +263,10 @@ int main (int argc, char *argv[])
                                 "Unable to create new keyboard thread", 
                                 "Unable to create new display thread",
                                 "Unable to create server thread",
+#ifdef OSTYPE_DARWIN
+                                "Unable to load USB shield kext",
+                                "Unable to launch kextload",
+#endif                                
                                 NULL };
           if((retval = daemon_retval_wait(20)) !=0) {
             if(retval)
@@ -294,6 +299,21 @@ int main (int argc, char *argv[])
         if(LIBG15_VERSION>=1200)
           libg15Debug(g15daemon_debug);
 
+#ifdef OSTYPE_DARWIN
+		  
+		/* OS X: load codeless kext */
+		retval = system("/sbin/kextload " "/System/Library/Extensions/libusbshield.kext");
+		
+		if (WIFEXITED(retval)){
+			if (WEXITSTATUS(retval) !=0){
+				daemon_log(LOG_ERR,"Unable to load USB shield kext");
+				daemon_retval_send(8);
+			}
+		} else {
+				daemon_log(LOG_ERR,"Unable to launch kextload");
+				daemon_retval_send(9);
+		}
+#endif
         /* init stuff here..  */
         retval = initLibG15();
         if(retval != G15_NO_ERROR){

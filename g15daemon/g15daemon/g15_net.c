@@ -42,6 +42,10 @@ extern unsigned int current_key_state;
 extern unsigned int client_handles_keys;
 extern lcd_t *keyhandler;
 
+#ifndef SO_PRIORITY
+#define SO_PRIORITY 12
+#endif
+
 void send_keystate(lcd_t *client) {
     int sock = client->connection;
     int msgret;

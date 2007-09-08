@@ -51,6 +51,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <pthread.h>
 
 #define CLIENT_CMD_GET_KEYSTATE 'k'
 #define CLIENT_CMD_SWITCH_PRIORITIES 'p'

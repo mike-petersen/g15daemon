@@ -5,3 +5,6 @@ Sven Ludwig
 - Python bindings
 James Green
 - Documentaion updates
+Fabrizio Sestito
+- changes required to compile on OS-X
+- OS-X kext file
