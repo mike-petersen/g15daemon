@@ -359,7 +359,7 @@ int main (int argc, char *argv[])
 		exit(1);
         }
      } else {
-	daemon_log(LOG_ERR,"Unable to launch kextload...exiting");
+	g15daemon_log(LOG_ERR,"Unable to launch kextload...exiting");
 	exit(1);
      }
 #endif
