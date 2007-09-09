@@ -349,6 +349,21 @@ int main (int argc, char *argv[])
     if(LIBG15_VERSION>=1200)
         libg15Debug(g15daemon_debug);
     
+#ifdef OSTYPE_DARWIN
+     /* OS X: load codeless kext */
+     retval = system("/sbin/kextload " "/System/Library/Extensions/libusbshield.kext");
+		
+     if (WIFEXITED(retval)){
+	if (WEXITSTATUS(retval) !=0){
+		g15daemon_log(LOG_ERR,"Unable to load USB shield kext...exiting");
+		exit(1);
+        }
+     } else {
+	daemon_log(LOG_ERR,"Unable to launch kextload...exiting");
+	exit(1);
+     }
+#endif
+
     /* init stuff here..  */
     if((retval=initLibG15())!=G15_NO_ERROR){
         g15daemon_log(LOG_ERR,"Unable to attach to the G15 Keyboard... exiting");

@@ -13,6 +13,12 @@ man3_MANS = $(top_srcdir)/Documentation/g15daemon_client_devel.3
 imagedir = $(prefix)/share/g15daemon/splash
 image_DATA = images/g15logo2.wbmp
 
+install-data-hook:
+if KEXT_INSTALL
+         cp -Rf $(top_srcdir)/contrib/libusbshield.kext @KEXT_LOCATION@
+         chown -R root:wheel @KEXT_LOCATION@/libusbshield.kext
+endif
+
 dist-hook:
 	rm -rf `find $(distdir)/debian -name .svn`
 	rm -rf `find $(distdir)/contrib -name .svn`

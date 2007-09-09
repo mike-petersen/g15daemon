@@ -40,6 +40,7 @@
 #include <config.h>
 #endif
 
+#include <pthread.h>
 #include <pwd.h>
 #include <syslog.h> 
 

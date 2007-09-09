@@ -43,6 +43,10 @@
 static int leaving;
 int server_events(plugin_event_t *myevent);
 
+#ifndef SO_PRIORITY
+#define SO_PRIORITY 12
+#endif
+
 /* tcp server defines */
 #define LISTEN_PORT 15550
 #define LISTEN_ADDR "127.0.0.1"

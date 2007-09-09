@@ -51,11 +51,14 @@ case $host_os in
 	  ;;
 	*darwin*)
 	  AC_DEFINE([OSTYPE_DARWIN], [1],[Target OS is Darwin])
+	  AC_SUBST(KEXT_LOCATION,["/System/Library/Extensions/"])
+          install_kext=true
 	  ;;
 	*) 
 	  AC_DEFINE([OSTYPE_OTHER], [1],[Target OS is unknown])
 	  ;;
 esac
+AM_CONDITIONAL([KEXT_INSTALL], [test x$install_kext = xtrue])
 
 CPPFLAGS=$CPPFLAGS_save
 CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
