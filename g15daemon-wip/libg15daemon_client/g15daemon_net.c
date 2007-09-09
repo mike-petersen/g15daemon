@@ -39,6 +39,10 @@
 #include <libg15.h>
 #include "g15daemon_client.h" 
 
+#ifndef SO_PRIORITY
+#define SO_PRIORITY 12
+#endif
+
 #define G15SERVER_PORT 15550
 #define G15SERVER_ADDR "127.0.0.1"
 int leaving = 0;
