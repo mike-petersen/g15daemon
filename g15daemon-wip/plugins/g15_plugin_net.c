@@ -114,7 +114,7 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
       }
       else if (msgbuf[0] & CLIENT_CMD_KB_BACKLIGHT) 
       {
-        setKBBrightness((unsigned int)msgbuf[0]-0x80);
+        setKBBrightness((unsigned int)msgbuf[0]-0x8);
       }
       else if (msgbuf[0] & CLIENT_CMD_CONTRAST) 
       { 
