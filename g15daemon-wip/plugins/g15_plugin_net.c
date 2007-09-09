@@ -91,24 +91,6 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         send(sock,msgbuf,1,0);
         break;
     } 
-    case CLIENT_CMD_BACKLIGHT: { /* client wants to change the LCD backlight */
-        /* return current state to the client then implement the new state */
-        send(sock,&lcdnode->lcd->backlight_state,1,MSG_OOB);
-        lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
-        lcdnode->lcd->state_changed = 1;
-        break;
-    } 
-    case CLIENT_CMD_KB_BACKLIGHT: { /* client wants to change the KB backlight */
-        setKBBrightness((unsigned int)msgbuf[0]-0x80);
-        break;
-    } 
-    case CLIENT_CMD_CONTRAST: { /* client wants to change the LCD contrast */
-        /* send current state to the client */
-        send(sock,&lcdnode->lcd->contrast_state,1,MSG_OOB);
-        lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
-        lcdnode->lcd->state_changed = 1;
-        break;
-    } 
     default:
        if(msgbuf[0] & CLIENT_CMD_MKEY_LIGHTS) 
        { /* client wants to change the M-key backlights */
@@ -124,8 +106,23 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         lcdnode->list->remote_keyhandler_sock = sock;
         g15daemon_log(LOG_WARNING, "Client has taken over keystate");
       }
+      else if (msgbuf[0] & CLIENT_CMD_BACKLIGHT) 
+      {
+        send(sock,&lcdnode->lcd->backlight_state,1,MSG_OOB);
+        lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
+        lcdnode->lcd->state_changed = 1;
+      }
+      else if (msgbuf[0] & CLIENT_CMD_KB_BACKLIGHT) 
+      {
+        setKBBrightness((unsigned int)msgbuf[0]-0x80);
+      }
+      else if (msgbuf[0] & CLIENT_CMD_CONTRAST) 
+      { 
+        send(sock,&lcdnode->lcd->contrast_state,1,MSG_OOB);
+        lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
+        lcdnode->lcd->state_changed = 1;
+      } 
     }
-    
 }
 
 /* create and open a socket for listening */
