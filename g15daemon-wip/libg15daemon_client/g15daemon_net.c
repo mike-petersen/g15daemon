@@ -221,7 +221,7 @@ int g15_send_cmd (int sock, unsigned char command, unsigned char value)
             retval = 0;
             packet[0] = (unsigned char)command;
             send( sock, packet, 1, MSG_OOB );
-            recv(sock, &retval, sizeof(retval),0);
+            g15_recv(sock, (char*)&retval, sizeof(retval));
             break;
         }
         case G15DAEMON_IS_FOREGROUND:{

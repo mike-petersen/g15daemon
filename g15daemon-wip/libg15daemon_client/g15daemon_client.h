@@ -38,6 +38,7 @@ extern "C"
 #define G15_TEXTBUF 1
 #define G15_WBMPBUF 2
 #define G15_G15RBUF 3
+#define G15_SHMRBUF 4
 
 /* client / server commands - see README.devel for details on use */
  #define G15DAEMON_KEY_HANDLER 0x10
