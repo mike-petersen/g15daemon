@@ -75,21 +75,25 @@ int main(int argc, char *argv[])
             if(keystate)
                 printf("keystate = %i\n",keystate);
 //}
-            if(keystate & G15_KEY_G1) //G1 key.  See libg15.h for details on key values.
-                break;
+//            if(keystate & G15_KEY_G1) //G1 key.  See libg15.h for details on key values.
+//                break;
 
             /* G2,G3 & G4 change LCD backlight */
-            if(keystate & G15_KEY_G2){
-                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
-            }
-            if(keystate & G15_KEY_G3){
-                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
-            }
-            if(keystate & G15_KEY_G4){
-                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
-            }
+//            if(keystate & G15_KEY_G2){
+//                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
+//            }
+//            if(keystate & G15_KEY_G3){
+//                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+                unsigned char packet[2];
+                packet[0] = G15DAEMON_BACKLIGHT|G15_BRIGHTNESS_MEDIUM;
+                printf("sent %i bytes\n",send(g15screen_fd, packet, 1, MSG_OOB ));
 
-            /* is this client in the foreground?? */
+//            }
+//            if(keystate & G15_KEY_G4){
+//                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
+//            }
+
+/*            
             retval = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
 
             if(retval)
@@ -103,13 +107,13 @@ int main(int argc, char *argv[])
             else
               printf("You dastardly wabbit !\n");
             
-//            if(retval){ /* we've been backgrounded! */
-                sleep(2); /* remain in the background for a bit */
+//            if(retval){ 
+                sleep(2); 
                 retval = g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);
-                sleep(2); /* switch to foreground */
+                sleep(2); 
                 retval = g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);
 //            }
-
+*/
                                        
             sleep(2);
 #ifdef TEST_KEYHANDLER

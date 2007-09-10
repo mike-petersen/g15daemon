@@ -274,10 +274,10 @@ int main (int argc, char *argv[])
     struct sigaction new_action;
     cycle_key = G15_KEY_L1;
     unsigned char user[256];
-    
+       
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
-    
+    memset(user,0,256); 
 
     for (i=0;i<argc;i++) {
         char daemonargs[20];
