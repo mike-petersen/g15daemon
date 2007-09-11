@@ -124,13 +124,20 @@ int main(int argc, char **argv) {
   struct sigaction new_action;
   char * enable_cmd = NULL;
   char * disable_cmd = NULL;
+  int dpms_timeout = 0;
   
   for (i=0;i<argc;i++) {
     char argument[20];
     memset(argument,0,20);
     strncpy(argument,argv[i],19);
     if (!strncmp(argument, "-a",2) || !strncmp(argument, "--activate",10)) {
-      printf("\"Activate\" feature not available at this time. Ignoring \n");      
+      if(argv[i+1]!=NULL){
+        sscanf(argv[i+1],"%i",&dpms_timeout);
+        i++;
+      }else{
+        printf("%s --activate requires an argument <minutes to activation>\n",argv[0]);
+        exit(1);
+      }
     }
     if (!strncmp(argument, "-e",2) || !strncmp(argument, "--cmd-enable",12)) {
       if(argv[i+1]!=NULL){
@@ -154,7 +161,10 @@ int main(int argc, char **argv) {
       printf("  %s version %s\n  (c)2007 Mike Lampard\n\n",argv[0],VERSION);
       printf(" -a or --activate <minutes>        - cause DPMS to be activated in <minutes> if no activity.\n");
       printf("                                     By default, %s will simply monitor DPMS status, and\n",argv[0]);
-      printf("                                     requires a screensaver to activate.\n\n");
+      printf("                                     requires a screensaver to activate. \n");
+      printf("                                     In this mode, no screensver is needed.\n");
+      printf("                                     %s will shut the monitor down on its own after <minutes>\n",argv[0]);
+      printf("                                     with no keyboard or mouse activity.\n");
       printf(" -e or --cmd-enable <cmd to run>   - Run program <cmd> when DPMS is activated.\n\n");
       printf(" -d or --cmd-disable <cmd to run>  - Run program <cmd> when DPMS is de-activated.\n\n");
       printf(" -v or --version                   - Show program version\n\n");
@@ -183,6 +193,11 @@ int main(int argc, char **argv) {
   if (!DPMSCapable(dpy)) {
      printf("DPMS is not enabled... exiting\n");
      return 1; 
+  }
+  
+  if (dpms_timeout>0) {
+    DPMSEnable(dpy);
+    DPMSSetTimeouts(dpy,dpms_timeout*60,dpms_timeout*60,0);
   }
 
   new_action.sa_handler = sighandler;
