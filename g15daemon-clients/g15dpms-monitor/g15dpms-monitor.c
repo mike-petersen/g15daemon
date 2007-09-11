@@ -45,9 +45,11 @@
 #include <config.h>
 #include <X11/Xlib.h>
 
-# include <X11/Xproto.h>
-# include <X11/extensions/dpms.h>
-# include <X11/extensions/dpmsstr.h>
+#include <X11/Xproto.h>
+#include <X11/extensions/dpms.h>
+#include <X11/extensions/dpmsstr.h>
+#include <X11/extensions/scrnsaver.h>
+
 
 int leaving = 0;
 

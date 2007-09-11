@@ -8,7 +8,7 @@ doc_DATA = README ChangeLog AUTHORS NEWS COPYING
 
 LIBS = -lg15daemon_client -lX11 -lXext 
 IMCLUDES = -I
-g15dpms-monitor_LDFLAGS = -avoid-version
-g15dpms-monitor_SOURCES =  g15dpms-monitor.c
+g15dpms_monitor_LDFLAGS = -avoid-version
+g15dpms_monitor_SOURCES =  g15dpms-monitor.c
 
 
