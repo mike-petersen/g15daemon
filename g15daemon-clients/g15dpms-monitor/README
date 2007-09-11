@@ -1,0 +1,22 @@
+G15dpms-monitor:
+
+A simple 'screensaver' tool for g15daemon and the Logitech G15.
+
+The tool simply waits in the background for the monitor to be put into
+standby by a screensaver via DPMS.  When this happens, it turns all the keyboard
+lights off, restoring them when the monitor re-activates.
+
+
+USAGE:
+
+Without any commandline options, g15dpms-monitor will simply wait for DPMS
+to become activated (forcing the monitor into standby mode), and switch off keyboard lights.
+
+When using the --cmd-enable <program> commandline option, g15dpms-monitor will run the
+specified program when the monitor goes into Standby mode.  
+
+When --cmd-disable <program> is used, the program specified will be run when
+the monitor re-activates.
+
+--help shows available options
+

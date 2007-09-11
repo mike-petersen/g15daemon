@@ -1,0 +1,20 @@
+AC_INIT(g15dpms-monitor.c,[1.0svn], [mlampard@users.sf.net])
+ 
+PACKAGE=g15dpms-monitor
+VERSION=1.0.0
+AC_PREFIX_DEFAULT(/usr)
+AC_CONFIG_AUX_DIR(config)
+AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+AC_CONFIG_HEADER([config.h])
+ 
+AC_PROG_CC
+AC_PROG_LIBTOOL
+AC_PROG_RANLIB
+
+AC_CHECK_LIB([g15daemon_client], [g15daemon_version],,AC_MSG_ERROR(["libg15daemon_client (or its devel package) not found. please install it"]))
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(g15daemon_client.h libg15render.h,,AC_MSG_ERROR(["libg15daemon_client (or its devel package) could not be found.  please install it"]))
+AC_PATH_X
+
+AC_OUTPUT(Makefile)
