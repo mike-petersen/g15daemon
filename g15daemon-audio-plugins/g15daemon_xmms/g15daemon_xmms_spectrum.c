@@ -849,7 +849,7 @@ static int g15send_func() {
 	    
 	  } else {
 	    /* title cycle :D */
-	    /* rollin' over my soul... (Oasis) */
+	    /* roll it over my soul... (Oasis) */
 	    text_start++;
 	    text_start2++;
 	    
