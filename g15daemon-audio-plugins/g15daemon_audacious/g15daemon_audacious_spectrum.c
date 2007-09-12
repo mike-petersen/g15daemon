@@ -840,9 +840,9 @@ static int g15send_func() {
 	      title[i] = ' ';
 	  }
 	  if (strlen(title) < ROWLEN){
-
+	    
 	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - title_pixel, 0);
-
+	    
 	  } else {
 	    /* title cycle :D */
 	    /* rollin' over my soul... (Oasis) */
@@ -863,8 +863,16 @@ static int g15send_func() {
 	  }
 	}
       }
-      if (show_pbar)
-	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000, xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000, 1);
+      if (show_pbar){
+	int output_time = xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000;
+	int playlist_time = xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000;
+	/* bugfix: Sometimes xmms don't get the output time */
+	if (playlist_time == 0){
+	  playlist_time = 1000;
+	  output_time = 0;
+	}
+	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, output_time, playlist_time, 1);
+      }
       
       if (playing)
 	{
