@@ -3,7 +3,13 @@ Improvements and patches are welcome.
 
 This plugin depends on glib devel and audacious devel packages.
 
-To compile, run the configure script and make, make install.
+To compile:
+
+./bootstrap && ./configure && make 
+
+To install (as root):
+
+make install 
 
 New in version 1.0pre:
 - artist name & track name are displayed
