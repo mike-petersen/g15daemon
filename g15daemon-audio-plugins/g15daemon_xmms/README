@@ -3,8 +3,13 @@ Improvements and patches are welcome.
 
 This plugin depends on glib devel and xmms + X11 devel packages.
 
-To compile, run the configure script in the g15daemon source directory 
-and make, make install.
+To compile: 
+
+./autogen && ./configure && make
+
+To install (as root):
+
+make install
 
 New in version 0.2:
 - artist name & track name are displayed
