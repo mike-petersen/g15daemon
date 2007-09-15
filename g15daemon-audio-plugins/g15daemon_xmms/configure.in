@@ -1,7 +1,7 @@
 AC_INIT(g15daemon_xmms_spectrum.c,[2.0svn], [mlampard@users.sf.net])
  
-PACKAGE=g15daemon_xmms_spectrum
-VERSION=2.0.0
+PACKAGE=g15daemon-xmms
+VERSION=2.5.2
 AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_AUX_DIR(config)
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)

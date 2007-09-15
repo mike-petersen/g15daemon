@@ -502,7 +502,9 @@ void g15analyser_conf(void){
   gtk_misc_set_padding(GTK_MISC (label_bars),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_bars, TRUE, TRUE, 4);
   gtk_widget_show(label_bars);
-  adj_bars=gtk_adjustment_new(num_bars, 1, 128, 2, 2, 0);
+  /* bugfix -- In some system division by 1 throw Arithmetic exception
+     Thanks to Giacomo Catenazzi <cate@debian.org> */
+  adj_bars=gtk_adjustment_new(num_bars, 2, 128, 2, 2, 0);
   scale_bars=gtk_hscale_new(GTK_ADJUSTMENT(adj_bars));
   gtk_scale_set_draw_value(GTK_SCALE(scale_bars), TRUE);
   gtk_scale_set_digits ((GtkScale *)scale_bars, 0);

@@ -5,7 +5,7 @@ This plugin depends on glib devel and audacious devel packages.
 
 To compile:
 
-./autogen.sh && ./configure && make 
+./configure && make 
 
 To install (as root):
 

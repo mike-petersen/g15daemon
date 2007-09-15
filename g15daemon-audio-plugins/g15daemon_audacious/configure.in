@@ -1,14 +1,17 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 # $Revision: 157 $ -  $Date: 2006-11-15 23:12:39 -0500 (Wed, 15 Nov 2006) $ $Author: aneurysm9 $
+PACKAGE=g15daemon-audacious
+VERSION=2.5.2
+AC_INIT(g15daemon-audacious,2.5.2, [robynhub@users.sf.net])
 
 AC_PREREQ(2.59)
-AC_INIT(g15daemon_audacious_spectrum, [1.0pre], [mirabeaj@gmail.com])
+
 AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_AUX_DIR(config)
 AM_INIT_AUTOMAKE()
 AC_CONFIG_HEADER([config.h])
-
+AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL
