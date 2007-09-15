@@ -78,10 +78,10 @@ static float linearity;
 /* Integer. Amplification of the scale. Can be negative. +-30 is a reasonable range */
 static int amplification;
 
-/* Integer. limit (in px) of max length of bars avoid overlap */
+/* Integer. limit (in px) of max length of bars avoid overlap  (internal use) */
 static unsigned int limit;  
 
-/* Integer. Number of Bars - Must be a divisor of 256! allowed: 1 (useless) 2 4 8 16 32 64 128(no space between bars) */   
+/* Integer. Number of Bars - Must be a divisor of 256! allowed: 2 4 8 16 32 64 128(no space between bars) */   
 static unsigned int num_bars;
 
 /* Boolean. Variable to disable keybindings Default: Disabled */
@@ -111,7 +111,7 @@ static unsigned int show_pbar;
 /* Integer. Number of row of title */
 static unsigned int rownum;
 
-/* Integer. Title overlay */
+/* Boolean. Title overlay */
 static unsigned int title_overlay;
 
 
@@ -123,8 +123,8 @@ static unsigned int def_num_bars = 32;
 static float def_linearity = 0.37;
 static int def_amplification = 0;
 static unsigned int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;
-static unsigned int def_enable_peak = 1;
-static unsigned int def_detached_peak = 1;
+static unsigned int def_enable_peak = TRUE;
+static unsigned int def_detached_peak = TRUE;
 static unsigned int def_analog_mode = FALSE;
 static unsigned int def_analog_step = 2;
 static unsigned int def_enable_keybindings = FALSE;
@@ -250,6 +250,34 @@ void g15spectrum_read_config(void)
       xmms_cfg_free(cfg);
       
     }
+  /* check conf integrity */
+  if (linearity < 0.1 || linearity > 0.5)
+    linearity = def_linearity;
+  if (amplification < -30 || amplification > 30)
+    amplification = def_amplification;
+  if (num_bars > 128 || num_bars <= 1)
+    num_bars = def_num_bars;
+  if (analog_step < 2 || analog_step > 9)
+    analog_step = def_analog_step;
+  if (rownum > 4 || rownum < 1)
+    rownum = def_rownum;
+  if (enable_keybindings != 0 && enable_keybindings != 1)
+    enable_keybindings = def_enable_keybindings;
+  if (vis_type != FALSE && vis_type != TRUE)
+    vis_type = def_vis_type;
+  if (enable_peak != FALSE && enable_peak != TRUE)
+    enable_peak = def_enable_peak;
+  if (detached_peak != FALSE && detached_peak != TRUE)
+    detached_peak = def_detached_peak;
+  if (analog_mode != FALSE && analog_mode != TRUE)
+    analog_mode = def_analog_mode;
+  if (show_title != FALSE && show_title != TRUE)
+    show_title = def_show_title;
+  if (show_pbar != FALSE && show_pbar != TRUE)
+    show_pbar = def_show_pbar;
+  if (title_overlay != FALSE && title_overlay != TRUE)
+    title_overlay = def_title_overlay;
+  
   pthread_mutex_unlock (&g15buf_mutex);
   g_free(filename);
 }
@@ -501,9 +529,7 @@ void g15analyser_conf(void){
   gtk_misc_set_alignment(GTK_MISC (label_bars), 0, 0);
   gtk_misc_set_padding(GTK_MISC (label_bars),5,0);
   gtk_box_pack_start(GTK_BOX(t_options_bars), label_bars, TRUE, TRUE, 4);
-  gtk_widget_show(label_bars);
-  /* bugfix -- In some system division by 1 throw Arithmetic exception
-     Thanks to Giacomo Catenazzi <cate@debian.org> */
+  gtk_widget_show(label_bars); 
   adj_bars=gtk_adjustment_new(num_bars, 2, 128, 2, 2, 0);
   scale_bars=gtk_hscale_new(GTK_ADJUSTMENT(adj_bars));
   gtk_scale_set_draw_value(GTK_SCALE(scale_bars), TRUE);
@@ -1065,6 +1091,9 @@ static void g15analyser_init(void) {
 static void g15analyser_cleanup(void) {
   
   pthread_mutex_lock (&g15buf_mutex);
+  /* Write down config */
+  g15spectrum_write_config();
+  
   if (canvas != NULL)
     free(canvas);
   if(g15screen_fd)
