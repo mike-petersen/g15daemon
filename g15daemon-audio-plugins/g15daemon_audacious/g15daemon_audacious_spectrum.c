@@ -1087,6 +1087,8 @@ static void g15analyser_init(void) {
 static void g15analyser_cleanup(void) {
   
   pthread_mutex_lock (&g15buf_mutex);
+  /* Write down config */
+  g15spectrum_write_config();
   if (canvas != NULL)
     free(canvas);
   if(g15screen_fd)
