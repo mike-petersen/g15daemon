@@ -443,7 +443,7 @@ void g15analyser_conf(void){
   gtk_box_pack_start(GTK_BOX(t_options_vistype), t_options_scope_radio, FALSE, FALSE, 0);
   gtk_widget_show(t_options_scope_radio);
   /* create keybindings button */
-  g_options_enable_keybindings = gtk_check_button_new_with_label("Enable Keybindings (need to restart XMMS)");
+  g_options_enable_keybindings = gtk_check_button_new_with_label("Enable Keybindings (need to restart Audacious)");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings), enable_keybindings);
   /* put check button in g_options_vbox */
   gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_enable_keybindings, FALSE, FALSE, 0);
