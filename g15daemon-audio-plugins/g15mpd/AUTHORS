@@ -6,4 +6,4 @@ Mike Lampard <mlampard@users.sourceforge.net>
 Nedko Arnaudov
 - patch to improve responsiveness
 - patch to respond to volume control/mute
-
+- patch to hide display of names and/or track info if that data isn't available.

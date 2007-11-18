@@ -7,3 +7,5 @@ volume control/play button.
 - Respond to volume wheel & mute button
 - Improve responsiveness
 - Fix display if stream name is NULL
+- Dont display elapsed or total time if playing a radio stream where we dont
+  have that information.

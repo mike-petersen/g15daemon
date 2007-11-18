@@ -422,8 +422,10 @@ void *g15display_thread(){
             /* elapsed time */
             memset(time_elapsed,0,41);
             memset(time_total,0,41);
-            snprintf((char*)time_elapsed,40,"%02i:%02i",track_info.elapsed/60, track_info.elapsed%60);
-            snprintf((char*)time_total,40,"%02i:%02i",track_info.total/60, track_info.total%60);
+            if (track_info.total != 0) {
+              snprintf((char*)time_elapsed,40,"%02i:%02i",track_info.elapsed/60, track_info.elapsed%60);
+              snprintf((char*)time_total,40,"%02i:%02i",track_info.total/60, track_info.total%60);
+            }
             if(track_info.elapsed>0&&track_info.total>0)
                 g15r_drawBar (canvas, 10, 22, 149, 30, G15_COLOR_BLACK, track_info.elapsed, track_info.total, 1);
             canvas->mode_xor=1;
