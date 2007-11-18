@@ -77,6 +77,9 @@ all non-valid keys are sent elsewhere via the xtest extension */
 static int playlist_mode=0;
 int playlist_selection=0;
 int item_selected=0;
+int volume_adjust=0;
+int mute=0;
+int muted_volume=0;
 
 struct track_info {
     char artist[100];
@@ -204,6 +207,9 @@ void xkey_handler(XEvent *event){
     int code_audio_prev = XKeysymToKeycode(dpy, XF86XK_AudioPrev);
     int code_audio_raisevol = XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume);
     int code_audio_lowervol = XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume);
+    int code_audio_mute = XKeysymToKeycode(dpy, XF86XK_AudioMute);
+
+/*     printf("keycode = %d\n", keycode); */
 
     if(keycode == code_audio_play) {
         if(playing && !playlist_mode) {
@@ -241,11 +247,22 @@ void xkey_handler(XEvent *event){
     }
 
     if(keycode == code_audio_raisevol){
-        playlist_selection = 1;
+        pthread_mutex_lock(&daemon_mutex);
+        volume_adjust+=1;
+        pthread_mutex_unlock(&daemon_mutex);
         return;
     }
     if(keycode == code_audio_lowervol){
-        playlist_selection = -1;
+        pthread_mutex_lock(&daemon_mutex);
+        volume_adjust-=1;
+        pthread_mutex_unlock(&daemon_mutex);
+        return;
+    }
+
+    if(keycode == code_audio_mute){
+        pthread_mutex_lock(&daemon_mutex);
+        mute = 1;
+        pthread_mutex_unlock(&daemon_mutex);
         return;
     }
 
@@ -486,7 +503,10 @@ void *g15display_thread(){
         	//g15r_renderString (canvas, (unsigned char *)"test", 0, G15_TEXT_SMALL, 36, 36);
             }
 
-            if(voltimeout){
+            if(muted_volume != 0){
+                g15r_renderString (canvas, (unsigned char *)"MUTE", 0, G15_TEXT_LARGE, 11, 2);
+            }
+            else if(voltimeout){
                 g15r_drawBar (canvas,10, 22, 149, 30, G15_COLOR_BLACK, track_info.volume, 100, 1);
                 canvas->mode_xor=1;
                 g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 23);
@@ -560,7 +580,7 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
     track_info.random = mpd_player_get_random(obj);
     
     pthread_mutex_unlock(&lockit);
-    usleep(100*1000);
+    usleep(10*1000);
 }
 
 
@@ -578,6 +598,8 @@ int main(int argc, char **argv)
     int xtest_major_version = 0;
     int xtest_minor_version = 0;
     int dummy;
+    int volume;
+    int volume_new;
 
     int iport = 6600;
     char *hostname = getenv("MPD_HOST");
@@ -638,6 +660,12 @@ int main(int argc, char **argv)
              False, GrabModeAsync, GrabModeAsync);
     XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioNext), AnyModifier, root_win,
              False, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume), AnyModifier, root_win,
+             False, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume), AnyModifier, root_win,
+             False, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioMute), AnyModifier, root_win,
+             False, GrabModeAsync, GrabModeAsync);
 
     /* Create mpd object */
     obj = mpd_new(hostname, iport,password); 
@@ -662,8 +690,44 @@ int main(int argc, char **argv)
         pthread_create(&g15display, &attr, g15display_thread, NULL);
 
         do{
+            pthread_mutex_lock(&daemon_mutex);
+            if(mute){
+                volume_adjust = 0;
+                mute = 0;
+                if (muted_volume == 0) {
+                    //printf("mute\n");
+                    muted_volume = mpd_status_get_volume(obj);
+                    mpd_status_set_volume (obj,0);
+                } else {
+                    //printf("unmute\n");
+                    if (mpd_status_get_volume(obj) == 0) { /* if no other client has set volume up */
+                        mpd_status_set_volume (obj,muted_volume);
+                    }
+                    muted_volume = 0;
+                }
+            }
+            if(volume_adjust != 0){
+                if (muted_volume != 0) {
+                    volume=muted_volume;
+                } else {
+                    volume=mpd_status_get_volume(obj);
+                }
+                volume_new = volume + volume_adjust;
+                volume_adjust = 0;
+                if(volume_new < 0)
+                    volume_new = 0;
+                if(volume_new > 100)
+                    volume_new = 100;
+                if(volume != volume_new || muted_volume){
+                    //printf("volume %d -> %d\n", volume, volume_new);
+                    mpd_status_set_volume (obj,volume_new);
+                }
+                voltimeout=500;
+                muted_volume=0;
+            }
             mpd_status_update(obj);
-        }while(!usleep(10000) &&  !leaving);
+            pthread_mutex_unlock(&daemon_mutex);
+        }while(!usleep(5000) &&  !leaving);
     }
     mpd_free(obj);
     close(fdstdin);
