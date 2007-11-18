@@ -6,3 +6,4 @@ volume control/play button.
 - best used with g15daemon wip
 - Respond to volume wheel & mute button
 - Improve responsiveness
+- Fix display if stream name is NULL

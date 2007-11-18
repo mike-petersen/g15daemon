@@ -545,10 +545,16 @@ void status_changed(MpdObj *mi, ChangedStatusType what)
 
     mpd_Song *song = mpd_playlist_get_current_song(mi);
     if(song) {
-        if(song->artist!=NULL)
+        if (song->artist!=NULL) {
             strncpy(track_info.artist,song->artist,99);
-        if(song->title!=NULL)
+        } else {
+            track_info.artist[0] = 0;
+        }
+        if (song->title!=NULL) {
             strncpy(track_info.title,song->title,99);
+        } else {
+            track_info.title[0] = 0;
+        }
     }
 
     if(what&MPD_CST_CROSSFADE){
