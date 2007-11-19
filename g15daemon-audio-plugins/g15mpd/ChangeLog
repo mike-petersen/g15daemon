@@ -2,10 +2,16 @@
 - Initial release
 SVN
 - added ability to scroll through playlist and play selected songs with the
-volume control/play button.
+  volume control/play button.
 - best used with g15daemon wip
 - Respond to volume wheel & mute button
 - Improve responsiveness
 - Fix display if stream name is NULL
 - Dont display elapsed or total time if playing a radio stream where we dont
   have that information.
+- Use EVDEV rather than X events.  g15mpd can now be started from init.
+  It now needs to be run as root or be in the same group as /dev/input/eventX.
+- Fix playlist mode scroll feature (uses volume control to fast scroll
+  through playlist if --quickscroll option is used, otherwise uses prev/next
+  keys.
+- Only respond to mmedia keys if the display is in the foreground.
