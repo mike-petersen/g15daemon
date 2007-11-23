@@ -422,19 +422,12 @@ int main (int argc, char *argv[])
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
         pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
-        pthread_attr_setscope(&attr,PTHREAD_SCOPE_SYSTEM);
-        int thread_policy=SCHED_RR;
-        pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
             g15daemon_log(LOG_ERR,"Unable to create keyboard listener thread.  Exiting");
             goto exitnow;
         }
         pthread_attr_setstacksize(&attr,128*1024); 
-        /* all other threads have a lower priority... maybe */
-        pthread_attr_setscope(&attr,PTHREAD_SCOPE_PROCESS);
-        thread_policy=SCHED_OTHER;
-        pthread_attr_setschedpolicy(&attr,thread_policy);
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
             g15daemon_log(LOG_ERR,"Unable to create display thread.  Exiting");
