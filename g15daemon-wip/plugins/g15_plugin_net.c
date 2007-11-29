@@ -108,7 +108,8 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
       }
       else if (msgbuf[0] & CLIENT_CMD_BACKLIGHT) 
       {
-        send(sock,&lcdnode->lcd->backlight_state,1,MSG_OOB);
+        unsigned char retval = lcdnode->lcd->backlight_state;
+        send(sock,&retval,1,MSG_OOB);
         lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
         lcdnode->lcd->state_changed = 1;
       }

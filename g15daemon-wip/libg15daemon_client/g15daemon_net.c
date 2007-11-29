@@ -177,7 +177,7 @@ int g15_recv_oob_answer(int sock) {
     return packet[0];
 }
 
-int g15_send_cmd (int sock, unsigned char command, unsigned char value)
+unsigned long g15_send_cmd (int sock, unsigned char command, unsigned char value)
 {
     int retval;
     unsigned char packet[2];
@@ -219,9 +219,9 @@ int g15_send_cmd (int sock, unsigned char command, unsigned char value)
             break;
         case G15DAEMON_GET_KEYSTATE:{
             retval = 0;
-            packet[0] = (unsigned char)command;
-            send( sock, packet, 1, MSG_OOB );
-            g15_recv(sock, (char*)&retval, sizeof(retval));
+            unsigned long keystate = 0;
+            g15_recv(sock, (char*)&keystate, sizeof(keystate));
+            return keystate;
             break;
         }
         case G15DAEMON_IS_FOREGROUND:{
