@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
 //            keystate = g15_send_cmd (g15screen_fd, G15DAEMON_GET_KEYSTATE, foo);
 //while(1){
-//recv(g15screen_fd, &keystate, 4, 0);
+recv(g15screen_fd, &keystate, 4, 0);
             if(keystate)
                 printf("keystate = %i\n",keystate);
 //}
@@ -79,19 +79,19 @@ int main(int argc, char *argv[])
 //                break;
 
             /* G2,G3 & G4 change LCD backlight */
-//            if(keystate & G15_KEY_G2){
-//                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
-//            }
-//            if(keystate & G15_KEY_G3){
-//                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+            if(keystate & G15_KEY_G2){
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
+            }
+            if(keystate & G15_KEY_G3){
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
                 unsigned char packet[2];
                 packet[0] = G15DAEMON_BACKLIGHT|G15_BRIGHTNESS_MEDIUM;
                 printf("sent %i bytes\n",send(g15screen_fd, packet, 1, MSG_OOB ));
 
-//            }
-//            if(keystate & G15_KEY_G4){
-//                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
-//            }
+            }
+            if(keystate & G15_KEY_G4){
+                retval = g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
+            }
 
 /*            
             retval = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 //            }
 */
                                        
-            sleep(2);
+//            sleep(2);
 #ifdef TEST_KEYHANDLER
             /* ok.. request that all G&M keys are passed to us.. */
             retval = g15_send_cmd (g15screen_fd, G15DAEMON_KEY_HANDLER, foo);

@@ -82,9 +82,9 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                                               g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
                 }
                 if(value & G15_KEY_LIGHT){ // the backlight key was pressed - maintain user-selected state 
+                  lcd_t *displaying = lcd->masterlist->tail->lcd;  
                   lcd->masterlist->kb_backlight_state++;
                   if(lcd->masterlist->kb_backlight_state>2)
-                    lcd_t *displaying = lcd->masterlist->tail->lcd;  
                     lcd->masterlist->kb_backlight_state=0;
                     displaying->backlight_state++;  
                     displaying->backlight_state %= 3; // limit to 0-2 inclusive 
