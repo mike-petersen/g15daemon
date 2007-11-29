@@ -119,6 +119,7 @@ void g15daemon_lcdnode_cycle(g15daemon_t *masterlist)
     lcdnode_t *current_screen = masterlist->current;
     
     g15daemon_send_event(current_screen->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_HIDDEN);
+      
     do
     {
         pthread_mutex_lock(&lcdlist_mutex);
@@ -132,19 +133,18 @@ void g15daemon_lcdnode_cycle(g15daemon_t *masterlist)
         pthread_mutex_unlock(&lcdlist_mutex);
     } 
     while (current_screen != masterlist->current);
+
     pthread_mutex_lock(&lcdlist_mutex);
     if(masterlist->tail == masterlist->current) {
         masterlist->current = masterlist->head;
     } else {
         masterlist->current = masterlist->current->prev;
     }
-    pthread_mutex_unlock(&lcdlist_mutex);
-    g15daemon_send_event(masterlist->current->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_VISIBLE);
-    g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 1);
-    pthread_mutex_lock(&lcdlist_mutex);
-    masterlist->current->lcd->state_changed = 1;
     masterlist->current->last_priority =  masterlist->current;
     pthread_mutex_unlock(&lcdlist_mutex);
+    g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 1);
+    g15daemon_send_event(masterlist->current->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_VISIBLE);
+
 }
 
 void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
