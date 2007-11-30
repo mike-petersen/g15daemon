@@ -102,3 +102,4 @@ allow clients use of all 'L' keys.
 - Optimisation: minor optimisation of lcd_cycle() code.
 - Security: repair some potential security holes.
 - Bugfix: Backlight status was being mis-applied when cycling screens.
+- Bugfix: Language bindings were not being distributed.
