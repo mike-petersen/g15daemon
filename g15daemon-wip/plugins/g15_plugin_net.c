@@ -40,7 +40,7 @@
 #include <libg15.h>
 #include <g15daemon.h>
 
-static int leaving;
+static int leaving = 0;
 int server_events(plugin_event_t *myevent);
 
 #ifndef SO_PRIORITY
@@ -427,10 +427,14 @@ int server_events(plugin_event_t *event) {
     return G15_PLUGIN_OK;
 }
 
+static void g15plugin_net_exit() {
 
+  leaving = 1;
+
+}
     /* if no exitfunc or eventhandler, member should be NULL */
 plugin_info_t g15plugin_info[] = {
         /* TYPE, name, initfunc, 				updatefreq, exitfunc, eventhandler, initfunc */
-   {G15_PLUGIN_LCD_SERVER, "LCDServer"	, (void*)lcdserver_thread, 500, NULL, (void*)server_events, NULL},
+   {G15_PLUGIN_LCD_SERVER, "LCDServer"	, (void*)lcdserver_thread, 500, g15plugin_net_exit, (void*)server_events, NULL},
    {G15_PLUGIN_NONE,               ""          			, NULL,   0,   			NULL,            NULL,           NULL}
 };
