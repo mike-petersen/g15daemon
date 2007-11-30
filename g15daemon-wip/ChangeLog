@@ -108,3 +108,5 @@ allow clients use of all 'L' keys.
 - Use pause() instead of sleeping
 - create leaving var as volatile.
 - Add NAME section to g15daemon_client manpages
+- Tweak delay between successive keyboard reads.  This reduces cpu load by
+  50% on my system.

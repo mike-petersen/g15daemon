@@ -174,13 +174,13 @@ static void *keyboard_watch_thread(void *lcdlist){
     while (!leaving) {
         
         pthread_mutex_lock(&g15lib_mutex);
-        retval = getPressedKeys(&keypresses, 40);
+        retval = getPressedKeys(&keypresses, 20);
         pthread_mutex_unlock(&g15lib_mutex);
         
         /* every 2nd packet contains the codes we want.. immediately try again */
         while (retval == G15_ERROR_TRY_AGAIN){
             pthread_mutex_lock(&g15lib_mutex);
-            retval = getPressedKeys(&keypresses, 40);
+            retval = getPressedKeys(&keypresses, 20);
             pthread_mutex_unlock(&g15lib_mutex);
         }
 
@@ -197,7 +197,7 @@ static void *keyboard_watch_thread(void *lcdlist){
           pthread_mutex_unlock(&g15lib_mutex); 
         }
 
-        g15daemon_msleep(10);
+        g15daemon_msleep(40);
     }
     
     return NULL;
