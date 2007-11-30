@@ -49,7 +49,7 @@
 #endif
 
 /* all threads will exit if leaving >0 */
-int leaving = 0;
+volatile int leaving = 0;
 int keyboard_backlight_off_onexit = 0;
 unsigned int g15daemon_debug = 0;
 unsigned int cycle_key;
@@ -460,8 +460,7 @@ int main (int argc, char *argv[])
     	sigaction(SIGUSR1, &new_action, NULL);
         
         do {
-            sleep(1);
-  
+            pause();
         } while( leaving == 0);
 
         g15daemon_log(LOG_INFO,"Leaving by request");

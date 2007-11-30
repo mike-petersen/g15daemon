@@ -46,7 +46,7 @@
 
 #include <libg15render.h>
 
-extern int leaving;
+extern volatile int leaving;
 
 void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
 
