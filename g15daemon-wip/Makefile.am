@@ -23,7 +23,7 @@ dist-hook:
 	rm -rf `find $(distdir)/debian -name .svn`
 	rm -rf `find $(distdir)/contrib -name .svn`
 	rm -rf `find $(distdir)/Documentation -name .svn`
-	rm -rf `find $(distdir)/lang_bindings -name .svn`
+	rm -rf `find $(distdir)/lang-bindings -name .svn`
 	rm -rf `find $(distdir)/patches -name .svn`
 	rm -rf `find $(distdir)/rpm -name .svn`
 	rm -rf `find $(distdir)/plugins -name .svn`
