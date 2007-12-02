@@ -260,6 +260,7 @@ void g15daemon_sighandler(int sig) {
          case SIGUSR1:
               keyboard_backlight_off_onexit = 1;
          case SIGINT:
+         case SIGTERM:
          case SIGQUIT:
               leaving = 1;
                break;
@@ -457,6 +458,7 @@ int main (int argc, char *argv[])
         new_action.sa_flags = 0;
         sigaction(SIGINT, &new_action, NULL);
     	sigaction(SIGQUIT, &new_action, NULL);
+    	sigaction(SIGTERM, &new_action, NULL);
     	sigaction(SIGUSR1, &new_action, NULL);
         
         do {
