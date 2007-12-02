@@ -367,7 +367,6 @@ char * uf_remove_whitespace(char *str){
 int g15daemon_cfg_write_string(config_section_t *section, char *key, char *val){
     
     config_items_t *new = NULL;
-    const char empty[]=" ";
 
     if(section==NULL)
         return -1;
@@ -519,7 +518,7 @@ int uf_conf_open(g15daemon_t *list, char *filename) {
     int config_fd=-1;
     char *sect;
     char *start;
-    char *bar;
+    char *bar = NULL;
     int i;
     struct stat stats;
 	

@@ -172,7 +172,7 @@ static void *keyboard_watch_thread(void *lcdlist){
     unsigned int keypresses = 0;
     int retval = 0;
     while (!leaving) {
-        
+
         pthread_mutex_lock(&g15lib_mutex);
         retval = getPressedKeys(&keypresses, 20);
         pthread_mutex_unlock(&g15lib_mutex);
