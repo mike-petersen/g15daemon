@@ -64,6 +64,10 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
             static unsigned long lastkeys;
             if(!(value & cycle_key) && !(lastkeys & cycle_key)){
                 lcd_t *lcd = (lcd_t*)caller;
+ 
+                if(!lcd->g15plugin->info)
+                  break;
+ 
                 int *(*plugin_listener)(plugin_event_t *newevent) = (void*)lcd->g15plugin->info->event_handler;
                 plugin_event_t *newevent=g15daemon_xmalloc(sizeof(plugin_event_t));
                 newevent->event = event;

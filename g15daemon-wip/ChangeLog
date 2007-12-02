@@ -110,3 +110,6 @@ allow clients use of all 'L' keys.
 - Add NAME section to g15daemon_client manpages
 - Tweak delay between successive keyboard reads.  This reduces cpu load by
   50% on my system.
+- Bugfix: Ensure that all plugin exit functions are called on leaving.
+- Bugfix: if keypress event is received (very early in the startup process,
+  the daemon would crash.  Check that expected pointers are valid.

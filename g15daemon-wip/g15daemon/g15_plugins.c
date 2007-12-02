@@ -129,7 +129,7 @@ void run_advanced_client(plugin_t *plugin_args)
             g15daemon_msleep(info->update_msecs);
         }
     }else{
-        while(1){
+        while(!leaving){
             g15daemon_msleep(500);
         }
     }
