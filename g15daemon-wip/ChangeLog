@@ -113,3 +113,5 @@ allow clients use of all 'L' keys.
 - Bugfix: Ensure that all plugin exit functions are called on leaving.
 - Bugfix: if keypress event is received (very early in the startup process,
   the daemon would crash.  Check that expected pointers are valid.
+- Bugfix: Dont attempt compilation of uinput plugin if headers are
+  unavailable.
