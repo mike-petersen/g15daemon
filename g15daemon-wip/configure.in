@@ -32,6 +32,7 @@ AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/sock
 #include <linux/input.h>
 #endif
 ])
+
 #if HAVE_LINUX_UINPUT_H 
 	dnl check for uinput.h version 2.4 or 2.6 ?
 	AC_CHECK_MEMBER([struct uinput_user_dev.id],
@@ -42,8 +43,11 @@ AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/sock
 			#include <linux/uinput.h>
 	     ]
 	)
+	uinput=true
 	dnl end of uinput version checks
 #endif
+
+AM_CONDITIONAL(UINPUT_INTERFACE_PLUGIN, [test x$uinput = xtrue])
 
 case $host_os in
 	*linux*) 
