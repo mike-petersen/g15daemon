@@ -7,3 +7,5 @@ SVN
 - Improve reliability - the lockups occasionally seen in version 1.0 should
   be resolved.
 - g15macro will now wait for g15daemon to start.
+- fix processing of key-up events.
+- ensure safe exit on receipt of signal

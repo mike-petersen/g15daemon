@@ -70,7 +70,7 @@ int have_xtest = False;
 
 unsigned char recstring[1024];
 
-static int mled_state = G15_LED_M1;
+static unsigned int mled_state = G15_LED_M1;
 static int mkey_state = 0;
 static int recording = 0;
 
@@ -100,8 +100,10 @@ typedef struct mstates_s {
 
 mstates_t *mstates[3];
 
+#define MAX_KEYSTEPS 1024
+
 struct current_recording {
-    keypress_t recorded_keypress[128];
+    keypress_t recorded_keypress[MAX_KEYSTEPS];
 }current_recording;
 
 unsigned int rec_index=0;
@@ -207,7 +209,6 @@ int map_gkey(keystate){
 }
 
 void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
-
   if(have_xtest) {
     #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
     pthread_mutex_lock(&x11mutex);
@@ -221,6 +222,7 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
     Window current_focus;
     int dummy = 0;
     int key = 0;
+
     pthread_mutex_lock(&x11mutex);
       XGetInputFocus(dpy,&current_focus, &dummy);
       key = XKeycodeToKeysym(dpy,keycode,0);
@@ -228,6 +230,7 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
         event.type=KeyPress;
       else
         event.type=KeyRelease;
+
       event.keycode = keycode;
       event.serial = 0;
       event.send_event = False;
@@ -280,17 +283,7 @@ void record_complete(unsigned long keystate)
     rec_index = 0;
 }
 
-void macro_playback(unsigned long keystate)
-{
-    int i = 0;
-    KeySym key;
-    int keyevent;
-    int gkey = map_gkey(keystate);
-    if(gkey<0)
-      return;
-    
-    /* if no macro has been recorded for this key, send the g15daemon default keycode */
-    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+int calc_mkey_offset(mkey_state) {
         int mkey_offset=0;
         switch(mkey_state){
           case 0:
@@ -305,12 +298,29 @@ void macro_playback(unsigned long keystate)
           default:
             mkey_offset=0;
         }
+      return mkey_offset;
+}
+void macro_playback(unsigned long keystate)
+{
+    int i = 0;
+    KeySym key;
+    int keyevent;
+    int gkey = map_gkey(keystate);
+    if(gkey<0)
+      return;
+    
+    /* if no macro has been recorded for this key, send the g15daemon default keycode */
+    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+        int mkey_offset=0;
+
+        mkey_offset = calc_mkey_offset(mkey_state);
+
         pthread_mutex_lock(&x11mutex);
         keyevent=XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]);
         pthread_mutex_unlock(&x11mutex);
 
-        fake_keyevent(keyevent,True,None);
-        fake_keyevent(keyevent,False,None);
+        fake_keyevent(keyevent,1,None);
+        fake_keyevent(keyevent,0,None);
         return;
     }
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
@@ -373,8 +383,28 @@ void configure_mmediakeys(){
    
 }
 
+void handle_mkey_switch(unsigned int mkey) {
+    int mkey_offset = 0;  
+    switch(mkey) {
+      case G15_KEY_M1:
+        mled_state=G15_LED_M1;  
+        break;
+      case G15_KEY_M2:
+        mled_state=G15_LED_M2;  
+        break;
+      case G15_KEY_M3:
+        mled_state=G15_LED_M3;  
+        break;
+    }
+    mkey_offset = calc_mkey_offset(mled_state);
+    mkey_state = mled_state;
+    recording = 0;
+    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
+    change_keymap(mkey_offset);
+}
+
 void *Lkeys_thread() {
-    int keystate = 0;
+    unsigned long keystate = 0;
     struct pollfd fds;
     char ver[5];
     int foo = 0;
@@ -425,25 +455,13 @@ void *Lkeys_thread() {
                     memset(&current_recording,0,sizeof(current_recording));
                     break;
                 case G15_KEY_M1:
-                    mkey_state = 0;
-                    mled_state = G15_LED_M1;
-                    recording = 0;
-                    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,G15_LED_M1);
-                    change_keymap(0);
+                    handle_mkey_switch(G15_KEY_M1);
                     break;
                 case G15_KEY_M2:
-                    mkey_state = 1;
-                    mled_state = G15_LED_M2;
-                    recording = 0;
-                    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,G15_LED_M2);
-                    change_keymap(18);
+                    handle_mkey_switch(G15_KEY_M2);
                     break;
                 case G15_KEY_M3:
-                    mkey_state = 2;
-                    mled_state = G15_LED_M3;
-                    recording = 0;
-                    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,G15_LED_M3);
-                    change_keymap(36);
+                    handle_mkey_switch(G15_KEY_M3);
                     break;
                 default:
                     if(keystate >=G15_KEY_G1 && keystate <=G15_KEY_G18){
@@ -498,13 +516,10 @@ void xkey_handler(XEvent *event) {
             case XK_Super_R:
             case XK_Hyper_L:
             case XK_Hyper_R:
-                break;
+//                break;
             default: 
                 press = False;
-
-            //    return;
         }
-
     }
     if(recording){
         current_recording.recorded_keypress[rec_index].keycode = keycode;
@@ -597,9 +612,8 @@ int myx_error_handler(Display *dpy, XErrorEvent *err){
 void g15macro_sighandler(int sig) {
     switch(sig){
          case SIGINT:
+         case SIGTERM:
          case SIGQUIT:
-              leaving = 1;
-               break;
          case SIGPIPE:
               leaving = 1;
                break;
@@ -646,7 +660,7 @@ int main(int argc, char **argv)
 
     strncpy(configpath,getenv("HOME"),1024);
 
-    if(strlen(user)){
+    if(strlen((char*)user)){
       username = getpwnam((char*)user);
         if (username==NULL) {
             username = getpwuid(geteuid());
@@ -724,6 +738,8 @@ int main(int argc, char **argv)
     new_action.sa_flags = 0;
     sigaction(SIGINT, &new_action, NULL);
     sigaction(SIGQUIT, &new_action, NULL);
+    sigaction(SIGTERM, &new_action, NULL);
+    sigaction(SIGPIPE, &new_action, NULL);
     
     snprintf((char*)splashpath,1024,"%s/%s",DATADIR,"g15macro/splash/g15macro.wbmp");
     g15r_loadWbmpSplash(canvas, splashpath);
