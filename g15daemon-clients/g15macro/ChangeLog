@@ -9,3 +9,6 @@ SVN
 - g15macro will now wait for g15daemon to start.
 - fix processing of key-up events.
 - ensure safe exit on receipt of signal
+- Fix XTest event output
+- Fix order of events, release was being sent before press.
+- increase max number of key up/down events recorded to 1024
