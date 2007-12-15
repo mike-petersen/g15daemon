@@ -15,7 +15,7 @@
         along with g15daemon; if not, write to the Free Software
         Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-        (c) 2006 Mike Lampard 
+        (c) 2006-2007 Mike Lampard 
 
         $Revision$ -  $Date$ $Author$
 
@@ -84,8 +84,11 @@ typedef struct keypress_s {
     unsigned int buttons;
 }keypress_t;
 
+
+#define MAX_KEYSTEPS 1024
+
 typedef struct keysequence_s {
-    keypress_t recorded_keypress[128];
+    keypress_t recorded_keypress[MAX_KEYSTEPS];
     unsigned int record_steps;
 } keysequence_t;
 
@@ -99,8 +102,6 @@ typedef struct mstates_s {
 }mstates_t; 
 
 mstates_t *mstates[3];
-
-#define MAX_KEYSTEPS 1024
 
 struct current_recording {
     keypress_t recorded_keypress[MAX_KEYSTEPS];
@@ -209,13 +210,12 @@ int map_gkey(keystate){
 }
 
 void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
-  if(have_xtest) {
+  if(have_xtest && !recording) { 
     #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
     pthread_mutex_lock(&x11mutex);
-     XTestFakeKeyEvent(dpy, keycode,keydown, CurrentTime);
-     XFlush(dpy);
+       XTestFakeKeyEvent(dpy, keycode,keydown, CurrentTime);
     pthread_mutex_unlock(&x11mutex);
-    usleep(2500);
+    usleep(1500);
      #endif        
   } else {
     XKeyEvent event;
@@ -242,7 +242,7 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
       event.window = current_focus;
       event.root = root_win;
       event.state = modifiers;
-      XSendEvent(dpy,current_focus,False,0xfff,(XEvent*)&event);
+      XSendEvent(dpy,current_focus,False,0,(XEvent*)&event);
       XSync(dpy,False);
     pthread_mutex_unlock(&x11mutex);
   }
@@ -323,6 +323,7 @@ void macro_playback(unsigned long keystate)
         fake_keyevent(keyevent,0,None);
         return;
     }
+
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
 
         fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
@@ -344,7 +345,7 @@ void macro_playback(unsigned long keystate)
             case XK_Super_R:
             case XK_Hyper_L:
             case XK_Hyper_R:
-              usleep(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].time_ms*1000); 
+             usleep(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].time_ms*1000); 
               break;
             default:
              usleep(1000);
@@ -516,7 +517,6 @@ void xkey_handler(XEvent *event) {
             case XK_Super_R:
             case XK_Hyper_L:
             case XK_Hyper_R:
-//                break;
             default: 
                 press = False;
         }
@@ -529,16 +529,15 @@ void xkey_handler(XEvent *event) {
             current_recording.recorded_keypress[rec_index].time_ms=0;
         else
             current_recording.recorded_keypress[rec_index].time_ms=g15daemon_gettime_ms() - lasttime;
-        rec_index++;
-
-        fake_keyevent(keycode,press,event->xkey.state);
-
+        if(rec_index < MAX_KEYSTEPS) {
+          rec_index++;
         /* now the default stuff */
         pthread_mutex_lock(&x11mutex);        
           XUngrabKeyboard(dpy,CurrentTime);
-        pthread_mutex_unlock(&x11mutex);
-        
-        
+       pthread_mutex_unlock(&x11mutex);
+
+        fake_keyevent(keycode,press,event->xkey.state);
+       
         pthread_mutex_lock(&x11mutex);
         XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
         XFlush(dpy);
@@ -546,11 +545,22 @@ void xkey_handler(XEvent *event) {
         pthread_mutex_unlock(&x11mutex);        
         if(0==strcmp((char*)keytext,"space"))
             strcpy((char*)keytext," ");
+        if(0==strcmp((char*)keytext,"period"))
+            strcpy((char*)keytext,".");
         if(press==True){
           strcat((char*)recstring,(char*)keytext);
           g15r_renderString (canvas, (unsigned char *)recstring, 0, G15_TEXT_MED, 80-((strlen((char*)recstring)/2)*5), 22);
           g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
         }
+      } else {
+          pthread_mutex_lock(&x11mutex);        
+            XUngrabKeyboard(dpy,CurrentTime);
+          pthread_mutex_unlock(&x11mutex);
+          recording = 0;
+          rec_index = 0;
+          
+        }
+
     }else
         rec_index=0;
 
@@ -566,16 +576,18 @@ static void* xevent_thread()
     XSelectInput(dpy, root_win, event_mask);
     pthread_mutex_unlock(&x11mutex);
     while(!leaving){
-        pthread_mutex_lock(&x11mutex);        
+        pthread_mutex_lock(&x11mutex);
+        memset(&event,0,sizeof(XEvent));
         retval = XCheckMaskEvent(dpy, event_mask, &event);
         pthread_mutex_unlock(&x11mutex);
         if(retval == True){
             switch(event.type) {
                 case KeyPress:
-                case KeyRelease: {
                     xkey_handler(&event);
                     break;
-                }
+                case KeyRelease: 
+                    xkey_handler(&event);
+                    break;
                 case FocusIn: 
                 case FocusOut:
                 case EnterNotify:
