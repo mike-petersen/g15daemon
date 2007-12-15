@@ -175,33 +175,38 @@ static void *keyboard_watch_thread(void *lcdlist){
     
     unsigned int keypresses = 0;
     int retval = 0;
+    static int lastkeys = 0;
     while (!leaving) {
 
         pthread_mutex_lock(&g15lib_mutex);
-        retval = getPressedKeys(&keypresses, 20);
+        retval = getPressedKeys(&keypresses, 2);
         pthread_mutex_unlock(&g15lib_mutex);
         
         /* every 2nd packet contains the codes we want.. immediately try again */
         while (retval == G15_ERROR_TRY_AGAIN){
             pthread_mutex_lock(&g15lib_mutex);
-            retval = getPressedKeys(&keypresses, 20);
+            retval = getPressedKeys(&keypresses, 2);
             pthread_mutex_unlock(&g15lib_mutex);
         }
 
-        if(retval == G15_NO_ERROR){
+        if(retval == G15_NO_ERROR && lastkeys != keypresses) {
             g15daemon_send_event(masterlist->current->lcd, 
                                  G15_EVENT_KEYPRESS, keypresses);
-        }
-        if(retval == -ENODEV && LIBG15_VERSION>=1200) {
+            lastkeys = keypresses;
+
+        }else if(retval == -ENODEV && LIBG15_VERSION>=1200) {
           pthread_mutex_lock(&g15lib_mutex);
           while((retval=re_initLibG15() != G15_NO_ERROR) && !leaving){
            sleep(1);
           }
-          if(!leaving) { masterlist->current->lcd->state_changed=1; masterlist->current->lcd->ident=random();}
+          if(!leaving) { 
+            masterlist->current->lcd->state_changed=1; 
+            masterlist->current->lcd->ident=random();
+          }
           pthread_mutex_unlock(&g15lib_mutex); 
         }
 
-        g15daemon_msleep(40);
+      g15daemon_msleep(40);
     }
     
     return NULL;

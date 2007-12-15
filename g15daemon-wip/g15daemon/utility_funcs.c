@@ -195,17 +195,23 @@ void g15daemon_sleep(int seconds) {
     pthread_mutex_destroy(&dummy_mutex);
 }
 
+/* microsecond sleep routine. */
+int g15daemon_usleep(int useconds) {
+    
+    struct timeval timeout;
+    if(useconds < 10000)
+      useconds = 10000;
+    timeout.tv_sec = useconds / 1000000;
+    timeout.tv_usec = useconds % 1000000;
+    return select (0,0,0,0,&timeout);
+}
+
 /* millisecond sleep routine. */
 int g15daemon_msleep(int milliseconds) {
     
-    struct timespec timeout;
-    if(milliseconds>999)
-        milliseconds=999;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = milliseconds*1000000;
-
-    return nanosleep (&timeout, NULL);
+    return g15daemon_usleep(milliseconds*1000);
 }
+
 
 unsigned int g15daemon_gettime_ms(){
     struct timeval tv;
