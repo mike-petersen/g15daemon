@@ -283,7 +283,7 @@ void record_complete(unsigned long keystate)
     rec_index = 0;
 }
 
-int calc_mkey_offset(mkey_state) {
+int calc_mkey_offset() {
         int mkey_offset=0;
         switch(mkey_state){
           case 0:
@@ -313,7 +313,7 @@ void macro_playback(unsigned long keystate)
     if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
         int mkey_offset=0;
 
-        mkey_offset = calc_mkey_offset(mkey_state);
+        mkey_offset = calc_mkey_offset();
 
         pthread_mutex_lock(&x11mutex);
         keyevent=XKeysymToKeycode(dpy, gkeydefaults[gkey+mkey_offset]);
@@ -388,17 +388,19 @@ void handle_mkey_switch(unsigned int mkey) {
     int mkey_offset = 0;  
     switch(mkey) {
       case G15_KEY_M1:
-        mled_state=G15_LED_M1;  
+        mled_state=G15_LED_M1;
+        mkey_state=0;  
         break;
       case G15_KEY_M2:
         mled_state=G15_LED_M2;  
+        mkey_state=1;
         break;
       case G15_KEY_M3:
         mled_state=G15_LED_M3;  
+        mkey_state=2;
         break;
     }
-    mkey_offset = calc_mkey_offset(mled_state);
-    mkey_state = mled_state;
+    mkey_offset = calc_mkey_offset();
     recording = 0;
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
     change_keymap(mkey_offset);
