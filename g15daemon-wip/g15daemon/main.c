@@ -323,13 +323,13 @@ int main (int argc, char *argv[])
         
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,uf_return_running() >= 0 ?"Loaded & Running":"Not Running");
-            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation",argv[0]);
+            printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) [level] or -v (--version) or -l (--lcdlevel) [0-2] \n\n -k will kill a previous incarnation",argv[0]);
             #ifdef LIBG15_VERSION
             #if LIBG15_VERSION >= 1200
             printf(", if uppercase -K or -KILL turn off the keyboard backlight on the way out.");
             #endif
             #endif
-            printf("\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n");
+            printf("\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n -l set default LCD backlight level\n");
             exit(0);
         }
 
