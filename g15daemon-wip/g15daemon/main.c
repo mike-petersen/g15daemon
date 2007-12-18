@@ -479,6 +479,10 @@ int main (int argc, char *argv[])
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
         /* switch off the lcd backlight */
+        char *blank=malloc(G15_BUFFER_LEN);
+        memset(blank,0,G15_BUFFER_LEN);
+        uf_write_buf_to_g15(blank);
+        free(blank);
         setLCDBrightness(0);
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1200
