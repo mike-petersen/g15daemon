@@ -490,7 +490,7 @@ int main (int argc, char *argv[])
         /* switch off the lcd backlight */
         char *blank=malloc(G15_BUFFER_LEN);
         memset(blank,0,G15_BUFFER_LEN);
-        writePixmapToLCD(blank);
+        writePixmapToLCD((unsigned char*)blank);
         free(blank);
         setLCDBrightness(0);
 #ifdef LIBG15_VERSION
