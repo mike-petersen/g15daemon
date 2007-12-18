@@ -288,7 +288,8 @@ int main (int argc, char *argv[])
     struct sigaction new_action;
     cycle_key = G15_KEY_L1;
     unsigned char user[256];
-       
+    unsigned int lcdlevel = 1;
+    
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
     memset(user,0,256); 
@@ -353,6 +354,13 @@ int main (int argc, char *argv[])
             }
         }
 
+        if (!strncmp(daemonargs, "-l",2) || !strncmp(daemonargs, "--lcdlevel",7)) {
+            if((argv[i+1])!=NULL)
+             if(isdigit(argv[i+1][0])){
+              lcdlevel = atoi(argv[i+1]);
+            }
+        }
+
     }
     if(uf_return_running()>=0) {
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
@@ -414,7 +422,8 @@ int main (int argc, char *argv[])
         setLCDContrast(1); 
         setLEDs(0);
         lcdlist->kb_backlight_state=1;
-        setLCDBrightness(lcdlist->kb_backlight_state);
+        lcdlist->current->lcd->backlight_state=lcdlevel;
+        setLCDBrightness(lcdlevel);
 
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1200
@@ -481,7 +490,7 @@ int main (int argc, char *argv[])
         /* switch off the lcd backlight */
         char *blank=malloc(G15_BUFFER_LEN);
         memset(blank,0,G15_BUFFER_LEN);
-        uf_write_buf_to_g15(blank);
+        writePixmapToLCD(blank);
         free(blank);
         setLCDBrightness(0);
 #ifdef LIBG15_VERSION
