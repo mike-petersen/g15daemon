@@ -15,7 +15,7 @@
     along with g15daemon; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     
-    (c) 2006 Mike Lampard, Philip Lawatsch, and others
+    (c) 2006-2007 Mike Lampard, Philip Lawatsch, and others
     
     $Revision$ -  $Date$ $Author$
     
@@ -412,6 +412,10 @@ int main (int argc, char *argv[])
         pthread_join(lcd_thread,NULL);
         pthread_join(keyboard_thread,NULL);
         /* new kernels auto-suspend devices without drivers, so we turn off the backlight to save having a blank screen */
+        char *blank = malloc(G15_BUFFER_LEN);
+        memset(blank,0,G15_BUFFER_LEN);
+        writePixmapToLCD(blank);
+        free(blank);
         setLCDBrightness(0);                
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1200
