@@ -85,7 +85,7 @@ allow clients use of all 'L' keys.
 - Add compiletime check for uinput version, should resolve compilation problems on some distro's
 - Security improved - the daemon now sets its effective uid to nobody as soon as possible.
 - Add /dev/misc/ to the list of possible locations for the uinput device
-1.2.6a->SVN current
+1.2.7
 - Add optional --debug argument for enhanced usb debugging. --debug 1
   standard, --debug 2 enhanced.  defaults to 1 if no option given to the
   --debug cmd.  Requires libg15 1.2.0 or SVN version later than 16/12/06

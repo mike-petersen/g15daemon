@@ -15,7 +15,7 @@
     along with g15daemon; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     
-    (c) 2006 Mike Lampard, Philip Lawatsch, and others
+    (c) 2006-2007 Mike Lampard, Philip Lawatsch, and others
     
     This daemon listens on localhost port 15550 for client connections,
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
@@ -172,35 +172,3 @@ static void g15analyser_render_freq(gint16 data[2][256]) {
 
     return;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
