@@ -103,7 +103,7 @@ allow clients use of all 'L' keys.
 - Security: repair some potential security holes.
 - Bugfix: Backlight status was being mis-applied when cycling screens.
 - Bugfix: Language bindings were not being distributed.
-1.9.1->SVN
+1.9.2
 - Add exitfunc to net plugin for exit notification.
 - Use pause() instead of sleeping
 - create leaving var as volatile.
@@ -116,3 +116,4 @@ allow clients use of all 'L' keys.
 - Bugfix: Dont attempt compilation of uinput plugin if headers are
   unavailable.
 - Bugfix: Write a blank buffer to the LCD before exiting.
+1.9.2->SVN:

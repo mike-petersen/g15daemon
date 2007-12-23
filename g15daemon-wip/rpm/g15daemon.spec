@@ -3,7 +3,7 @@
 %define prefix	/usr
 Summary: Daemon to control logitech G15 keyboards
 Name: g15daemon
-Version: 1.9.1
+Version: 1.9.2
 Release: 1
 Copyright: GPL
 Group: Applications/System
