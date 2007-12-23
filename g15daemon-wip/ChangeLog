@@ -116,4 +116,5 @@ allow clients use of all 'L' keys.
 - Bugfix: Dont attempt compilation of uinput plugin if headers are
   unavailable.
 - Bugfix: Write a blank buffer to the LCD before exiting.
+- Add --lcdlevel cmdline option to allow setting default LCD brightness level
 1.9.2->SVN:
