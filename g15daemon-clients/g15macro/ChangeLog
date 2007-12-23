@@ -1,14 +1,14 @@
 1.0 29/12/06
 - Initial release
-SVN
+1.0.1
 - best used with g15daemon wip
 - disable XTest extension by default, run configure with --enable-xtest to
   enable.  The default is now to use XSendEvent.
 - Improve reliability - the lockups occasionally seen in version 1.0 should
   be resolved.
-- g15macro will now wait for g15daemon to start.
 - fix processing of key-up events.
 - ensure safe exit on receipt of signal
 - Fix XTest event output
 - Fix order of events, release was being sent before press.
 - increase max number of key up/down events recorded to 1024
+
