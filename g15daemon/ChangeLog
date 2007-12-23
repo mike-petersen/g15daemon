@@ -92,3 +92,5 @@ allow clients use of all 'L' keys.
 - Add ability to switch off keyboard backlight on exit.  Using -K or -KILL
   (rather than -k or -KILL) will switch off backlight.  Requires libg15 1.2
   or SVN.
+SVN:
+- Blank LCD on exit
