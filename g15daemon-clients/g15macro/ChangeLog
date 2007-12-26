@@ -15,3 +15,5 @@ SVN:
 - Add --dump (-d) option to dump recorded macros in human-readable format
 - Add --version (-v)
 - Add --debug (-g) to add some debugging
+- Switch to a textual configuration file.  Auto-converts to new format from binary
+  config if it exists. Only Semi-readable, but better than a binary dump.

@@ -377,25 +377,79 @@ void macro_playback(unsigned long keystate)
 }
 
 /* WARNING:  uses global mkey state */
-void dump_macro(unsigned int gkey)
+void dump_config(FILE *configfile)
 {
-    int i = 0;
+    int i=0,gkey=0;
     KeySym key;
-    if(gkey>17)
-      return;
-    printf("Key %s: ",gkeystring[gkey]);
-    /* if no macro has been recorded for this key, dump the g15daemon default keycode */
-    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
-        int mkey_offset=0;
-        mkey_offset = calc_mkey_offset();
-        printf("\t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
-        return;
+    int orig_mkeystate=mkey_state;
+
+    for(mkey_state=0;mkey_state<3;mkey_state++){
+      fprintf(configfile,"\n\nCodes for MKey %i\n",mkey_state+1);
+      for(gkey=0;gkey<18;gkey++){
+        fprintf(configfile,"Key %s:",gkeystring[gkey]);
+        /* if no macro has been recorded for this key, dump the g15daemon default keycode */
+        if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+          int mkey_offset=0;
+          mkey_offset = calc_mkey_offset();
+          fprintf(configfile,"\t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
+        }else{
+          fprintf(configfile,"\n");
+          for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
+            key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
+            fprintf(configfile,"\t%s %s %u\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up",(unsigned int)mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].modifiers);
+        }
+      }
+     }
     }
-    printf("\n");
-    for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
-        key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
-        printf("\t%s %s\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up");
+    
+     mkey_state=orig_mkeystate;
+}
+
+void save_macros(char *filename){
+  FILE *configfile;
+  configfile=fopen(filename,"w");
+  
+  dump_config(configfile);
+  
+  fclose(configfile);
+}
+
+void restore_config(char *filename) {
+  FILE *f;
+  char tmpstring[1024];
+  unsigned int key=0;
+  unsigned int mkey=0;
+  unsigned int i=0;
+  unsigned int keycode;
+  f=fopen(filename,"r");
+  printf("restoring codes\n");
+do{
+    memset(tmpstring,0,1024);
+    fgets(tmpstring,1024,f);
+
+    if(tmpstring[0]=='C'){
+      sscanf(tmpstring,"Codes for MKey %i\n",&mkey);
+      mkey--;
+      i=0;
     }
+    if(tmpstring[0]=='K'){
+      sscanf(tmpstring,"Key G%i:",&key);
+      key--;
+      i=0;
+    }
+    if(tmpstring[0]=='\t'){
+      char codestr[64];
+      char pressed[20];
+      unsigned int modifiers = 0;
+      sscanf(tmpstring,"\t%s %s %i\n",(char*)&codestr,(char*)&pressed,&modifiers);
+      keycode = XKeysymToKeycode(dpy,XStringToKeysym(codestr));
+      mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].keycode = keycode;
+      mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].pressed = strncmp(pressed,"Up",2)?1:0;
+      mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].modifiers = modifiers;
+      mstates[mkey]->gkeys[key].keysequence.record_steps=++i;     
+    }
+  }  while(!feof(f));
+  fclose(f);
 }
 
 void change_keymap(int offset){
@@ -698,7 +752,8 @@ int main(int argc, char **argv)
     char configpath[1024];
     char splashpath[1024];
     unsigned int dump = 0;
-    
+    FILE *config;
+    unsigned int convert = 0;
     strncpy(configpath,getenv("HOME"),1024);
 
     memset(user,0,256);
@@ -741,27 +796,41 @@ int main(int argc, char **argv)
              printf("Unable to run as user \"%s\" - you dont have permissions for that.\nRunning as \"%s\"\n",username->pw_name,getenv("USER"));
         }
     }
-                                                                        
+    /* old binary config format */
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
-    mkdir(configpath,0777);
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
-
     config_fd = open(configpath,O_RDONLY|O_SYNC);
-
+        
     mstates[0] = malloc(sizeof(mstates_t));
     mstates[1] = (mstates_t*)malloc(sizeof(mstates_t));
     mstates[2] = (mstates_t*)malloc(sizeof(mstates_t));
-
-    if(config_fd) {
-      read(config_fd,mstates[0],sizeof(mstates_t));
-      read(config_fd,mstates[1],sizeof(mstates_t));
-      read(config_fd,mstates[2],sizeof(mstates_t));
-      close(config_fd);
+                   
+    if(config_fd>0) {
+        printf("Converting old data\n");
+        read(config_fd,mstates[0],sizeof(mstates_t));
+        read(config_fd,mstates[1],sizeof(mstates_t));
+        read(config_fd,mstates[2],sizeof(mstates_t));
+        close(config_fd);
+        strncpy(configpath,getenv("HOME"),1024);
+        strncat(configpath,"/.g15macro",1024-strlen(configpath));
+        char configbak[1024];
+        strcpy(configbak,configpath);
+        strncat(configpath,"/g15macro-data",1024-strlen(configpath));
+        strncat(configbak,"/g15macro-data.old",1024-strlen(configpath));
+        rename(configpath,configbak);
+        convert = 1;
     }else {
       memset(mstates[0],0,sizeof(mstates));
       memset(mstates[1],0,sizeof(mstates));
       memset(mstates[2],0,sizeof(mstates));
     }
+    /* new format */
+    strncpy(configpath,getenv("HOME"),1024);
+    strncat(configpath,"/.g15macro",1024-strlen(configpath));
+    mkdir(configpath,0777);
+    strncat(configpath,"/g15macro.conf",1024-strlen(configpath));
+    config=fopen(configpath,"a");
+    fclose(config);
 
     do {
       dpy = XOpenDisplay(getenv("DISPLAY"));
@@ -778,30 +847,27 @@ int main(int argc, char **argv)
       }
     }while(g15screen_fd<0);
 
+    if(!convert)
+      restore_config(configpath);
+
     if(dump){
-        int n;
         printf("G15Macro Dumping Codes...");
-        for(n=0;n<3;n++){
-          mkey_state=n;
-          printf("\n\nCodes for MKey %i\n",n+1);
-          for(i=0;i<18;i++)
-             dump_macro(i);
-          }
-          exit(0);
+        dump_config(stderr);
+        exit(0);
     }
-    
+      
     g15_send_cmd (g15screen_fd,G15DAEMON_KEY_HANDLER, dummy);
     usleep(1000);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
     usleep(1000);
     canvas = (g15canvas *) malloc (sizeof (g15canvas));
+
     if (canvas != NULL) {
         g15r_initCanvas(canvas);
     } else {
         printf("Unable to initialise the libg15render canvas\nExiting\n");
         return 1;
     }
-
 
     root_win = DefaultRootWindow(dpy);
     if (!root_win) {
@@ -865,18 +931,15 @@ int main(int argc, char **argv)
            usleep(500*1000);
         }
     }while(!usleep(1000) &&  !leaving);
-    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,0);
-    usleep(1000);
+
     if(recording){
         recording = 0;
         XUngrabKeyboard(dpy,CurrentTime);
     }
-    config_fd = open(configpath,O_CREAT|O_WRONLY|O_SYNC,0600);
-    write(config_fd,mstates[0],sizeof(mstates_t));
-    write(config_fd,mstates[1],sizeof(mstates_t));
-    write(config_fd,mstates[2],sizeof(mstates_t));
 
-    close(config_fd);
+    save_macros(configpath);
+    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,0);
+
     pthread_join(Xkeys,NULL);
     pthread_join(Lkeys,NULL);
     pthread_mutex_destroy(&x11mutex);
