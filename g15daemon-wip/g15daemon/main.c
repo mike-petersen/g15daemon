@@ -329,7 +329,7 @@ int main (int argc, char *argv[])
             printf(", if uppercase -K or -KILL turn off the keyboard backlight on the way out.");
             #endif
             #endif
-            printf("\n -h shows this help\n -s changes the screen-switch key from MR to L1\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n -l set default LCD backlight level\n");
+            printf("\n -h shows this help\n -s changes the screen-switch key from L1 to MR (beware)\n -d debug mode - stay in foreground and output all debug messages to STDERR\n -v show version\n -l set default LCD backlight level\n");
             exit(0);
         }
 

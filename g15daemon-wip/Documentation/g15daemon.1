@@ -13,7 +13,8 @@ The current version of G15Daemon understands the following options:
 \-v 	  Show version info.
 .P
 .HP
-\-s	 By default, g15daemon uses the MR key to switch between client screens.  Using this switch on the cmdline alters this, making L1 (the small, round, black button below the LCD) the button to achieve this function.
+\-s	 By default, g15daemon uses the L1 key to switch between client screens.  Using this switch on the cmdline alters this, making
+MR (Macro Record) the button to achieve this function.
 .P
 .HP
 \-k	  Stop a previously running copy of G15Daemon.  For the keys and LCD to work, you'll have to restart the daemon manually.
@@ -31,7 +32,7 @@ To run the daemon with default options, run:
 or
 
 	g15daemon \-s
-to have the L1 key as the client screen switch.
+to have the MR key as the client screen switch.
 
 If all required libraries are installed and in locations known to your operating system, the daemon will slip quietly into the background and a clock will appear on the LCD.  
 Congratulations!  The linux kernel will now output keycodes for all your extra keys.

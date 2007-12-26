@@ -45,7 +45,8 @@ LCD clients,         and cannot be used for other purposes if the
 LCD is being used.
 
 [EDIT]  As  of 30/10/06 svn, the client switch key can be altered
-from MR to L1 by specifying -s on the g15daemon commandline.
+from L1 to MR by specifying -s on the g15daemon commandline. This 
+is not recommended.
 
 ***
 
