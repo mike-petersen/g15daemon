@@ -49,6 +49,7 @@
 #include <g15daemon_client.h>
 #include <libg15.h>
 #include <libg15render.h>
+#include "config.h"
 
 #define  XK_MISCELLANY 
 #define XK_LATIN1
@@ -300,6 +301,7 @@ int calc_mkey_offset() {
         }
       return mkey_offset;
 }
+
 void macro_playback(unsigned long keystate)
 {
     int i = 0;
@@ -349,9 +351,29 @@ void macro_playback(unsigned long keystate)
               break;
             default:
              usleep(1000);
-             
         }
+    }
+}
 
+/* WARNING:  uses global mkey state */
+void dump_macro(unsigned int gkey)
+{
+    int i = 0;
+    KeySym key;
+    if(gkey>17)
+      return;
+    printf("Key %s: ",gkeystring[gkey]);
+    /* if no macro has been recorded for this key, dump the g15daemon default keycode */
+    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+        int mkey_offset=0;
+        mkey_offset = calc_mkey_offset();
+        printf("\t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
+        return;
+    }
+    printf("\n");
+    for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
+        key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
+        printf("\t%s %s\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up");
     }
 }
 
@@ -646,33 +668,28 @@ int main(int argc, char **argv)
     struct passwd *username;
     char configpath[1024];
     char splashpath[1024];
-
-    do {
-      dpy = XOpenDisplay(getenv("DISPLAY"));
-      if (!dpy) {
-        printf("Unable to open display %s - retrying\n",getenv("DISPLAY"));
-        sleep(2);
-        }
-    }while(!dpy);
-   
-    do {
-      if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
-        printf("Sorry, cant connect to the G15daemon - retrying\n");
-        sleep(2);
-      }
-    }while(g15screen_fd<0);
+    unsigned int dump = 0;
+    
+    strncpy(configpath,getenv("HOME"),1024);
 
     memset(user,0,256);
     for(i=0;i<argc;i++){
-        if (!strncmp(argv[i], "-u",2) || !strncmp(argv[i], "--user",7)) {
+        if (!strncmp(argv[i], "-u",2) || !strncmp(argv[i], "--user",6)) {
            if(argv[i+1]!=NULL){
              strncpy((char*)user,argv[i+1],128);
              i++;
            }
         }
-    }
 
-    strncpy(configpath,getenv("HOME"),1024);
+        if (!strncmp(argv[i], "-d",2) || !strncmp(argv[i], "--dump",6)) {
+          dump = 1;
+        }
+
+        if (!strncmp(argv[i], "-v",2) || !strncmp(argv[i], "--version",9)) {
+          printf("G15Macro version %s\n\n",PACKAGE_VERSION);
+          exit(0);
+        }
+    }
 
     if(strlen((char*)user)){
       username = getpwnam((char*)user);
@@ -711,6 +728,34 @@ int main(int argc, char **argv)
       memset(mstates[1],0,sizeof(mstates));
       memset(mstates[2],0,sizeof(mstates));
     }
+
+    do {
+      dpy = XOpenDisplay(getenv("DISPLAY"));
+      if (!dpy) {
+        printf("Unable to open display %s - retrying\n",getenv("DISPLAY"));
+        sleep(2);
+        }
+    }while(!dpy);
+   
+    do {
+      if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
+        printf("Sorry, cant connect to the G15daemon - retrying\n");
+        sleep(2);
+      }
+    }while(g15screen_fd<0);
+
+    if(dump){
+        int n;
+        printf("G15Macro Dumping Codes...");
+        for(n=0;n<3;n++){
+          mkey_state=n;
+          printf("\n\nCodes for MKey %i\n",n+1);
+          for(i=0;i<18;i++)
+             dump_macro(i);
+          }
+          exit(0);
+    }
+    
     g15_send_cmd (g15screen_fd,G15DAEMON_KEY_HANDLER, dummy);
     usleep(1000);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
