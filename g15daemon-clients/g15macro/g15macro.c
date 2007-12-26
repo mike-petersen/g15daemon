@@ -41,6 +41,7 @@
 #include <sys/time.h>
 #include <config.h>
 #include <X11/Xlib.h>
+#include <stdarg.h> 
 #ifdef HAVE_X11_EXTENSIONS_XTEST_H
 #include <X11/extensions/XTest.h>
 #endif
@@ -211,6 +212,20 @@ int map_gkey(keystate){
     return retval;
 }
 
+/* debugging wrapper */
+static int g15macro_log (const char *fmt, ...) {
+
+    if (debug) {
+        printf("G15Macro: ");
+        va_list argp;
+        va_start (argp, fmt);
+        vprintf(fmt,argp);
+        va_end (argp);
+    }
+
+    return 0;
+}
+
 void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
   if(have_xtest && !recording) { 
     #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
@@ -268,12 +283,14 @@ void record_complete(unsigned long keystate)
     if(rec_index){
         strcpy(tmpstr,"For key ");
         strcat(tmpstr,gkeystring[map_gkey(keystate)]);
+        g15macro_log("Recording Complete %s\n",tmpstr);
         g15r_renderString (canvas, (unsigned char *)"Recording", 0, G15_TEXT_LARGE, 80-((strlen("Recording")/2)*8), 4);
         g15r_renderString (canvas, (unsigned char *)"Complete", 0, G15_TEXT_LARGE, 80-((strlen("Complete")/2)*8), 18);
 
     }else{
         strcpy(tmpstr,"From Key ");
         strcat(tmpstr,gkeystring[map_gkey(keystate)]);
+        g15macro_log("Macro deleted %s\n",tmpstr);
         g15r_renderString (canvas, (unsigned char *)"Macro", 0, G15_TEXT_LARGE, 80-((strlen("Macro")/2)*8), 4);
         g15r_renderString (canvas, (unsigned char *)"Deleted", 0, G15_TEXT_LARGE, 80-((strlen("Deleted")/2)*8), 18);
     }
@@ -324,9 +341,10 @@ void macro_playback(unsigned long keystate)
 
         fake_keyevent(keyevent,1,None);
         fake_keyevent(keyevent,0,None);
+        g15macro_log("Key: \t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
         return;
     }
-
+    g15macro_log("Macro Playback: for key %s\n",gkeystring[gkey]);
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
 
         fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
@@ -336,6 +354,7 @@ void macro_playback(unsigned long keystate)
         pthread_mutex_lock(&x11mutex);
         key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
         pthread_mutex_unlock(&x11mutex);
+        g15macro_log("\t%s %s\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up");
         
         switch (key) {
             case XK_Control_L:
@@ -354,6 +373,7 @@ void macro_playback(unsigned long keystate)
              usleep(1000);
         }
     }
+    g15macro_log("Macro Playback Complete\n");
 }
 
 /* WARNING:  uses global mkey state */
@@ -438,8 +458,7 @@ void *Lkeys_thread() {
     float g15v;
     sscanf(ver,"%f",&g15v);
 
-    if(debug)
-      printf("Using version %.2f as keypress protocol\n",g15v);
+    g15macro_log("Using version %.2f as keypress protocol\n",g15v);
 
     while(!leaving){
 
@@ -458,8 +477,7 @@ void *Lkeys_thread() {
 
         if (keystate!=0)
         {
-            if(debug)
-              printf("Received Keystate == %lu\n",keystate);
+            g15macro_log("Received Keystate == %lu\n",keystate);
                       
             switch (keystate)
             {
@@ -470,22 +488,25 @@ void *Lkeys_thread() {
                     break;
                 }
                 case G15_KEY_MR:
-                    if(0==g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo)){
+                    {
+                      if(0==g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo)){
                         usleep(1000);
-                        g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);         
+                        g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);
+                        g15macro_log("Switching to LCD foreground\n");
                     }
                     usleep(1000);
                     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS, G15_LED_MR | mled_state);
                     g15r_initCanvas (canvas);
                     g15r_renderString (canvas, (unsigned char *)"Recording", 0, G15_TEXT_LARGE, 80-((strlen("Recording")/2)*8), 1);
                     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-
+                    g15macro_log("Recording Enabled\n");
                     recording = 1;
                     pthread_mutex_lock(&x11mutex);
                     XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
                     pthread_mutex_unlock(&x11mutex);
-                    memset(&current_recording,0,sizeof(current_recording));
+                    memset(&current_recording,0,sizeof(current_recording)); 
                     break;
+                  }
                 case G15_KEY_M1:
                     handle_mkey_switch(G15_KEY_M1);
                     break;
@@ -499,11 +520,12 @@ void *Lkeys_thread() {
                     if(keystate >=G15_KEY_G1 && keystate <=G15_KEY_G18){
                         if(recording==1){
                             record_complete(keystate);
+                            g15macro_log("Recording Complete\n");
                             recording = 0;
-                             pthread_mutex_lock(&x11mutex);
-                             XUngrabKeyboard(dpy,CurrentTime);
-                             XFlush(dpy);
-                             pthread_mutex_unlock(&x11mutex);
+                            pthread_mutex_lock(&x11mutex);
+                            XUngrabKeyboard(dpy,CurrentTime);
+                            XFlush(dpy);
+                            pthread_mutex_unlock(&x11mutex);
                         } else {
                             macro_playback(keystate);
                         }
@@ -580,6 +602,7 @@ void xkey_handler(XEvent *event) {
             strcpy((char*)keytext,".");
         if(press==True){
           strcat((char*)recstring,(char*)keytext);
+          g15macro_log("Adding %s to Macro\n",keytext);
           g15r_renderString (canvas, (unsigned char *)recstring, 0, G15_TEXT_MED, 80-((strlen((char*)recstring)/2)*5), 22);
           g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
         }
@@ -589,7 +612,6 @@ void xkey_handler(XEvent *event) {
           pthread_mutex_unlock(&x11mutex);
           recording = 0;
           rec_index = 0;
-          
         }
 
     }else
@@ -640,7 +662,7 @@ static void* xevent_thread()
                         break;
                     }
                 default:
-                    printf("Unhandled event (%i) received\n",event.type);
+                    g15macro_log("Unhandled event (%i) received\n",event.type);
             }
         }else 
         usleep(25000);
