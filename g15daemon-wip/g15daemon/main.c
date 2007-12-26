@@ -360,7 +360,12 @@ int main (int argc, char *argv[])
               lcdlevel = atoi(argv[i+1]);
             }
         }
-
+    }
+    if(g15daemon_debug){
+      fprintf(stderr, "G15Daemon CMDLINE ARGS: ");
+      for(i=1;i<argc;i++)
+        fprintf(stderr, "%s ",argv[i]);
+        fprintf(stderr,"\n");
     }
     if(uf_return_running()>=0) {
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");

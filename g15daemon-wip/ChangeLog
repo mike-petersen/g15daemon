@@ -119,3 +119,4 @@ allow clients use of all 'L' keys.
 - Add --lcdlevel cmdline option to allow setting default LCD brightness level
 1.9.2->SVN:
 - BugFix: The documentation for --switch was inverted. Fix.
+- Print list of commandline args when in debug mode
