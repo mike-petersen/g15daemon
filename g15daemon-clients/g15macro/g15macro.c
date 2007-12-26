@@ -68,6 +68,7 @@ pthread_mutex_t x11mutex;
 int leaving = 0;
 int display_timeout=500;
 int have_xtest = False;
+int debug = 0;
 
 unsigned char recstring[1024];
 
@@ -437,6 +438,9 @@ void *Lkeys_thread() {
     float g15v;
     sscanf(ver,"%f",&g15v);
 
+    if(debug)
+      printf("Using version %.2f as keypress protocol\n",g15v);
+
     while(!leaving){
 
         /* g15daemon series 1.2 need key request packets */
@@ -454,6 +458,9 @@ void *Lkeys_thread() {
 
         if (keystate!=0)
         {
+            if(debug)
+              printf("Received Keystate == %lu\n",keystate);
+                      
             switch (keystate)
             {
                 case G15_KEY_L5:{
@@ -683,6 +690,11 @@ int main(int argc, char **argv)
 
         if (!strncmp(argv[i], "-d",2) || !strncmp(argv[i], "--dump",6)) {
           dump = 1;
+        }
+
+        if (!strncmp(argv[i], "-g",2) || !strncmp(argv[i], "--debug",7)) {
+          printf("Debugging Enabled\n");
+          debug = 1;
         }
 
         if (!strncmp(argv[i], "-v",2) || !strncmp(argv[i], "--version",9)) {
