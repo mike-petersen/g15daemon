@@ -117,6 +117,8 @@ allow clients use of all 'L' keys.
   unavailable.
 - Bugfix: Write a blank buffer to the LCD before exiting.
 - Add --lcdlevel cmdline option to allow setting default LCD brightness level
-1.9.2->SVN:
+1.9.3:
 - BugFix: The documentation for --switch was inverted. Fix.
 - Print list of commandline args when in debug mode
+- BugFix: The decreased delay caused keypresses to be misread on some
+  machines.  REVERT.
