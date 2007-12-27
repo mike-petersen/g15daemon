@@ -231,6 +231,7 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
     #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
     pthread_mutex_lock(&x11mutex);
        XTestFakeKeyEvent(dpy, keycode,keydown, CurrentTime);
+       XSync(dpy,False);
     pthread_mutex_unlock(&x11mutex);
     usleep(1500);
      #endif        
