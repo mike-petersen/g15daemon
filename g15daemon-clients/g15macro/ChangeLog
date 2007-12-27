@@ -18,3 +18,4 @@ SVN:
 - Switch to a textual configuration file.  Auto-converts to new format from binary
   config if it exists. Only Semi-readable, but better than a binary dump.
 - Ensure each keypress is received by X11 in sequence.
+- Add mutexes where appropriate.

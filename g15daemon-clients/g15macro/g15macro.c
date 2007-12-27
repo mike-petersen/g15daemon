@@ -65,6 +65,7 @@ static Display *dpy;
 static Window root_win;
 
 pthread_mutex_t x11mutex;
+pthread_mutex_t config_mutex;
 
 int leaving = 0;
 int display_timeout=500;
@@ -272,14 +273,16 @@ void record_complete(unsigned long keystate)
     int gkey = map_gkey(keystate);
 
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
-
+    pthread_mutex_lock(&config_mutex);
+    
     if(!rec_index) // nothing recorded - delete prior recording
         memset(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress,0,sizeof(keysequence_t));
     else
         memcpy(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress, &current_recording, sizeof(keysequence_t));
 
     mstates[mkey_state]->gkeys[gkey].keysequence.record_steps=rec_index;
-
+    pthread_mutex_unlock(&config_mutex);
+    
     memset(canvas->buffer,0,G15_BUFFER_LEN);
     if(rec_index){
         strcpy(tmpstr,"For key ");
@@ -346,6 +349,7 @@ void macro_playback(unsigned long keystate)
         return;
     }
     g15macro_log("Macro Playback: for key %s\n",gkeystring[gkey]);
+    pthread_mutex_lock(&config_mutex);
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
 
         fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
@@ -374,6 +378,7 @@ void macro_playback(unsigned long keystate)
              usleep(1000);
         }
     }
+    pthread_mutex_unlock(&config_mutex);
     g15macro_log("Macro Playback Complete\n");
 }
 
@@ -382,8 +387,8 @@ void dump_config(FILE *configfile)
 {
     int i=0,gkey=0;
     KeySym key;
+    pthread_mutex_lock(&config_mutex);
     int orig_mkeystate=mkey_state;
-
     for(mkey_state=0;mkey_state<3;mkey_state++){
       fprintf(configfile,"\n\nCodes for MKey %i\n",mkey_state+1);
       for(gkey=0;gkey<18;gkey++){
@@ -402,8 +407,8 @@ void dump_config(FILE *configfile)
       }
      }
     }
-    
-     mkey_state=orig_mkeystate;
+    mkey_state=orig_mkeystate;
+    pthread_mutex_unlock(&config_mutex);
 }
 
 void save_macros(char *filename){
@@ -424,7 +429,8 @@ void restore_config(char *filename) {
   unsigned int keycode;
   f=fopen(filename,"r");
   printf("restoring codes\n");
-do{
+  pthread_mutex_lock(&config_mutex);
+  do{
     memset(tmpstring,0,1024);
     fgets(tmpstring,1024,f);
 
@@ -450,6 +456,7 @@ do{
       mstates[mkey]->gkeys[key].keysequence.record_steps=++i;     
     }
   }  while(!feof(f));
+  pthread_mutex_unlock(&config_mutex);
   fclose(f);
 }
 
@@ -525,7 +532,7 @@ void *Lkeys_thread() {
             fds.events = POLLIN;
             fds.revents=0;
             keystate=0;
-            if ((poll(&fds, 1, 5000)) > 0) {
+            if ((poll(&fds, 1, 1000)) > 0) {
                 read (g15screen_fd, &keystate, sizeof (keystate));    
             }
         }
@@ -801,7 +808,7 @@ int main(int argc, char **argv)
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
     config_fd = open(configpath,O_RDONLY|O_SYNC);
-        
+     
     mstates[0] = malloc(sizeof(mstates_t));
     mstates[1] = (mstates_t*)malloc(sizeof(mstates_t));
     mstates[2] = (mstates_t*)malloc(sizeof(mstates_t));
@@ -906,6 +913,7 @@ int main(int argc, char **argv)
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
     usleep(1000);
     pthread_mutex_init(&x11mutex,NULL);
+    pthread_mutex_init(&config_mutex,NULL);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     int thread_policy=SCHED_FIFO;
@@ -944,6 +952,7 @@ int main(int argc, char **argv)
     pthread_join(Xkeys,NULL);
     pthread_join(Lkeys,NULL);
     pthread_mutex_destroy(&x11mutex);
+    pthread_mutex_destroy(&config_mutex);
     /* revert the keymap to g15daemon default on exit */
     change_keymap(0);
 
