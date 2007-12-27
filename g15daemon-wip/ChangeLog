@@ -85,17 +85,17 @@ allow clients use of all 'L' keys.
 - Add compiletime check for uinput version, should resolve compilation problems on some distro's
 - Security improved - the daemon now sets its effective uid to nobody as soon as possible.
 1.9.0
-- Add plugin API
-- partially rewritten event core 
-- updated g15daemon_xmms_spectrum plugin with new features, available in trunk/g15daemon_audio_plugins (SVN)
-- Clock is now a plugin
-- dependency on libdaemon is now removed
-- g15daemon is now dependant on libg15render.
-- Clock now includes analog clock thanks to Rasta Freak <igor.jusic@zg.t-com.hr>
+- Feature: Add plugin API
+- Feature: partially rewritten event core 
+- Feature: updated g15daemon_xmms_spectrum plugin with new features, available in trunk/g15daemon_audio_plugins (SVN)
+- Feature: Clock is now a plugin
+- Feature: dependency on libdaemon is now removed
+- Feature: g15daemon is now dependant on libg15render.
+- Feature: Clock now includes analog clock thanks to Rasta Freak <igor.jusic@zg.t-com.hr>
 - Moved g15daemon_xmms_spectrum plugin to separate package
 1.9.1
-- Plugins are now installed in ${PREFIX}/{${LIBDIR}/g15daemon/${VERSION}/plugins
-- OS-X support thanks to Fabrizio Sestito.
+- BugFix: Plugins are now installed in ${PREFIX}/{${LIBDIR}/g15daemon/${VERSION}/plugins
+- Feature: OS-X support thanks to Fabrizio Sestito.
 - Bugfix: libg15daemon_client: keypresses were being corrupted.
 - Bugfix: libg15daemon_client: use g15_recv rather than recv.
 - Bugfix: use default scheduling for all threads.
@@ -104,10 +104,10 @@ allow clients use of all 'L' keys.
 - Bugfix: Backlight status was being mis-applied when cycling screens.
 - Bugfix: Language bindings were not being distributed.
 1.9.2
-- Add exitfunc to net plugin for exit notification.
-- Use pause() instead of sleeping
-- create leaving var as volatile.
-- Add NAME section to g15daemon_client manpages
+- BugFix: Add exitfunc to net plugin for exit notification.
+- BugFix: Use pause() instead of sleeping
+- BugFix: create leaving var as volatile.
+- BugFix: Add NAME section to g15daemon_client manpages
 - Tweak delay between successive keyboard reads.  This reduces cpu load by
   50% on my system.
 - Bugfix: Ensure that all plugin exit functions are called on leaving.
@@ -116,9 +116,11 @@ allow clients use of all 'L' keys.
 - Bugfix: Dont attempt compilation of uinput plugin if headers are
   unavailable.
 - Bugfix: Write a blank buffer to the LCD before exiting.
-- Add --lcdlevel cmdline option to allow setting default LCD brightness level
+- Feature: Add --lcdlevel cmdline option to allow setting default LCD brightness level
 1.9.3:
 - BugFix: The documentation for --switch was inverted. Fix.
-- Print list of commandline args when in debug mode
+- Debug: Print list of commandline args when in debug mode
 - BugFix: The decreased delay caused keypresses to be misread on some
   machines.  REVERT.
+1.9.3->SVN:
+- Debug: Log warning if keyboard disappears.
