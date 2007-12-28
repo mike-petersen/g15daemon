@@ -85,6 +85,7 @@ static void *keyboard_watch_thread(void *lcdlist){
         if(retval == -ENODEV && LIBG15_VERSION>=1200) {
           pthread_mutex_lock(&g15lib_mutex);
           while((retval=re_initLibG15() != G15_NO_ERROR) && !leaving){
+           daemon_log(LOG_ERR,"Keyboard went away! retrying...");
            sleep(1);
           }
           if(!leaving) { displaylist->current->lcd->state_changed=1; displaylist->current->lcd->ident=random();}
