@@ -124,3 +124,8 @@ allow clients use of all 'L' keys.
   machines.  REVERT.
 1.9.3->SVN:
 - Debug: Log warning if keyboard disappears.
+- Bugfix: Fix autoconf autodetect bugs re uinput plugin.
+- Feature: If autodetection of uinput fails, configure now has a
+           --disable-uinput override.  
+- Feature: WIP should now _compile_ on Linux, MacOSX, and Solaris. Solaris
+           support is currently in progress.
