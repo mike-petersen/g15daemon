@@ -7,11 +7,14 @@ AC_PREREQ(2.59)
 AC_INIT(g15daemon, [1.9.3], [mlampard@users.sf.net])
 AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_AUX_DIR(config)
+AC_CANONICAL_HOST()
 AC_CANONICAL_TARGET()
 
 AM_INIT_AUTOMAKE()
 AC_CONFIG_HEADER([config.h])
 
+
+AC_LIBTOOL_DLOPEN
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL
@@ -38,7 +41,8 @@ AC_CHECK_FUNCS([memset select socket strerror])
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([ linux/input.h ])
-AC_CHECK_HEADERS([ linux/uinput.h arpa/inet.h fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h], [have_linux_uinput_h=yes],[], 
+AC_CHECK_HEADERS([ linux/uinput.h ], [have_linux_uinput_h=yes],[have_linux_uinput_h=],[])
+AC_CHECK_HEADERS([ arpa/inet.h fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h],,,
 [#if HAVE_LINUX_INPUT_H
 #include <linux/input.h>
 #endif
@@ -75,10 +79,12 @@ fi
 case $host_os in
 	*linux*) 
 	  AC_DEFINE([OSTYPE_LINUX], [1],[Target OS is Linux])
+	  AC_MSG_NOTICE([OS is Linux, using uinput if available])
 	  ;;
 	*darwin*)
 	  AC_DEFINE([OSTYPE_DARWIN], [1],[Target OS is Darwin])
 	  AC_SUBST(KEXT_LOCATION,["/System/Library/Extensions/"])
+	  AC_MSG_NOTICE([OS is Darwin, using OS specific workarounds])
           install_kext=true
 	  uinput=false
 	  ;;
@@ -87,10 +93,13 @@ case $host_os in
 	  AC_SEARCH_LIBS([connect],socket,[],[],[])
 	  AC_SEARCH_LIBS([gethostent],nsl,[],[],[])
 	  AC_SEARCH_LIBS([inet_aton],resolv,[],[],[])
+          AC_SEARCH_LIBS([nanosleep],rt,[],[],[])
+	  AC_MSG_NOTICE([OS is Solaris, using OS specific workarounds])
 	  uinput=false
           ;;
 	*) 
 	  AC_DEFINE([OSTYPE_OTHER], [1],[Target OS is unknown])
+	  AC_MSG_NOTICE([Unknown OS type, your milage may vary....])
 	  uinput=false
 	  ;;
 esac
