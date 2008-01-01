@@ -148,13 +148,14 @@ int g15daemon_log (int priority, const char *fmt, ...) {
       real_prio = LOG_DEBUG;
    }
 
-   if(real_prio>=priority) 
+   if(real_prio>=priority) {
     if(g15daemon_debug == 0)
      vsyslog(priority, fmt, argp);
     else {
      vfprintf(stderr,fmt,argp);
      fprintf(stderr,"\n");
     }
+   }
    va_end (argp);
    
    return 0;
