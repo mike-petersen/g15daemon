@@ -360,8 +360,8 @@ int main (int argc, char *argv[])
     }
     if(g15daemon_debug){
         g15daemon_log(LOG_INFO, "G15Daemon %s Build Date: %s",PACKAGE_VERSION,BUILD_DATE);
-        g15daemon_log(LOG_INFO, "Build OS: %s",BUILD_OS_NAME);
-        g15daemon_log(LOG_INFO, "With compiler: %s",COMPILER_VERSION);
+        g15daemon_log(LOG_DEBUG, "Build OS: %s",BUILD_OS_NAME);
+        g15daemon_log(LOG_DEBUG, "With compiler: %s",COMPILER_VERSION);
         fprintf(stderr, "G15Daemon CMDLINE ARGS: ");
         for(i=1;i<argc;i++)
           fprintf(stderr, "%s ",argv[i]);
