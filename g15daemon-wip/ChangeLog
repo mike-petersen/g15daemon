@@ -136,3 +136,5 @@ allow clients use of all 'L' keys.
 - Feature: Solaris support.  Requires some end-user changes to the usb
   stack at the moment.  Documentation coming soon.
 - BugFix: Plugin loader is now much more robust.
+- Feature: Add OS specific documentation for Linux and FreeBSD.
+	   Compilation and use on FreeBSD is completely untested.
