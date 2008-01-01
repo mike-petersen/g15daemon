@@ -408,7 +408,7 @@ int main (int argc, char *argv[])
         struct passwd *nobody;
         unsigned char location[1024];
 
-        openlog("g15daemon", LOG_PID, LOG_DAEMON);
+        openlog("g15daemon", LOG_PID, LOG_USER);
         if(strlen((char*)user)==0){
             nobody = getpwnam("nobody");
         }else {
