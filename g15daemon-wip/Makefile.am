@@ -2,6 +2,7 @@ LLIBDIR=@LIBDIR@
 
 SUBDIRS =  libg15daemon_client g15daemon plugins
 INCLUDES =  -I$(top_srcdir)/libg15daemon_client -I$(top_srcdir)/g15daemon
+
 EXTRA_DIST = debian contrib Documentation lang-bindings patches rpm README.usage FAQ LICENSE images
 
 docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)

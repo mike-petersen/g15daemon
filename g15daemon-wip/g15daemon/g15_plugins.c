@@ -52,13 +52,35 @@ void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
 
     void * handle;
     char * error;
-    
+    static int deepbind = 0;
+        
     int mode = library==1?RTLD_GLOBAL:RTLD_LOCAL;
+#ifdef RTLD_DEEPBIND
+    mode|=RTLD_DEEPBIND; /* set ordering of symbols so plugin uses its
+                            own symbols in preference to ours */
+    if(!deepbind)
+      g15daemon_log(LOG_ERR,"G15Daemon Plugin_Loader - DEEPBIND Flag available.  Using it.");
+    deepbind=1;
+#endif
+
+    g15daemon_log(LOG_ERR,"PRELOADING %s",name);
+    /* remove any pending errors */
+    dlerror();
+
+    handle = dlopen (name,RTLD_LAZY | mode | RTLD_NODELETE);
+    dlclose(handle);
+    dlerror();
     
-    handle = dlopen (name,RTLD_NOW | mode);
+    handle = dlopen (name,RTLD_NOW | mode | RTLD_NOLOAD);
     
+    if(!handle) { /* FIXME: retry once more if load failed */
+      dlerror();
+      g15daemon_log(LOG_ERR, "Initialisation Failed.  Retrying..");
+      handle = dlopen (name, RTLD_LAZY | mode );
+    }
+
     if ((error = dlerror()) != NULL)  {
-        g15daemon_log (LOG_ERR, "%s\n", error);
+        g15daemon_log (LOG_ERR, "Plugin_Loader - Error loading %s - %s\n", name, error);
         return(NULL);
     }
     
@@ -67,7 +89,12 @@ void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
 
 int g15daemon_dlclose_plugin(void *handle) {
 
+    char * error;
     dlclose(handle);
+    error = dlerror();
+    if(error != NULL)
+      g15daemon_log(LOG_ERR, "Error from dlclose %s\n",error);
+
     return 0;
 }
 
@@ -144,15 +171,17 @@ void *plugin_thread(plugin_t *plugin_args) {
     void *handle = plugin_args->plugin_handle;
     
     if(plugin_args->info->plugin_run!=NULL||plugin_args->info->event_handler!=NULL) {
-        g15daemon_log(LOG_ERR,"registered plugin \"%s\"",info->name);
+        g15daemon_log(LOG_ERR,"Plugin \"%s\" boot successful.",info->name);
     } else {
         return NULL;
     }
     
     if(plugin_args->type == G15_PLUGIN_LCD_CLIENT){
+        g15daemon_log(LOG_ERR,"Starting plugin \"%s\" in standard mode\n",info->name);
     	run_lcd_client(plugin_args);
     }
     else if(plugin_args->type == G15_PLUGIN_CORE_OS_KB||plugin_args->type == G15_PLUGIN_LCD_SERVER) {
+        g15daemon_log(LOG_ERR,"Starting plugin \"%s\" in advanced mode\n",info->name);
         run_advanced_client(plugin_args);
     }
 
@@ -173,14 +202,20 @@ int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
     pthread_t client_connection;
     pthread_attr_t attr;
     lcdnode_t *clientnode;
-
+    char *error_str;
+    
     if((plugin_handle = g15daemon_dlopen_plugin(filename,G15_PLUGIN_NONSHARED))!=NULL) {
         plugin_t  *plugin_args=malloc(sizeof(plugin_t));
         plugin_args->info = dlsym(plugin_handle, "g15plugin_info");
+        g15daemon_log(LOG_INFO, "Booting plugin...");
 
-        dlerror();
+        error_str=dlerror();
+          
+        if(error_str!=NULL)
+          g15daemon_log(LOG_ERR,"g15_plugin_load: %s %s\n",filename,error_str);
+
         if(!plugin_args->info) { /* if it doesnt have a valid struct, we should just load it as a library... but we dont at the moment FIXME */
-            g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin\n",filename);
+            g15daemon_log(LOG_ERR,"%s is not a valid g15daemon plugin.  Unloading\n",filename);
             g15daemon_dlclose_plugin(plugin_handle);
             dlerror();
             return -1;
@@ -245,13 +280,13 @@ void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
                 strcpy(pluginname, plugin_directory);
                 strncat(pluginname,"/",1);
                 strncat(pluginname,ep->d_name,200);
-                g15daemon_log(LOG_INFO, "Loading plugin %s",pluginname);
                 g15_plugin_load (masterlist, pluginname);
                 g15daemon_msleep(20);
             }
         }
         (void) closedir (directory);
+        g15daemon_log(LOG_WARNING,"All available plugins loaded.");
     }
     else
-        perror ("Couldn't open the directory");
+        g15daemon_log (LOG_ERR,"Unable to open the directory: %s",plugin_directory);
 }

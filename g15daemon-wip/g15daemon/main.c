@@ -176,12 +176,11 @@ static void *keyboard_watch_thread(void *lcdlist){
     unsigned int keypresses = 0;
     int retval = 0;
     static int lastkeys = 0;
-    while (!leaving) {
 
+    while (!leaving) {
         pthread_mutex_lock(&g15lib_mutex);
         retval = getPressedKeys(&keypresses, 20);
         pthread_mutex_unlock(&g15lib_mutex);
-        
         /* every 2nd packet contains the codes we want.. immediately try again */
         while (retval == G15_ERROR_TRY_AGAIN){
             pthread_mutex_lock(&g15lib_mutex);
@@ -206,10 +205,8 @@ static void *keyboard_watch_thread(void *lcdlist){
           }
           pthread_mutex_unlock(&g15lib_mutex); 
         }
-
       g15daemon_msleep(40);
     }
-    
     return NULL;
 }
 
@@ -259,7 +256,6 @@ static void *lcd_draw_thread(void *lcdlist){
         }
             
         pthread_mutex_unlock(&lcdlist_mutex);
-        
         g15daemon_msleep(5);
     }
     return NULL;
@@ -363,10 +359,13 @@ int main (int argc, char *argv[])
         }
     }
     if(g15daemon_debug){
-      fprintf(stderr, "G15Daemon CMDLINE ARGS: ");
-      for(i=1;i<argc;i++)
-        fprintf(stderr, "%s ",argv[i]);
-        fprintf(stderr,"\n");
+        g15daemon_log(LOG_INFO, "G15Daemon %s Build Date: %s",PACKAGE_VERSION,BUILD_DATE);
+        g15daemon_log(LOG_INFO, "Build OS: %s",BUILD_OS_NAME);
+        g15daemon_log(LOG_INFO, "With compiler: %s",COMPILER_VERSION);
+        fprintf(stderr, "G15Daemon CMDLINE ARGS: ");
+        for(i=1;i<argc;i++)
+          fprintf(stderr, "%s ",argv[i]);
+          fprintf(stderr,"\n");
     }
     if(uf_return_running()>=0) {
         g15daemon_log(LOG_ERR,"G15Daemon already running.. Exiting");
@@ -442,19 +441,22 @@ int main (int argc, char *argv[])
         if(!cycle_cmdline_override){
             cycle_key = 1==g15daemon_cfg_read_bool(global_cfg,"Use MR as Cycle Key",0)?G15_KEY_MR:G15_KEY_L1;
         }
+#ifndef OSTYPE_SOLARIS
                /* all other processes/threads should be seteuid nobody */
         if(nobody!=NULL) {
             seteuid(nobody->pw_uid);
             setegid(nobody->pw_gid);
         }
+#endif        
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
 
+        pthread_attr_setstacksize(&attr,512*1024); /* set stack to 512k - dont need 8Mb !! */
         if (pthread_create(&keyboard_thread, &attr, keyboard_watch_thread, lcdlist) != 0) {
             g15daemon_log(LOG_ERR,"Unable to create keyboard listener thread.  Exiting");
             goto exitnow;
         }
+
         pthread_attr_setstacksize(&attr,128*1024); 
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {

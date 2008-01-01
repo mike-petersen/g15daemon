@@ -13,12 +13,11 @@ AC_CANONICAL_TARGET()
 AM_INIT_AUTOMAKE()
 AC_CONFIG_HEADER([config.h])
 
-
 AC_LIBTOOL_DLOPEN
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL
-AC_PROG_RANLIB
 
 # Checks for libraries.
 AC_CHECK_LIB([g15], [initLibG15],,AC_MSG_ERROR(["libg15 (or its devel package) not found. please install it"]))

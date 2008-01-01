@@ -127,5 +127,12 @@ allow clients use of all 'L' keys.
 - Bugfix: Fix autoconf autodetect bugs re uinput plugin.
 - Feature: If autodetection of uinput fails, configure now has a
            --disable-uinput override.  
-- Feature: WIP should now _compile_ on Linux, MacOSX, and Solaris. Solaris
-           support is currently in progress.
+- Feature: WIP should now compile and run on Linux, MacOSX, and Solaris (v10+).
+	   Only Linux and Solaris have been tested.
+- Debug: Add more debugging to plugin loader.
+- Debug: Log build date,OS and GCC version.
+- Feature: Plugin loader will now use DEEP_BIND if available, hopefully
+  resolving conflicts on OS's that support it.
+- Feature: Solaris support.  Requires some end-user changes to the usb
+  stack at the moment.  Documentation coming soon.
+- BugFix: Plugin loader is now much more robust.
