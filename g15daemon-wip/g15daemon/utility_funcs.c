@@ -133,15 +133,28 @@ int uf_create_pidfile() {
 
 /* syslog wrapper */
 int g15daemon_log (int priority, const char *fmt, ...) {
-
    va_list argp;
    va_start (argp, fmt);
-   if(g15daemon_debug == 0)
+   int real_prio=0;
+   
+   switch(g15daemon_debug) {
+     case 1:
+      real_prio = LOG_WARNING;
+      break;
+     case 2:
+      real_prio = LOG_INFO;
+      break;
+     default:
+      real_prio = LOG_DEBUG;
+   }
+
+   if(real_prio>=priority) 
+    if(g15daemon_debug == 0)
      vsyslog(priority, fmt, argp);
-   else {
+    else {
      vfprintf(stderr,fmt,argp);
      fprintf(stderr,"\n");
-   }
+    }
    va_end (argp);
    
    return 0;
