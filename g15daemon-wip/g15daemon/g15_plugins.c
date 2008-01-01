@@ -59,11 +59,11 @@ void * g15daemon_dlopen_plugin(char *name,unsigned int library) {
     mode|=RTLD_DEEPBIND; /* set ordering of symbols so plugin uses its
                             own symbols in preference to ours */
     if(!deepbind)
-      g15daemon_log(LOG_ERR,"G15Daemon Plugin_Loader - DEEPBIND Flag available.  Using it.");
+      g15daemon_log(LOG_INFO,"G15Daemon Plugin_Loader - DEEPBIND Flag available.  Using it.\n");
     deepbind=1;
 #endif
 
-    g15daemon_log(LOG_ERR,"PRELOADING %s",name);
+    g15daemon_log(LOG_INFO,"PRELOADING %s",name);
     /* remove any pending errors */
     dlerror();
 
@@ -128,6 +128,7 @@ void run_lcd_client(plugin_t *plugin_args) {
     if(!leaving)
         g15daemon_lcdnode_remove(display);
 }
+
 void run_advanced_client(plugin_t *plugin_args)
 { 
     plugin_info_t *info = plugin_args->info;
@@ -177,11 +178,11 @@ void *plugin_thread(plugin_t *plugin_args) {
     }
     
     if(plugin_args->type == G15_PLUGIN_LCD_CLIENT){
-        g15daemon_log(LOG_ERR,"Starting plugin \"%s\" in standard mode\n",info->name);
+        g15daemon_log(LOG_INFO,"Starting plugin thread \"%s\" in standard mode\n",info->name);
     	run_lcd_client(plugin_args);
     }
     else if(plugin_args->type == G15_PLUGIN_CORE_OS_KB||plugin_args->type == G15_PLUGIN_LCD_SERVER) {
-        g15daemon_log(LOG_ERR,"Starting plugin \"%s\" in advanced mode\n",info->name);
+        g15daemon_log(LOG_INFO,"Starting plugin thread \"%s\" in advanced mode\n",info->name);
         run_advanced_client(plugin_args);
     }
 
@@ -192,6 +193,32 @@ void *plugin_thread(plugin_t *plugin_args) {
     g15daemon_dlclose_plugin(handle);
 
     return NULL;
+}
+
+int g15_count_plugins(char *plugin_directory) {
+    
+    DIR *directory;
+    struct dirent *ep;
+    char pluginname[2048];
+    int count=0;
+    
+    directory = opendir (plugin_directory);
+    if (directory != NULL)
+    {
+       while ((ep = readdir (directory))) {
+            if(strstr(ep->d_name,".so")){
+                strcpy(pluginname, plugin_directory);
+                strncat(pluginname,"/",1);
+                strncat(pluginname,ep->d_name,200);
+                ++count;
+            }
+        }
+        (void) closedir (directory);
+    }
+    else
+      count = -1;
+  
+    return count;  
 }
 
 int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
@@ -207,7 +234,6 @@ int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
     if((plugin_handle = g15daemon_dlopen_plugin(filename,G15_PLUGIN_NONSHARED))!=NULL) {
         plugin_t  *plugin_args=malloc(sizeof(plugin_t));
         plugin_args->info = dlsym(plugin_handle, "g15plugin_info");
-        g15daemon_log(LOG_INFO, "Booting plugin...");
 
         error_str=dlerror();
           
@@ -223,9 +249,13 @@ int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
         
         if(strncasecmp("Load",g15daemon_cfg_read_string(plugin_cfg, plugin_args->info->name,"Load"),5)!=0)
         {
+        
+            g15daemon_log(LOG_ERR, "\"%s\" Plugin disabled in g15daemon.conf - not running\n",plugin_args->info->name);
             g15daemon_dlclose_plugin(plugin_handle);
             return -1;
         } 	
+
+        g15daemon_log(LOG_WARNING, "Booting plugin \"%s\"",plugin_args->info->name);
 
         plugin_args->type = plugin_args->info->type;
         /* assign the generic eventhandler if the plugin doesnt provide one - the generic one does nothing atm. FIXME*/
@@ -258,7 +288,7 @@ int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
                   pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
                   pthread_attr_setstacksize(&attr,64*1024); /* set stack to 64k - dont need 8Mb */
                   if (pthread_create(&client_connection, &attr, (void*)plugin_thread, plugin_args) != 0) {
-                      g15daemon_log(LOG_WARNING,"Unable to create client thread.");
+                      g15daemon_log(LOG_ERR,"Unable to create client thread.");
                   } else {
                       pthread_detach(client_connection);
                   }
@@ -272,21 +302,50 @@ void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
     DIR *directory;
     struct dirent *ep;
     char pluginname[2048];
-    directory = opendir (plugin_directory);
-    if (directory != NULL)
-    {
-        while ((ep = readdir (directory))) {
+    int loadcount = 0;
+    int count = g15_count_plugins(plugin_directory);
+    config_section_t *load_cfg = g15daemon_cfg_load_section(masterlist,"PLUGIN_LOAD_ORDER");
+
+   if(!uf_search_confitem(load_cfg,"TotalPlugins") ||
+         (g15daemon_cfg_read_int(load_cfg,"TotalPlugins",0)!=count)) {
+      
+      g15daemon_log(LOG_INFO,"Number of plugins has changed. Rebuilding load order.");
+           
+      directory = opendir (plugin_directory);
+      if (directory != NULL && count)
+      {
+         g15daemon_log(LOG_WARNING,"Attempting load of %i plugins",count);
+         while ((ep = readdir (directory))) {
             if(strstr(ep->d_name,".so")){
                 strcpy(pluginname, plugin_directory);
                 strncat(pluginname,"/",1);
                 strncat(pluginname,ep->d_name,200);
-                g15_plugin_load (masterlist, pluginname);
+                if(g15_plugin_load (masterlist, pluginname)==0){
+                  char tmp[10];
+                  sprintf(tmp,"%i",loadcount);
+                  g15daemon_cfg_write_string(load_cfg,tmp,pluginname);
+                  loadcount++;
+
+                }
                 g15daemon_msleep(20);
             }
         }
         (void) closedir (directory);
-        g15daemon_log(LOG_WARNING,"All available plugins loaded.");
-    }
-    else
+        
+        g15daemon_cfg_write_int(load_cfg,"TotalPlugins",loadcount);
+        
+        g15daemon_log(LOG_WARNING,"Successfully loaded %i of %i plugins.",loadcount,count);
+      }
+      else
         g15daemon_log (LOG_ERR,"Unable to open the directory: %s",plugin_directory);
+    }else{
+      int i;
+      g15daemon_log(LOG_INFO,"Loading %i plugins named in g15daemon.conf.",count);
+      for(i=0;i<count;i++){
+        char tmp[10];
+        sprintf(tmp,"%i",i);
+        g15_plugin_load(masterlist,g15daemon_cfg_read_string(load_cfg,tmp,""));
+        g15daemon_msleep(20);
+      }
+    }
 }
