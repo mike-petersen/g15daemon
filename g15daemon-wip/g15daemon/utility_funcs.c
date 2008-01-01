@@ -138,6 +138,7 @@ int g15daemon_log (int priority, const char *fmt, ...) {
    int real_prio=0;
    
    switch(g15daemon_debug) {
+     case 0:
      case 1:
       real_prio = LOG_WARNING;
       break;
