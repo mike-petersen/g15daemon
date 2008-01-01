@@ -106,11 +106,21 @@ esac
 AM_CONDITIONAL([KEXT_INSTALL], [test x$install_kext = xtrue])
 AM_CONDITIONAL(UINPUT_INTERFACE_PLUGIN, [test x$uinput = xtrue])
 
+G15D_BUILD_CC="`$CC -v 2>&1 | tail -n 1`"
+G15D_BUILD_OS="`uname -s -r -m`"
+G15D_BUILD_DATE="`date \"+%a %d %b %Y %T\"`"
+
+AC_DEFINE_UNQUOTED([BUILD_OS_NAME],"${G15D_BUILD_OS}",[Build OS Particulars])
+AC_DEFINE_UNQUOTED([BUILD_DATE],"${G15D_BUILD_DATE}",[Date of compilation])
+AC_DEFINE_UNQUOTED([COMPILER_VERSION],"${G15D_BUILD_CC}",[Compiler Version])
+
 CPPFLAGS=$CPPFLAGS_save
 CPPFLAGS="$CPPFLAGS "'-DDATADIR="\"$(datadir)\""'
 
 AC_SUBST(G15DAEMON_PLUGIN_DIR,["$libdir/g15daemon/$PACKAGE_VERSION/plugins"])
 CPPFLAGS="$CPPFLAGS "'-DPLUGINDIR=\"$(G15DAEMON_PLUGIN_DIR)\"'
+
+CPPFLAGS="$CPPFLAGS "'-I$(includedir)'
 
 AC_CONFIG_FILES([Makefile g15daemon/Makefile libg15daemon_client/Makefile plugins/Makefile])
 
