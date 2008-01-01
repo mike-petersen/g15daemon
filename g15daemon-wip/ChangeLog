@@ -141,3 +141,5 @@ allow clients use of all 'L' keys.
 - Feature: Debug verbosity of g15daemon_log is now variable.
 - Feature: Plugin filenames are now cached in g15daemon.conf to allow
 	   (manual, at this stage) changing of load-order.
+- Portability: Add our own daemon() function if platform doesn't have native
+	   support.

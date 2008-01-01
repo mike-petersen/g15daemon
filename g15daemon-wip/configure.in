@@ -25,6 +25,8 @@ AC_CHECK_LIB([g15render], [g15r_loadWbmpSplash],,AC_MSG_ERROR([">=libg15render-1
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([pthread], [pthread_mutex_init])
 
+AC_CHECK_FUNC(daemon,AC_DEFINE(HAVE_DAEMON,1,[Define if daemon() is available]),[])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_PID_T

@@ -275,6 +275,39 @@ void g15daemon_sighandler(int sig) {
     }
 }
 
+#ifndef HAVE_DAEMON
+/* daemon() is not posix compliant, so we roll our own if needed.*/
+int daemon(int nochdir, int noclose) {
+  pid_t pid;
+  
+  if(nochdir<1)
+    chdir("/");
+  pid = fork();
+
+  switch(pid){
+    case -1:
+     printf("Unable to daemonise!\n");
+     return -1;
+     break;
+    case 0: {
+      umask(0);
+      if(setsid()==-1) {
+       perror("setsid");
+        return -1;
+      }
+      if(noclose<1) {
+        freopen( "/dev/null", "r", stdin);
+        freopen( "/dev/null", "w", stdout);
+        freopen( "/dev/null", "w", stderr);
+      }
+      break;
+    }
+    default:
+      _exit(0);
+  }
+  return 0;
+}
+#endif 
 
 int main (int argc, char *argv[])
 {
