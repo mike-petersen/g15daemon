@@ -143,3 +143,4 @@ allow clients use of all 'L' keys.
 	   (manual, at this stage) changing of load-order.
 - Portability: Add our own daemon() function if platform doesn't have native
 	   support.
+- TidyUp:  Wrap keyboard read function.
