@@ -144,3 +144,6 @@ allow clients use of all 'L' keys.
 - Portability: Add our own daemon() function if platform doesn't have native
 	   support.
 - TidyUp:  Wrap keyboard read function.
+- TidyUp:  Make all plugin-internal functions static.
+- Portability: Remove mutexes on Solaris, as libusb (and therefore libg15)
+	   blocks on read.
