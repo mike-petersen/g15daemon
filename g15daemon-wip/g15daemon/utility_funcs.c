@@ -46,7 +46,10 @@
 #include <stdarg.h>
 
 extern unsigned int g15daemon_debug;
+extern volatile int leaving;
 #define G15DAEMON_PIDFILE "/var/run/g15daemon.pid"
+
+pthread_cond_t lcd_refresh = PTHREAD_COND_INITIALIZER;
 
 
 /* if no exitfunc or eventhandler, member should be NULL */
@@ -69,6 +72,40 @@ void *g15daemon_xmalloc(size_t size) {
         return NULL;
     }
     return ptr;
+}
+
+
+void g15daemon_init_refresh() {
+  pthread_condattr_t attr;
+  pthread_cond_init(&lcd_refresh, &attr);
+}
+
+void g15daemon_send_refresh(lcd_t *lcd) {
+    lcd->ident=random();
+    pthread_cond_broadcast(&lcd_refresh);
+}
+
+void g15daemon_wait_refresh() {
+    pthread_mutex_t dummy_mutex;
+    struct timespec timeout;
+    int retval;
+    /* Create a dummy mutex which doesn't unlock for sure while waiting. */
+    pthread_mutex_init(&dummy_mutex, NULL);
+    pthread_mutex_lock(&dummy_mutex);
+start:
+    time(&timeout.tv_sec);
+    timeout.tv_sec += 1;
+    timeout.tv_nsec = 0L;
+
+    retval=pthread_cond_timedwait(&lcd_refresh, &dummy_mutex, &timeout);
+    if(!leaving && retval == ETIMEDOUT)
+      goto start;
+    pthread_mutex_unlock(&dummy_mutex);
+    pthread_mutex_destroy(&dummy_mutex);
+}
+
+void g15daemon_quit_refresh() {
+    pthread_cond_destroy(&lcd_refresh);
 }
 
 int uf_return_running(){

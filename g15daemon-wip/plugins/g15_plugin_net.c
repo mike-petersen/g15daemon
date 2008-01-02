@@ -267,7 +267,7 @@ static void *lcd_client_thread(void *display) {
             pthread_mutex_lock(&lcdlist_mutex);
             memset(client_lcd->buf,0,1024);      
             g15daemon_convert_buf(client_lcd,tmpbuf);
-            client_lcd->ident = random();
+            g15daemon_send_refresh(&client_lcd);
             pthread_mutex_unlock(&lcdlist_mutex);
         }
     }
@@ -279,7 +279,7 @@ static void *lcd_client_thread(void *display) {
             }
             pthread_mutex_lock(&lcdlist_mutex);
             memcpy(client_lcd->buf,tmpbuf,sizeof(client_lcd->buf));
-            client_lcd->ident = random();
+            g15daemon_send_refresh(&client_lcd);
             pthread_mutex_unlock(&lcdlist_mutex);
         }
     }
@@ -312,7 +312,7 @@ static void *lcd_client_thread(void *display) {
 
             pthread_mutex_lock(&lcdlist_mutex);
             memcpy(client_lcd->buf,tmpbuf+header,buflen+header);
-            client_lcd->ident = random();
+            g15daemon_send_refresh(&client_lcd);
             pthread_mutex_unlock(&lcdlist_mutex);
         }
     }

@@ -198,7 +198,7 @@ static void *keyboard_watch_thread(void *lcdlist){
           }
           if(!leaving) { 
             masterlist->current->lcd->state_changed=1; 
-            masterlist->current->lcd->ident=random();
+            g15daemon_send_refresh(masterlist->current->lcd);
           }
           pthread_mutex_unlock(&g15lib_mutex); 
         }
@@ -220,10 +220,12 @@ static void *lcd_draw_thread(void *lcdlist){
     g15daemon_sleep(2);
 
     while (!leaving) {
+        /* wait until a client has updated */
+        g15daemon_wait_refresh();
+
         pthread_mutex_lock(&lcdlist_mutex);
-        
         displaying = masterlist->current->lcd;
-        
+                
         if(displaying->ident != lastlcd){
             /* monitor 'fps' - due to the TCP protocol, some frames will be bunched up.
             discard excess to reduce load on the bus */
@@ -255,7 +257,6 @@ static void *lcd_draw_thread(void *lcdlist){
         }
             
         pthread_mutex_unlock(&lcdlist_mutex);
-        g15daemon_msleep(5);
     }
     return NULL;
 }
@@ -479,7 +480,9 @@ int main (int argc, char *argv[])
             seteuid(nobody->pw_uid);
             setegid(nobody->pw_gid);
         }
-#endif        
+#endif  
+        /* initialise the pthread condition for the LCD thread */
+        g15daemon_init_refresh(); 
         pthread_mutex_init(&g15lib_mutex, NULL);
         pthread_attr_init(&attr);
 
@@ -552,6 +555,7 @@ exitnow:
     seteuid(0);
     setegid(0);
     closelog();
+    g15daemon_quit_refresh();
     uf_conf_write(lcdlist,"/etc/g15daemon.conf");
     uf_conf_free(lcdlist);
     unlink("/var/run/g15daemon.pid");

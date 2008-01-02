@@ -282,7 +282,7 @@ static int lcdclock(lcd_t *lcd)
       ret = draw_analog(canvas);
 
     memcpy (lcd->buf, canvas->buffer, G15_BUFFER_LEN);
-    lcd->ident = random();
+    g15daemon_send_refresh(lcd);
     free(canvas);
     return G15_PLUGIN_OK;
 }

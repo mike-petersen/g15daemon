@@ -220,6 +220,10 @@ pthread_mutex_t g15lib_mutex;
 #define SERV_HELO "G15 daemon HELLO"
 
 #ifdef G15DAEMON_BUILD
+void g15daemon_init_refresh();
+void g15daemon_send_refresh(lcd_t *lcd);
+void g15daemon_wait_refresh();
+void g15daemon_quit_refresh();
 /* internal g15daemon-only functions */
 int uf_write_buf_to_g15(lcd_t *lcd);
 int uf_read_keypresses(unsigned int *keypresses, unsigned int timeout);

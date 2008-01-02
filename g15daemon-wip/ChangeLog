@@ -147,3 +147,5 @@ allow clients use of all 'L' keys.
 - TidyUp:  Make all plugin-internal functions static.
 - Portability: Remove mutexes on Solaris, as libusb (and therefore libg15)
 	   blocks on read.
+- Optimisation: Use pthread conditional variable to signal LCD state change.
+	   Further reduces unnecessary wakeups.
