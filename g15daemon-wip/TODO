@@ -5,12 +5,11 @@ TODO list for G15daemon.  Not in any particular order.
 PARTIALLY DONE - Add manpage and other documentation for the client library and it's
   bindings.
 
-- Add client to record & playback macros (being worked on)
+DONE (G15Macro) - Add client to record & playback macros.
 
 - add a few simple template client examples in various languages
 
-- Read a configuration file.  Currently there are no real user-configurable
-options, but ....
+DONE - Read a configuration file.
 
 DONE - Allow for clients to change LCD backlight.
 
@@ -32,3 +31,5 @@ will allow the client app to exit without taking the screen with them.
 use the 'screen' they previously created, as long as they return within the
 'time-to-live' period they set before exiting. This will allow for scripts
 etc to periodically update.
+
+- Add DBUS proxy.
