@@ -186,7 +186,7 @@ void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf)
 int uf_write_buf_to_g15(lcd_t *lcd)
 {
     int retval = 0;
-#ifdef OSTYPE_SOLARIS
+#ifdef LIBUSB_BLOCKS
     retval = writePixmapToLCD(lcd->buf);
 #else
     pthread_mutex_lock(&g15lib_mutex);
@@ -199,7 +199,7 @@ int uf_write_buf_to_g15(lcd_t *lcd)
 int uf_read_keypresses(unsigned int *keypresses, unsigned int timeout) 
 {
     int retval=0;
-#ifdef OSTYPE_SOLARIS
+#ifdef LIBUSB_BLOCKS
     retval = getPressedKeys(keypresses, timeout);
 #else
     pthread_mutex_lock(&g15lib_mutex);

@@ -76,7 +76,6 @@ else
   uinput=false
 fi
 
-
 case $host_os in
 	*linux*) 
 	  AC_DEFINE([OSTYPE_LINUX], [1],[Target OS is Linux])
@@ -97,6 +96,7 @@ case $host_os in
           AC_SEARCH_LIBS([nanosleep],rt,[],[],[])
 	  AC_MSG_NOTICE([OS is Solaris, using OS specific workarounds])
 	  uinput=false
+	  libusb_blocks=true
           ;;
 	*) 
 	  AC_DEFINE([OSTYPE_OTHER], [1],[Target OS is unknown])
@@ -104,8 +104,14 @@ case $host_os in
 	  uinput=false
 	  ;;
 esac
+
 AM_CONDITIONAL([KEXT_INSTALL], [test x$install_kext = xtrue])
 AM_CONDITIONAL(UINPUT_INTERFACE_PLUGIN, [test x$uinput = xtrue])
+
+dnl Some versions of libusb do not honour timeout and block. Suns' version is one of them.
+if test "x$libusb_blocks" == "xtrue"; then 
+      AC_DEFINE([LIBUSB_BLOCKS], [1],[Define if libusb implementation blocks on read or write])
+fi
 
 G15D_BUILD_CC="`$CC -v 2>&1 | tail -n 1`"
 G15D_BUILD_OS="`uname -s -r -m`"
