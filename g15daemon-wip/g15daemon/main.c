@@ -178,14 +178,11 @@ static void *keyboard_watch_thread(void *lcdlist){
     static int lastkeys = 0;
 
     while (!leaving) {
-        pthread_mutex_lock(&g15lib_mutex);
-        retval = getPressedKeys(&keypresses, 20);
-        pthread_mutex_unlock(&g15lib_mutex);
+
+        retval = uf_read_keypresses(&keypresses, 20);
         /* every 2nd packet contains the codes we want.. immediately try again */
         while (retval == G15_ERROR_TRY_AGAIN){
-            pthread_mutex_lock(&g15lib_mutex);
-            retval = getPressedKeys(&keypresses, 20);
-            pthread_mutex_unlock(&g15lib_mutex);
+            retval = uf_read_keypresses(&keypresses, 20);
         }
 
         if(retval == G15_NO_ERROR && lastkeys != keypresses) {
@@ -235,10 +232,12 @@ static void *lcd_draw_thread(void *lcdlist){
             /* this allows a real-world fps of 40fps with no almost frame loss and reduces peak usb bus-load */
                         
             if((g15daemon_gettime_ms() - lastscreentime)>=20||(char*)displaying!=lastdisplayed){  
+                g15daemon_log(LOG_DEBUG,"Updating LCD");        
                 uf_write_buf_to_g15(displaying);
                 lastscreentime = g15daemon_gettime_ms();
                 lastdisplayed = (char*)displaying;
                 lastlcd = displaying->ident;
+                g15daemon_log(LOG_DEBUG,"LCD Update Complete");
             }
         }
         

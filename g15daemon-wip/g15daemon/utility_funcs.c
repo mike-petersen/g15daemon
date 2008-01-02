@@ -181,13 +181,24 @@ void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf)
 	  }
 }
 
-/* wrap the libg15 function */
-void uf_write_buf_to_g15(lcd_t *lcd)
+/* wrap the libg15 functions */
+int uf_write_buf_to_g15(lcd_t *lcd)
 {
+    int retval = 0;
     pthread_mutex_lock(&g15lib_mutex);
-    writePixmapToLCD(lcd->buf);
+    retval = writePixmapToLCD(lcd->buf);
     pthread_mutex_unlock(&g15lib_mutex);
-    return;
+    return retval;
+}
+
+int uf_read_keypresses(unsigned int *keypresses, unsigned int timeout) 
+{
+    int retval=0;
+    pthread_mutex_lock(&g15lib_mutex);
+    retval = getPressedKeys(keypresses, timeout);
+    pthread_mutex_unlock(&g15lib_mutex);
+
+    return retval;
 }
 
 /* Sleep routine (hackish). */

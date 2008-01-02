@@ -221,7 +221,8 @@ pthread_mutex_t g15lib_mutex;
 
 #ifdef G15DAEMON_BUILD
 /* internal g15daemon-only functions */
-void uf_write_buf_to_g15(lcd_t *lcd);
+int uf_write_buf_to_g15(lcd_t *lcd);
+int uf_read_keypresses(unsigned int *keypresses, unsigned int timeout);
 /* return the pid of a running copy of g15daemon, else -1 */
 int uf_return_running();
 /* create a /var/run/g15daemon.pid file, returning 0 on success else -1 */
