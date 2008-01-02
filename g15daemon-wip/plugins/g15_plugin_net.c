@@ -41,7 +41,7 @@
 #include <g15daemon.h>
 
 static int leaving = 0;
-int server_events(plugin_event_t *myevent);
+static int server_events(plugin_event_t *myevent);
 
 #ifndef SO_PRIORITY
 #define SO_PRIORITY 12
@@ -127,7 +127,7 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
 }
 
 /* create and open a socket for listening */
-int init_sockserver(){
+static int init_sockserver(){
     int listening_socket;
     int yes=1;
     int tos = 0x18;
@@ -161,7 +161,7 @@ int init_sockserver(){
 }
 
 
-int g15_send(int sock, char *buf, unsigned int len)
+static int g15_send(int sock, char *buf, unsigned int len)
 {
     int total = 0;
     int retval = 0;
@@ -191,7 +191,7 @@ int g15_send(int sock, char *buf, unsigned int len)
 } 
 
 
-int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
+static int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
 {
     int total = 0;
     int retval = 0;
@@ -239,7 +239,7 @@ int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
 * once the client disconnects by closing the socket, the LCD buffer is 
 * removed and will no longer be displayed.
 */
-void *lcd_client_thread(void *display) {
+static void *lcd_client_thread(void *display) {
 
     lcdnode_t *g15node = display;
     lcd_t *client_lcd = g15node->lcd;
@@ -327,7 +327,7 @@ exitthread:
 }
 
 /* poll the listening socket for connections, spawning new threads as needed to handle clients */
-int g15_clientconnect (g15daemon_t **g15daemon, int listening_socket) {
+static int g15_clientconnect (g15daemon_t **g15daemon, int listening_socket) {
 
     int conn_s;
     struct pollfd pfd[1];
@@ -400,7 +400,7 @@ static void lcdserver_thread(void *lcdlist){
 }
 
 /* incoming events */
-int server_events(plugin_event_t *event) {
+static int server_events(plugin_event_t *event) {
     lcd_t *lcd = (lcd_t*) event->lcd;
 
     switch (event->event)
@@ -435,6 +435,6 @@ static void g15plugin_net_exit() {
     /* if no exitfunc or eventhandler, member should be NULL */
 plugin_info_t g15plugin_info[] = {
         /* TYPE, name, initfunc, 				updatefreq, exitfunc, eventhandler, initfunc */
-   {G15_PLUGIN_LCD_SERVER, "LCDServer"	, (void*)lcdserver_thread, 500, g15plugin_net_exit, (void*)server_events, NULL},
+   {G15_PLUGIN_LCD_SERVER, "LCDServer"	, (void*)lcdserver_thread, 500, (void*)g15plugin_net_exit, (void*)server_events, NULL},
    {G15_PLUGIN_NONE,               ""          			, NULL,   0,   			NULL,            NULL,           NULL}
 };

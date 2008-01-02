@@ -54,7 +54,7 @@ static int map_Lkeys = 0;
 #define G15KEY_DOWN 1
 #define G15KEY_UP 0
 
-int g15_init_uinput(void *plugin_args) {
+static int g15_init_uinput(void *plugin_args) {
     
     int i=0;
     char *custom_filename;
@@ -115,7 +115,7 @@ void g15_exit_uinput(void *plugin_args){
 }
 
 
-void g15_uinput_keydown(unsigned char code)
+static void g15_uinput_keydown(unsigned char code)
 {
     struct input_event event;
     memset(&event, 0, sizeof(event));
@@ -127,7 +127,7 @@ void g15_uinput_keydown(unsigned char code)
     write (uinp_fd, &event, sizeof(event));
 }
 
-void g15_uinput_keyup(unsigned char code)
+static void g15_uinput_keyup(unsigned char code)
 {
     struct input_event event;
     memset(&event, 0, sizeof(event));
@@ -147,7 +147,7 @@ void g15_uinput_keyup(unsigned char code)
 #endif
 #endif
     
-void g15_process_keys(g15daemon_t *masterlist, unsigned int currentkeys, unsigned int lastkeys)
+static void g15_process_keys(g15daemon_t *masterlist, unsigned int currentkeys, unsigned int lastkeys)
 {
     /* 'G' keys */
     if((currentkeys & G15_KEY_G1) && !(lastkeys & G15_KEY_G1))
@@ -292,7 +292,7 @@ void g15_process_keys(g15daemon_t *masterlist, unsigned int currentkeys, unsigne
 }
 
 
-int keyevents(plugin_event_t *myevent) {
+static int keyevents(plugin_event_t *myevent) {
     lcd_t *lcd = (lcd_t*) myevent->lcd;
     static int lastkeys;
     switch (myevent->event)

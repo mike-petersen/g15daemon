@@ -61,7 +61,7 @@ g15canvas *static_canvas = NULL;
 //----------------------------------------------------------------------------
 // calc x,y for given minute/hour/sec (pos), cut_off is for radius variations
 // ( ie. shorter/longer clock-hands, line parts....)
-void get_clock_pos(int pos, int *x, int *y, int cut_off)
+static void get_clock_pos(int pos, int *x, int *y, int cut_off)
 {
   // pos = [0-60]
 
@@ -86,7 +86,7 @@ void get_clock_pos(int pos, int *x, int *y, int cut_off)
 //----------------------------------------------------------------------------
 // draw clock frame (only once, as it is stored in static_canvas)
 // NOTE - coords here are hardcoded !
-void draw_static_canvas(void)
+static void draw_static_canvas(void)
 {
   g15canvas *c = static_canvas;
   int i;
