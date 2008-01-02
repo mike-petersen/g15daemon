@@ -230,7 +230,7 @@ int uf_return_running();
 /* create a /var/run/g15daemon.pid file, returning 0 on success else -1 */
 int uf_create_pidfile();
 /* open & run all plugins in the given directory */
-void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory);
+int g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory);
 /* linked lists */
 g15daemon_t *ll_lcdlist_init();
 void ll_lcdlist_destroy(g15daemon_t **masterlist);

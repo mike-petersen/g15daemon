@@ -56,6 +56,8 @@ unsigned int cycle_key;
 unsigned int client_handles_keys = 0;
 struct lcd_t *keyhandler = NULL;
 
+static int loaded_plugins = 0;
+
 /* send event to foreground client's eventlistener */
 int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
 {
@@ -99,6 +101,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                 lcd_t *lcd = (lcd_t*)caller;
                 g15daemon_t* masterlist = lcd->masterlist;
                 static unsigned int clicktime;
+                
                 if(value & cycle_key) {
                     clicktime=g15daemon_gettime_ms();
                 }else{
@@ -155,6 +158,8 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
             pthread_mutex_unlock(&lcdlist_mutex);
             break;
         }
+        case G15_EVENT_VISIBILITY_CHANGED:
+            g15daemon_send_refresh((lcd_t*)caller);
         default: {
             lcd_t *lcd = (lcd_t*)caller;
             int *(*plugin_listener)(plugin_event_t *newevent) = (void*)lcd->g15plugin->info->event_handler;
@@ -513,8 +518,8 @@ int main (int argc, char *argv[])
 	
         snprintf((char*)location,1024,"%s",PLUGINDIR);
 
-        g15_open_all_plugins(lcdlist,(char*)location);
-
+        loaded_plugins = g15_open_all_plugins(lcdlist,(char*)location);
+        
         new_action.sa_handler = g15daemon_sighandler;
         new_action.sa_flags = 0;
         sigaction(SIGINT, &new_action, NULL);

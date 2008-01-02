@@ -297,7 +297,7 @@ int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
 }
 
 
-void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
+int g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
     
     DIR *directory;
     struct dirent *ep;
@@ -335,6 +335,7 @@ void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
         g15daemon_cfg_write_int(load_cfg,"TotalPlugins",loadcount);
         
         g15daemon_log(LOG_WARNING,"Successfully loaded %i of %i plugins.",loadcount,count);
+        return loadcount;
       }
       else
         g15daemon_log (LOG_ERR,"Unable to open the directory: %s",plugin_directory);
@@ -347,5 +348,7 @@ void g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
         g15_plugin_load(masterlist,g15daemon_cfg_read_string(load_cfg,tmp,""));
         g15daemon_msleep(20);
       }
+      return count;
     }
+    return 0;
 }
