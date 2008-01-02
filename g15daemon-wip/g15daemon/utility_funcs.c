@@ -150,9 +150,9 @@ int g15daemon_log (int priority, const char *fmt, ...) {
    }
 
    if(real_prio>=priority) {
-    if(g15daemon_debug == 0)
+    if(g15daemon_debug == 0) {
      vsyslog(priority, fmt, argp);
-    else {
+    } else {
      vfprintf(stderr,fmt,argp);
      fprintf(stderr,"\n");
     }
@@ -162,6 +162,7 @@ int g15daemon_log (int priority, const char *fmt, ...) {
    return 0;
 }
 
+/* takes a 6880 byte (1byte==1pixel) buffer and packs it into libg15 format. */
 void g15daemon_convert_buf(lcd_t *lcd, unsigned char * orig_buf)
 {
     unsigned int x,y,val;
@@ -197,7 +198,6 @@ int uf_read_keypresses(unsigned int *keypresses, unsigned int timeout)
     pthread_mutex_lock(&g15lib_mutex);
     retval = getPressedKeys(keypresses, timeout);
     pthread_mutex_unlock(&g15lib_mutex);
-
     return retval;
 }
 
