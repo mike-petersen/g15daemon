@@ -19,3 +19,5 @@ SVN:
   config if it exists. Only Semi-readable, but better than a binary dump.
 - Ensure each keypress is received by X11 in sequence.
 - Add mutexes where appropriate.
+- Apply patch from 'schitso' that fixes cancellation of an in-progress recording via
+  any of the M keys, and moves repeated code into their own functions.

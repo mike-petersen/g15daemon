@@ -267,12 +267,30 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
   }
 }
 
+void record_cleanup(){
+    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
+    memset(recstring,0,strlen((char*)recstring));
+    rec_index = 0;
+    recording = 0;
+    pthread_mutex_lock(&x11mutex);
+    XUngrabKeyboard(dpy,CurrentTime);
+    XFlush(dpy);
+    pthread_mutex_unlock(&x11mutex);
+}
+
+void record_cancel(){
+    memset(canvas->buffer,0,G15_BUFFER_LEN);
+    g15r_renderString (canvas, (unsigned char *)"Recording", 0, G15_TEXT_LARGE, 80-((strlen("Recording")/2)*8), 4);
+    g15r_renderString (canvas, (unsigned char *)"Canceled", 0, G15_TEXT_LARGE, 80-((strlen("Canceled")/2)*8), 18);
+    g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+    record_cleanup();
+} 
+
 void record_complete(unsigned long keystate)
 {
     char tmpstr[1024];
     int gkey = map_gkey(keystate);
 
-    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
     pthread_mutex_lock(&config_mutex);
     
     if(!rec_index) // nothing recorded - delete prior recording
@@ -302,8 +320,7 @@ void record_complete(unsigned long keystate)
     
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
 
-    memset(recstring,0,strlen((char*)recstring));
-    rec_index = 0;
+    record_cleanup();
 }
 
 int calc_mkey_offset() {
@@ -506,7 +523,8 @@ void handle_mkey_switch(unsigned int mkey) {
         break;
     }
     mkey_offset = calc_mkey_offset();
-    recording = 0;
+    if(recording)
+      record_cancel();
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
     change_keymap(mkey_offset);
 }
@@ -549,24 +567,27 @@ void *Lkeys_thread() {
                       leaving = 1;
                     break;
                 }
-                case G15_KEY_MR:
-                    {
+                case G15_KEY_MR: {
+                    if(!recording) {
                       if(0==g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo)){
                         usleep(1000);
                         g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, foo);
                         g15macro_log("Switching to LCD foreground\n");
+                      }
+                      usleep(1000);
+                      g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS, G15_LED_MR | mled_state);
+                      g15r_initCanvas (canvas);
+                      g15r_renderString (canvas, (unsigned char *)"Recording", 0, G15_TEXT_LARGE, 80-((strlen("Recording")/2)*8), 1);
+                      g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+                      g15macro_log("Recording Enabled\n");
+                      recording = 1;
+                      pthread_mutex_lock(&x11mutex);
+                      XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+                      pthread_mutex_unlock(&x11mutex);
+                      memset(&current_recording,0,sizeof(current_recording)); 
+                    } else {
+                      record_cancel();
                     }
-                    usleep(1000);
-                    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS, G15_LED_MR | mled_state);
-                    g15r_initCanvas (canvas);
-                    g15r_renderString (canvas, (unsigned char *)"Recording", 0, G15_TEXT_LARGE, 80-((strlen("Recording")/2)*8), 1);
-                    g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-                    g15macro_log("Recording Enabled\n");
-                    recording = 1;
-                    pthread_mutex_lock(&x11mutex);
-                    XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
-                    pthread_mutex_unlock(&x11mutex);
-                    memset(&current_recording,0,sizeof(current_recording)); 
                     break;
                   }
                 case G15_KEY_M1:
@@ -582,12 +603,6 @@ void *Lkeys_thread() {
                     if(keystate >=G15_KEY_G1 && keystate <=G15_KEY_G18){
                         if(recording==1){
                             record_complete(keystate);
-                            g15macro_log("Recording Complete\n");
-                            recording = 0;
-                            pthread_mutex_lock(&x11mutex);
-                            XUngrabKeyboard(dpy,CurrentTime);
-                            XFlush(dpy);
-                            pthread_mutex_unlock(&x11mutex);
                         } else {
                             macro_playback(keystate);
                         }
