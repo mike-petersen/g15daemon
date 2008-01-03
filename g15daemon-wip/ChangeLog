@@ -122,7 +122,7 @@ allow clients use of all 'L' keys.
 - Debug: Print list of commandline args when in debug mode
 - BugFix: The decreased delay caused keypresses to be misread on some
   machines.  REVERT.
-1.9.3->SVN:
+1.9.4
 - Debug:   Log warning if keyboard disappears.
 - Bugfix:  Fix autoconf autodetect bugs re uinput plugin.
 - Feature: If autodetection of uinput fails, configure now has a
