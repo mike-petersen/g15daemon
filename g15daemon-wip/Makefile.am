@@ -16,8 +16,8 @@ image_DATA = images/g15logo2.wbmp
 
 install-data-hook:
 if KEXT_INSTALL
-         cp -Rf $(top_srcdir)/contrib/libusbshield.kext @KEXT_LOCATION@
-         chown -R root:wheel @KEXT_LOCATION@/libusbshield.kext
+	cp -Rf $(top_srcdir)/contrib/libusbshield.kext @KEXT_LOCATION@
+	chown -R root:wheel @KEXT_LOCATION@/libusbshield.kext
 endif
 
 dist-hook:
