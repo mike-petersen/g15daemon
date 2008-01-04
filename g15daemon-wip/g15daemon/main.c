@@ -479,13 +479,13 @@ int main (int argc, char *argv[])
         if(!cycle_cmdline_override){
             cycle_key = 1==g15daemon_cfg_read_bool(global_cfg,"Use MR as Cycle Key",0)?G15_KEY_MR:G15_KEY_L1;
         }
-#ifndef OSTYPE_SOLARIS
+
                /* all other processes/threads should be seteuid nobody */
         if(nobody!=NULL) {
             seteuid(nobody->pw_uid);
             setegid(nobody->pw_gid);
         }
-#endif  
+
         /* initialise the pthread condition for the LCD thread */
         g15daemon_init_refresh(); 
         pthread_mutex_init(&g15lib_mutex, NULL);

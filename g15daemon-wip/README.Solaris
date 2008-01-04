@@ -35,6 +35,7 @@ make-3.81-sol10-x86-local
 perl-5.8.8-sol10-x86-local
 gcc-3.4.6-sol10-x86-local
 libtool-1.5.24-sol10-x86-local
+m4-1.4.7-sol10-x86-local
 
 When compiling LibG15 from SVN you may need to set 
 LD_LIBRARY_PATH=/lib:/usr/lib:/usr/sfw/lib:/opt/g15/lib
