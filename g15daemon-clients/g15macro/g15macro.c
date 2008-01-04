@@ -907,7 +907,7 @@ int main(int argc, char **argv)
 
     if(have_xtest == False || xtest_major_version < 2 || (xtest_major_version <= 2 && xtest_minor_version < 2))
     {
-        printf("XTEST extension not supported\nReverting to XSendEvent for keypress emulation\n");
+        printf("Warning: XTEST extension not supported.  This is not fatal.\nReverting to XSendEvent for keypress emulation\n");
     }
 
     /* completely ignore errors and carry on */
