@@ -766,8 +766,10 @@ int main(int argc, char **argv)
 {
     pthread_t Xkeys;
     pthread_t Lkeys;
+#ifdef USE_XTEST
     int xtest_major_version = 0;
     int xtest_minor_version = 0;
+#endif    
     struct sigaction new_action;
     int dummy=0,i=0;
     unsigned char user[256];
@@ -899,16 +901,19 @@ int main(int argc, char **argv)
     }
 
     have_xtest = False;
+#ifdef HAVE_XTEST
 #ifdef USE_XTEST
-#ifdef HAVE_X11_EXTENSIONS_XTEST_H    
     have_xtest = XTestQueryExtension(dpy, &dummy, &dummy, &xtest_major_version, &xtest_minor_version);
-#endif
-#endif
-
     if(have_xtest == False || xtest_major_version < 2 || (xtest_major_version <= 2 && xtest_minor_version < 2))
     {
-        printf("Warning: XTEST extension not supported.  This is not fatal.\nReverting to XSendEvent for keypress emulation\n");
+        printf("Warning: XTEST extension not supported by Xserver.  This is not fatal.\nReverting to XSendEvent for keypress emulation\n");
     }
+#else
+  printf("XTest disabled by configure option.  Using XSendEvent instead.\n");
+#endif
+#else
+  printf("XTest disabled by configure: no devel package was found.  Using XSendEvent instead.\n");
+#endif
 
     /* completely ignore errors and carry on */
     XSetErrorHandler(myx_error_handler);
