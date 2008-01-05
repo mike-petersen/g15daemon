@@ -38,11 +38,26 @@
 #include <gdk/gdkx.h>
 
 #include <audacious/plugin.h>
+
+/* check for old plugin */
+#ifndef __AUDACIOUS_PLUGIN_API__
+#define OLD_PLUGIN
+#endif
+
 #include <audacious/util.h>
+
+#ifdef OLD_PLUGIN
 #include <audacious/beepctrl.h>
+#else
+#include <audacious/auddrct.h>
+#endif
+
 #include <audacious/configdb.h>
 #include <audacious/playlist.h>
+
+#ifdef OLD_PLUGIN
 #include <audacious/titlestring.h>
+#endif
 
 #include <libg15.h>
 #include <libg15render.h>
@@ -54,7 +69,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.2"
+#define PLUGIN_VERSION "2.5.3"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
@@ -197,6 +212,8 @@ static gfloat tmp_lin=-1;
 
 
 VisPlugin g15analyser_vp = {
+#ifdef OLD_PLUGIN
+  
   NULL,
   NULL,
   0,
@@ -212,7 +229,41 @@ VisPlugin g15analyser_vp = {
   g15analyser_playback_stop,  /* playback_stop  */
   g15analyser_render_pcm,     /* render_pcm     */
   g15analyser_render_freq     /* render_freq    */
+  
+#else
+  
+  .description =    PLUGIN_NAME " " PLUGIN_VERSION,
+  .num_pcm_chs_wanted = 1,
+  .num_freq_chs_wanted = 1,
+  .init =           g15analyser_init,           /* init           */
+  .cleanup =        g15analyser_cleanup,        /* cleanup        */
+  .about =          g15analyser_about,          /* about          */
+  .configure =      g15analyser_conf,           /* configure      */
+  .playback_start = g15analyser_playback_start, /* playback_start */
+  .playback_stop =  g15analyser_playback_stop,  /* playback_stop  */
+  .render_pcm =     g15analyser_render_pcm,     /* render_pcm     */
+  .render_freq =    g15analyser_render_freq     /* render_freq    */
+  
+#endif
 };
+
+
+#ifndef OLD_PLUGIN
+VisPlugin *g15_vp[] = { &g15analyser_vp, NULL };
+SIMPLE_VISUAL_PLUGIN(g15, g15_vp);
+#endif
+
+gint get_main_volume(void) {
+  int tmpvol;
+  
+#ifdef OLD_PLUGIN
+  tmpvol = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+#else
+  audacious_drct_get_main_volume(&tmpvol);
+#endif
+  
+  return tmpvol;
+}
 
 gint g15analyser_disable(gpointer data){
   g15analyser_vp.disable_plugin (&g15analyser_vp); /* disable if unusable */
@@ -725,53 +776,87 @@ static int poll_mmediakeys()
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPlay)) {
       if(playing) {
 	if (paused)  {
+#ifdef OLD_PLUGIN
 	  xmms_remote_play(g15analyser_vp.xmms_session);
+#else
+	  audacious_drct_play();
+#endif
 	  paused = 0;
 	} else {
+#ifdef OLD_PLUGIN
 	  xmms_remote_pause(g15analyser_vp.xmms_session);
+#else
+	  audacious_drct_pause();
+#endif
 	  paused = 1;
 	}
       } else
+#ifdef OLD_PLUGIN	
 	xmms_remote_play(g15analyser_vp.xmms_session);
+#else
+      audacious_drct_pause();
+#endif
     }
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioStop))
+#ifdef OLD_PLUGIN 
       xmms_remote_stop(g15analyser_vp.xmms_session);
+#else
+    audacious_drct_stop();
+#endif
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume)){
-      volume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+      volume = get_main_volume();
       if(volume<1)
 	volume=1;
+#ifdef OLD_PLUGIN
       xmms_remote_set_main_volume(g15analyser_vp.xmms_session, --volume);
+#else
+      audacious_drct_set_main_volume(--volume);
+#endif 
     }
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume)){
-      volume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+      volume = get_main_volume();
       if(volume>99)
 	volume=99;
+#ifdef OLD_PLUGIN
       xmms_remote_set_main_volume(g15analyser_vp.xmms_session, ++volume);
+#else
+      audacious_drct_set_main_volume(++volume);
+#endif
     }
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioMute)){
-      if(xmms_remote_get_main_volume(g15analyser_vp.xmms_session)!=0){
-	lastvolume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+      if(get_main_volume()!=0){
+	lastvolume = get_main_volume();
 	volume = 0;
       }
       else {
 	volume = lastvolume;
       }
-      
+#ifdef OLD_PLUGIN   
       xmms_remote_set_main_volume(g15analyser_vp.xmms_session, volume);
+#else
+      audacious_drct_set_main_volume(volume);
+#endif
     }
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioNext))
       if (playing)
+#ifdef OLD_PLUGIN
 	xmms_remote_playlist_next(g15analyser_vp.xmms_session);
+#else
+        audacious_drct_playlist_next();
+#endif
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPrev))
       if (playing)
+#ifdef OLD_PLUGIN
 	xmms_remote_playlist_prev(g15analyser_vp.xmms_session);
-    
+#else
+        audacious_drct_playlist_prev();
+#endif
   }
   return TRUE;
 }
@@ -789,12 +874,17 @@ static int g15send_func() {
   
   pthread_mutex_lock (&g15buf_mutex);
   g15r_clearScreen (canvas, G15_COLOR_WHITE);
-  
-  if (xmms_remote_get_playlist_length(g15analyser_vp.xmms_session) > 0)
-    {
+
+#ifdef OLD_PLUGIN  
+  if (xmms_remote_get_playlist_length(g15analyser_vp.xmms_session) > 0){
       playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
       
       title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
+#else
+  if (audacious_drct_get_playlist_length() > 0){
+      playlist_pos = audacious_drct_get_playlist_pos();
+      title = audacious_drct_get_playlist_title(playlist_pos);
+#endif 
       if(title!=NULL && show_title){
 	if (rownum != 1) {
 	  /*
@@ -891,8 +981,13 @@ static int g15send_func() {
 	}
       }
       if (show_pbar){
+#ifdef OLD_PLUGIN
 	int output_time = xmms_remote_get_output_time(g15analyser_vp.xmms_session)/1000;
 	int playlist_time = xmms_remote_get_playlist_time(g15analyser_vp.xmms_session,playlist_pos)/1000;
+#else
+	int output_time = audacious_drct_get_output_time()/1000;
+	int playlist_time = audacious_drct_get_playlist_time(playlist_pos)/1000;
+#endif
 	/* bugfix: Sometimes xmms don't get the output time */
 	if (playlist_time == 0){
 	  playlist_time = 1000;
@@ -974,13 +1069,13 @@ static int g15send_func() {
   else
     g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
   
-  if(lastvolume!=xmms_remote_get_main_volume(g15analyser_vp.xmms_session) || vol_timeout>=0) {
-    if(lastvolume!=xmms_remote_get_main_volume(g15analyser_vp.xmms_session))
+  if(lastvolume!=get_main_volume() || vol_timeout>=0) {
+    if(lastvolume!=get_main_volume())
       vol_timeout=10;
     else
       vol_timeout--;
     /* render volume */
-    lastvolume = xmms_remote_get_main_volume(g15analyser_vp.xmms_session);
+    lastvolume = get_main_volume();
     if (lastvolume >= 0)	
       g15r_drawBar (canvas, 10, 15, 149, 28, G15_COLOR_BLACK, lastvolume, 100, 1);
     canvas->mode_xor=1;
