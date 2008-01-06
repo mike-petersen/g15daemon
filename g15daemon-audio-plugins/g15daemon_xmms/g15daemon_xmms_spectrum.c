@@ -52,7 +52,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.2"
+#define PLUGIN_VERSION "2.5.4"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
@@ -108,6 +108,9 @@ static unsigned int show_title;
 /* Boolean. Show bar */
 static unsigned int show_pbar;
 
+/* Boolean. Show time in progress bar */
+static unsigned int show_time;
+
 /* Integer. Number of row of title */
 static unsigned int rownum;
 
@@ -130,6 +133,7 @@ static unsigned int def_analog_step = 2;
 static unsigned int def_enable_keybindings = FALSE;
 static unsigned int def_show_title = TRUE;
 static unsigned int def_show_pbar = TRUE;
+static unsigned int def_show_time = TRUE;
 static unsigned int def_rownum = 1;
 static unsigned int def_title_overlay = FALSE;
 
@@ -184,7 +188,7 @@ static GtkWidget *t_options_effect_no, *t_options_effect_peak, *t_options_effect
 static GtkWidget *t_options_vistype;
 static GtkWidget *t_options_bars, *t_options_bars_effects;
 static GtkWidget *g_options_frame ,*g_options_enable_keybindings, *g_options_enable_dpeak;
-static GtkWidget *g_options_show_title, *g_options_show_pbar, *g_options_title_overlay;
+static GtkWidget *g_options_show_title, *g_options_show_pbar, *g_options_show_time, *g_options_title_overlay;
 static GtkWidget *g_options_frame_bars;
 static GtkWidget *g_options_frame_bars_effects;
 static GtkWidget *scale_bars, *scale_lin, *scale_ampli, *scale_step, *scale_rownum;
@@ -244,6 +248,7 @@ void g15spectrum_read_config(void)
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_title", (int*)&show_title);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_pbar", (int*)&show_pbar);
+      xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "show_time", (int*)&show_time);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "rownum", (int*)&rownum);
       xmms_cfg_read_int(cfg, "G15Daemon Spectrum", "title_overlay", (int*)&title_overlay);
       
@@ -275,6 +280,8 @@ void g15spectrum_read_config(void)
     show_title = def_show_title;
   if (show_pbar != FALSE && show_pbar != TRUE)
     show_pbar = def_show_pbar;
+  if (show_time != FALSE && show_time != TRUE)
+    show_time = def_show_time;
   if (title_overlay != FALSE && title_overlay != TRUE)
     title_overlay = def_title_overlay;
   
@@ -304,6 +311,7 @@ void g15spectrum_write_config(void)
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "enable_keybindings", enable_keybindings);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_title", show_title);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_pbar", show_pbar);
+      xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "show_time", show_time);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "rownum", rownum);
       xmms_cfg_write_int(cfg, "G15Daemon Spectrum", "title_overlay", title_overlay);
       xmms_cfg_write_file(cfg, filename);
@@ -340,6 +348,7 @@ void g15analyser_conf_apply(void){
   enable_keybindings =  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings));
   show_title = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_title));
   show_pbar = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_pbar));
+  show_time = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_time));
   title_overlay = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_title_overlay));
   limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE * (1 - title_overlay) * show_title * rownum - 1;
   pthread_mutex_unlock (&g15buf_mutex);
@@ -361,6 +370,7 @@ void g15analyser_conf_reset(void){
   enable_keybindings = def_enable_keybindings;
   show_title = def_show_title;
   show_pbar = def_show_pbar;
+  show_time = def_show_time;
   rownum = def_rownum;
   title_overlay = def_title_overlay;
   limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE * (1 - title_overlay) * show_title * rownum- 1;
@@ -398,7 +408,7 @@ static void g15analyser_conf_reset_defaults_gui(void){
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_title), def_show_title);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_pbar), def_show_pbar);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_title_overlay), def_title_overlay);
-  
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_time), def_show_time);
   return;
 }
 
@@ -498,6 +508,12 @@ void g15analyser_conf(void){
   /* put check button in g_options_vbox */
   gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_pbar, FALSE, FALSE, 0);
   gtk_widget_show(g_options_show_pbar);
+  /* create show time in progress bar button */
+  g_options_show_time = gtk_check_button_new_with_label("Show time in progress bar");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(g_options_show_time), show_time);
+  /* put check button in g_options_vbox */
+  gtk_box_pack_start(GTK_BOX(t_options_vistype), g_options_show_time, FALSE, FALSE, 0);
+  gtk_widget_show(g_options_show_time);
   /* Num lines bar */
   label_rownum=gtk_label_new("Split title in lines (1 = cycle):");
   gtk_misc_set_alignment(GTK_MISC (label_rownum), 0, 0);
@@ -903,7 +919,18 @@ static int g15send_func() {
 	  playlist_time = 1000;
 	  output_time = 0;
 	}
-	g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, output_time, playlist_time, 1);
+	if (show_time){
+	  unsigned char time[10];
+	  unsigned char endtime[10];
+	  
+	  snprintf((char *)time,10,"%02d:%02d",output_time/60,output_time%60);
+	  snprintf((char *)endtime,10,"%02d:%02d",playlist_time/60,playlist_time%60);
+	  
+	  g15r_drawBar (canvas, 20, 39, 138, 41, G15_COLOR_BLACK, output_time, playlist_time, 1);
+	  g15r_renderString (canvas, time, 0, G15_TEXT_SMALL, 0, 38);
+	  g15r_renderString (canvas, endtime, 0, G15_TEXT_SMALL, 140, 38);
+	} else 
+	  g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, output_time, playlist_time, 1); 
       }
       if (playing)
 	{

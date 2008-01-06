@@ -28,3 +28,5 @@ New in version 2.5
 New in version 2.5.2
 - Scrollin titles (with Multiline = 1) 
 - some bugfixes
+New in version 2.5.4
+- Show time in progress bar
