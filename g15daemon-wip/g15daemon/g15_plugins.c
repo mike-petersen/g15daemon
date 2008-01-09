@@ -350,7 +350,6 @@ int g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
         strcpy(plugin_fname,PLUGINDIR);
         strncat(plugin_fname,"/",1);
         strncat(plugin_fname,g15daemon_cfg_read_string(load_cfg,tmp,""),128);
-        printf("%s\n",plugin_fname);
         g15_plugin_load(masterlist,plugin_fname);
         g15daemon_msleep(20);
       }
