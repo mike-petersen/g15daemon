@@ -307,10 +307,11 @@ int g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
     config_section_t *load_cfg = g15daemon_cfg_load_section(masterlist,"PLUGIN_LOAD_ORDER");
 
    if(!uf_search_confitem(load_cfg,"TotalPlugins") ||
-         (g15daemon_cfg_read_int(load_cfg,"TotalPlugins",0)!=count)) {
-      
+         (g15daemon_cfg_read_int(load_cfg,"TotalPlugins",0)!=count) ||
+     	 (g15daemon_cfg_read_string(load_cfg,"0","")[0]=='/')) {
+
       g15daemon_log(LOG_INFO,"Number of plugins has changed. Rebuilding load order.");
-           
+
       directory = opendir (plugin_directory);
       if (directory != NULL && count)
       {
@@ -323,7 +324,7 @@ int g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
                 if(g15_plugin_load (masterlist, pluginname)==0){
                   char tmp[10];
                   sprintf(tmp,"%i",loadcount);
-                  g15daemon_cfg_write_string(load_cfg,tmp,pluginname);
+                  g15daemon_cfg_write_string(load_cfg,tmp,ep->d_name);
                   loadcount++;
 
                 }
@@ -344,8 +345,13 @@ int g15_open_all_plugins(g15daemon_t *masterlist, char *plugin_directory) {
       g15daemon_log(LOG_INFO,"Loading %i plugins named in g15daemon.conf.",count);
       for(i=0;i<count;i++){
         char tmp[10];
+        char plugin_fname[1024];
         sprintf(tmp,"%i",i);
-        g15_plugin_load(masterlist,g15daemon_cfg_read_string(load_cfg,tmp,""));
+        strcpy(plugin_fname,PLUGINDIR);
+        strncat(plugin_fname,"/",1);
+        strncat(plugin_fname,g15daemon_cfg_read_string(load_cfg,tmp,""),128);
+        printf("%s\n",plugin_fname);
+        g15_plugin_load(masterlist,plugin_fname);
         g15daemon_msleep(20);
       }
       return count;
