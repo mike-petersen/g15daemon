@@ -149,3 +149,5 @@ allow clients use of all 'L' keys.
 	   blocks on read.
 - Optimisation: Use pthread conditional variable to signal LCD state change.
 	   Further reduces unnecessary wakeups.
+1.9.4->SVN
+- Add example udev helper scripts to contrib directory.
