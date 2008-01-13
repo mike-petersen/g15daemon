@@ -46,6 +46,7 @@
 
 #define CLIENT_CMD_GET_KEYSTATE 'k'
 #define CLIENT_CMD_SWITCH_PRIORITIES 'p'
+#define CLIENT_CMD_NEVER_SELECT 'n'
 #define CLIENT_CMD_IS_FOREGROUND 'v'
 #define CLIENT_CMD_IS_USER_SELECTED 'u'
 #define CLIENT_CMD_BACKLIGHT 0x80
@@ -176,8 +177,10 @@ typedef struct lcd_s
     unsigned int mkey_state;
     unsigned int contrast_state;
     unsigned int state_changed;
-    /* set to 1 if user manually selected this screen 0 otherwise*/
+    /* set to 1 if user manually selected this screen 0 otherwise */
     unsigned int usr_foreground;
+    /* set to 1 if screen is never to be user-selectable */
+    unsigned int never_select;
     /* only used for plugins */
     plugin_t *g15plugin;
     

@@ -116,7 +116,9 @@ lcdnode_t *g15daemon_lcdnode_add(g15daemon_t **masterlist) {
 /* cycle through connected client displays */
 void g15daemon_lcdnode_cycle(g15daemon_t *masterlist)
 {
-    lcdnode_t *current_screen = masterlist->current;
+    lcdnode_t *current_screen = NULL;
+skip:
+    current_screen = masterlist->current;
     
     g15daemon_send_event(current_screen->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_HIDDEN);
       
@@ -140,6 +142,12 @@ void g15daemon_lcdnode_cycle(g15daemon_t *masterlist)
     } else {
         masterlist->current = masterlist->current->prev;
     }
+
+    if(masterlist->current->lcd->never_select==1) {
+       pthread_mutex_unlock(&lcdlist_mutex);
+       goto skip;
+    }
+
     masterlist->current->last_priority =  masterlist->current;
     pthread_mutex_unlock(&lcdlist_mutex);
     g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 1);

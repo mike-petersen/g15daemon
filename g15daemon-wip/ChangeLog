@@ -151,3 +151,5 @@ allow clients use of all 'L' keys.
 	   Further reduces unnecessary wakeups.
 1.9.4->SVN
 - Add example udev helper scripts to contrib directory.
+- API:	  Add NEVER_SELECT cmd to client API to enforce non-display on
+	  client-switch.  Used by G15Macro if available.

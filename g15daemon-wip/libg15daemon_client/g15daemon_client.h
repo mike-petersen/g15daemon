@@ -50,7 +50,8 @@ extern "C"
  #define G15DAEMON_SWITCH_PRIORITIES 'p'
  #define G15DAEMON_IS_FOREGROUND 'v'
  #define G15DAEMON_IS_USER_SELECTED 'u'
- 
+ #define G15DAEMON_NEVER_SELECT 'n' 
+
 const char *g15daemon_version();
 
 /* open a new connection to the g15daemon.  returns an fd to be used with g15_send & g15_recv */

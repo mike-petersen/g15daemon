@@ -69,6 +69,12 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         g15daemon_send_event(lcdnode,G15_EVENT_REQ_PRIORITY,1);
         break;
     }
+    case CLIENT_CMD_NEVER_SELECT: { /* client can never be user-selected */
+        pthread_mutex_lock(&lcdlist_mutex);
+        lcdnode->lcd->never_select = 1;
+        pthread_mutex_unlock(&lcdlist_mutex);
+        break;
+    }
     case CLIENT_CMD_IS_FOREGROUND:  { /* client wants to know if it's currently viewable */
         pthread_mutex_lock(&lcdlist_mutex);
         memset(msgbuf,0,2);

@@ -217,6 +217,10 @@ unsigned long g15_send_cmd (int sock, unsigned char command, unsigned char value
             packet[0] = (unsigned char)command;
             retval = send( sock, packet, 1, MSG_OOB );
             break;
+        case G15DAEMON_NEVER_SELECT:
+            packet[0] = (unsigned char)command;
+            retval = send( sock, packet, 1, MSG_OOB );
+            break;
         case G15DAEMON_GET_KEYSTATE:{
             retval = 0;
             unsigned long keystate = 0;
