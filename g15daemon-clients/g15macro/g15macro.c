@@ -931,6 +931,10 @@ int main(int argc, char **argv)
     snprintf((char*)splashpath,1024,"%s/%s",DATADIR,"g15macro/splash/g15macro.wbmp");
     g15r_loadWbmpSplash(canvas, splashpath);
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+    #ifdef G15DAEMON_NEVER_SELECT
+        g15_send_cmd (g15screen_fd, G15DAEMON_NEVER_SELECT, dummy);
+    #endif
+    
     usleep(1000);
     pthread_mutex_init(&x11mutex,NULL);
     pthread_mutex_init(&config_mutex,NULL);
@@ -950,6 +954,7 @@ int main(int argc, char **argv)
 
         if(recording)
             display_timeout=500;
+
         if(display_timeout<=0){
             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
             if (fg_check==1) { // foreground 
