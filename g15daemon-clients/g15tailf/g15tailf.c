@@ -161,7 +161,7 @@ int main(int argc, char *argv[]){
         printf("G15tailf (c) 2008 Mike Lampard\n");
         printf("Please put the /full/file/name to read on the cmdline and (optionally) title of the screen \n");
         printf("and try again.\n");
-        printf("ie. g15tailf /var/log/messages -t [\"Message Log\"]\n");
+        printf("ie. g15tailf -t [\"Message Log\"] /var/log/messages \n");
         printf("if run with -d as the first option, g15tailf will run in the background\n");
         return -1;
     }
