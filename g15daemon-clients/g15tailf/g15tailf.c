@@ -52,6 +52,7 @@ This is a simple client that tails a file and outputs to the LCD on the G15.
 #include <sys/types.h>
 #include <sys/stat.h> 
 #include <time.h>
+#include <config.h>
 
 int daemonise(int nochdir, int noclose) {
   pid_t pid;
@@ -139,6 +140,14 @@ static void tailf(g15canvas *canvas, const char *filename, int lines,int hoffset
     fclose(str);
 }
 
+void helptext() {
+  printf("%s (c)2008 Mike Lampard, (c) 1996, 2003 Rickard E. Faith\n\n",PACKAGE_STRING);
+  printf("Usage: g15tailf /path/to/file\n");
+  printf("Options:\n--title (-t) \"Screen Title\" displays \"Screen Title\" at the top of each screen.\n");
+  printf("--daemon (-d) runs g15tailf in the background as a daemon\n");
+  printf("--offset 20 (-o) starts display at horizontal offset 20\n");
+}
+
 int main(int argc, char *argv[]){
 
     int g15screen_fd;
@@ -150,7 +159,7 @@ int main(int argc, char *argv[]){
     int hoffset=0;
     int lastsize=0;
     int go_daemon=0;
-    int opts=1,title=0,name=0;
+    int opts=1,title=0;
 
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
@@ -158,22 +167,27 @@ int main(int argc, char *argv[]){
     }
 
     if(argc<2) {
-        printf("G15tailf (c) 2008 Mike Lampard\n");
-        printf("Please put the /full/file/name to read on the cmdline and (optionally) title of the screen \n");
-        printf("and try again.\n");
-        printf("ie. g15tailf -t [\"Message Log\"] /var/log/messages \n");
-        printf("if run with -d as the first option, g15tailf will run in the background\n");
+        helptext();
         return -1;
     }
     for(i=0;i<argc;i++) {
-      if(0==strncmp(argv[i],"-d",2)) {
+      if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
         go_daemon=1;
         opts++;
       }
-      else if(0==strncmp(argv[i],"-t",2)) {
+      else if(0==strncmp(argv[i],"-t",2)||0==strncmp(argv[i],"--title",7)) {
         strcpy(pipetitle,argv[++i]);
         title=1;
         opts+=2;
+      }
+      else if(0==strncmp(argv[i],"-o",2)||0==strncmp(argv[i],"--offset",8)) {
+        sscanf(argv[++i],"%i",&hoffset);
+        opts+=2;
+      }
+      else if(0==strncmp(argv[i],"-h",2)||0==strncmp(argv[i],"--help",6)) {
+        opts++;
+        helptext();
+        return 0;
       }
     }
 
@@ -213,6 +227,8 @@ int main(int argc, char *argv[]){
         if(keystate & G15_KEY_L2) {
             if(hoffset)
                 hoffset-=5;
+            if(hoffset<0)
+                hoffset=0;
         }
         if(keystate & G15_KEY_L3) {
             if(hoffset<1024)
