@@ -1,0 +1,21 @@
+G15tailf is a simple G15Daemon client that outputs the last 6 lines of a
+file and writes it's output on the G15's LCD.  It watches the file for
+changes and updates automatically.
+
+It works in the same way as the GNU tailf command.
+
+The output can be scrolled horizontally via the rectangular "L" keys
+below the LCD.
+
+Options:
+There are two options:
+-t "Screen Title" displays "Screen Title" at the top of each screen
+-d puts g15tailf into the background as a daemon.
+
+g15tailf -t "Message Log" /var/log/messages
+
+Buttons:
+L2-L3 - scroll left and right
+
+BUGS:
+There are probably plenty. 
