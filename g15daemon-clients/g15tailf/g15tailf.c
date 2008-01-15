@@ -142,7 +142,7 @@ static void tailf(g15canvas *canvas, const char *filename, int lines,int hoffset
 
 void helptext() {
   printf("%s (c)2008 Mike Lampard, (c) 1996, 2003 Rickard E. Faith\n\n",PACKAGE_STRING);
-  printf("Usage: g15tailf /path/to/file\n");
+  printf("Usage: g15tailf [options] /path/to/file\n");
   printf("Options:\n--title (-t) \"Screen Title\" displays \"Screen Title\" at the top of each screen.\n");
   printf("--daemon (-d) runs g15tailf in the background as a daemon\n");
   printf("--offset 20 (-o) starts display at horizontal offset 20\n");
