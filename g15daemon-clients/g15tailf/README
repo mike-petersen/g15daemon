@@ -1,3 +1,7 @@
+Readme for G15Tailf and G15Term 
+************************************************************************
+G15Tailf:
+
 G15tailf is a simple G15Daemon client that outputs the last 6 lines of a
 file and writes it's output on the G15's LCD.  It watches the file for
 changes and updates automatically.
@@ -16,6 +20,34 @@ g15tailf -t "Message Log" /var/log/messages
 
 Buttons:
 L2-L3 - scroll left and right
+
+***********************************************************************
+G15Term:
+
+G15Term is a client that runs just about any console application
+and writes it's output on the G15's LCD.
+
+Currently, there is no redirection of STDIN, so commands that expect input
+will not work unless g15term is run from a terminal, and no redirection of
+STDERR. 
+
+It's main goal is to simplify the creation of mini-clients
+such as network and cpu stats etc.  Any script or program that outputs
+interesting information can be displayed on the G15 with little or no effort. Tools that
+print output then exit immediately are probably best run via a script which calls
+them repeatedly.
+
+The output can be scrolled horizontally and vertically via the rectangular "L" keys
+below the LCD.
+
+Options:
+When run with the '-r' option, the cmd is run repeatedly, which is nice for
+things like 'date' and 'ls' that exit immediately.
+
+Buttons:
+L1 - Exits when held down for longer than .5seconds.
+L2-L3 - scroll left and right
+L4-L5 - scroll up and down
 
 BUGS:
 There are probably plenty. 
