@@ -762,6 +762,16 @@ void g15macro_sighandler(int sig) {
     }
 }
 
+void helptext() {
+  printf("G15Macro %s\n",PACKAGE_VERSION);
+  printf("\n--user (-u) \"username\" run as user \"username\"\n");
+  printf("--dump (-d) dump current configuration to stdout\n");
+  printf("--debug (-g) print debugging information\n");
+  printf("--version (-v) print version and exit\n");
+  printf("--keysonly (-k) configure multimedia and extra keys then exit\n");
+  printf("--help (-h) this help text\n\n");
+}
+
 int main(int argc, char **argv)
 {
     pthread_t Xkeys;
@@ -777,6 +787,7 @@ int main(int argc, char **argv)
     char configpath[1024];
     char splashpath[1024];
     unsigned int dump = 0;
+    unsigned int keysonly = 0;
     FILE *config;
     unsigned int convert = 0;
     strncpy(configpath,getenv("HOME"),1024);
@@ -794,6 +805,15 @@ int main(int argc, char **argv)
           dump = 1;
         }
 
+        if (!strncmp(argv[i], "-h",2) || !strncmp(argv[i], "--help",6)) {
+          helptext();
+          exit(0);
+        }
+
+        if (!strncmp(argv[i], "-k",2) || !strncmp(argv[i], "--keysonly",10)) {
+          keysonly = 1;
+        }
+
         if (!strncmp(argv[i], "-g",2) || !strncmp(argv[i], "--debug",7)) {
           printf("Debugging Enabled\n");
           debug = 1;
@@ -803,6 +823,7 @@ int main(int argc, char **argv)
           printf("G15Macro version %s\n\n",PACKAGE_VERSION);
           exit(0);
         }
+
     }
 
     if(strlen((char*)user)){
@@ -821,6 +842,24 @@ int main(int argc, char **argv)
              printf("Unable to run as user \"%s\" - you dont have permissions for that.\nRunning as \"%s\"\n",username->pw_name,getenv("USER"));
         }
     }
+
+    do {
+      dpy = XOpenDisplay(getenv("DISPLAY"));
+      if (!dpy) {
+        printf("Unable to open display %s - retrying\n",getenv("DISPLAY"));
+        sleep(2);
+        }
+    }while(!dpy);
+
+    /* completely ignore errors and carry on */
+    XSetErrorHandler(myx_error_handler);
+    configure_mmediakeys();
+    change_keymap(0);
+    XFlush(dpy);
+    
+    if(keysonly>0) 
+      goto close_and_exit;
+
     /* old binary config format */
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
@@ -856,14 +895,6 @@ int main(int argc, char **argv)
     strncat(configpath,"/g15macro.conf",1024-strlen(configpath));
     config=fopen(configpath,"a");
     fclose(config);
-
-    do {
-      dpy = XOpenDisplay(getenv("DISPLAY"));
-      if (!dpy) {
-        printf("Unable to open display %s - retrying\n",getenv("DISPLAY"));
-        sleep(2);
-        }
-    }while(!dpy);
    
     do {
       if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
@@ -915,12 +946,7 @@ int main(int argc, char **argv)
   printf("XTest disabled by configure: no devel package was found.  Using XSendEvent instead.\n");
 #endif
 
-    /* completely ignore errors and carry on */
-    XSetErrorHandler(myx_error_handler);
-    configure_mmediakeys();
-    change_keymap(0);
-    XFlush(dpy);
-    
+      
     new_action.sa_handler = g15macro_sighandler;
     new_action.sa_flags = 0;
     sigaction(SIGINT, &new_action, NULL);
@@ -980,8 +1006,8 @@ int main(int argc, char **argv)
     pthread_mutex_destroy(&config_mutex);
     /* revert the keymap to g15daemon default on exit */
     change_keymap(0);
-
-    XCloseDisplay(dpy);    
     close(g15screen_fd);
-    return 1;
+close_and_exit:
+    XCloseDisplay(dpy);    
+    return 0;
 }
