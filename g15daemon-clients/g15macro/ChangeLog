@@ -11,13 +11,16 @@
 - Fix XTest event output
 - Fix order of events, release was being sent before press.
 - increase max number of key up/down events recorded to 1024
-SVN:
+1.0.2
 - Add --dump (-d) option to dump recorded macros in human-readable format
 - Add --version (-v)
 - Add --debug (-g) to add some debugging
+SVN (1.0.3):
 - Switch to a textual configuration file.  Auto-converts to new format from binary
   config if it exists. Only Semi-readable, but better than a binary dump.
 - Ensure each keypress is received by X11 in sequence.
 - Add mutexes where appropriate.
 - Apply patch from 'schitso' that fixes cancellation of an in-progress recording via
   any of the M keys, and moves repeated code into their own functions.
+- Add --help, --keysonly cmdline options.  --keysonly configures keymaps
+  (including multimedia keys) then exits.
