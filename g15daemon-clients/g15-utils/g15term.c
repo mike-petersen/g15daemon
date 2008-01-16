@@ -91,14 +91,13 @@ start:
     cmdpid=fork();
     switch(cmdpid) {
         case 0:
-          dup2(2,1);
-            close(2);   
-            if(dup2(p[1],1)<0) printf("error redirecting stdout\n");
-            if(dup2(p[1],2)<0) printf("error redirecting stderr\n");
+            close(1);
+            dup(p[1]);
+            close(p[0]);
+            close(p[1]);
             setenv("COLUMNS","43",1);
             setenv("LINES","6",1);
             setenv("TERM","glasstty",1);
-            setenv("PROMPT","g15:",1);
             argv++;
             execvp(*argv,argv);
             break;
