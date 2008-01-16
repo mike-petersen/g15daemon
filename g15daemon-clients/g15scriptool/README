@@ -1,0 +1,39 @@
+G15ScripTool is a simple shellscript helper.  It's commands are BASIC-like,
+and quite simple to read.
+
+Most commands follow the same arguments as libg15render's versions.
+
+g15new: 	start a new screen
+g15print: 	output text
+g15bar:		draw a percentage bar
+g15line:	draw a line between two points
+g15box:		draw a box, optionally filled with a colour.
+g15circle:	draw a circle, optionally filled with a colour.
+g15clear:	clear screen.
+g15roundbox:	draw a box with rounded corners, optionally filled with a colour.
+g15setpixel:	draw a single pixel in specified colour.
+g15flush:	write the buffer to the LCD
+g15quit: 	exit screen
+
+A simple example can be found in test.sh in this directory, here is a snippet:
+
+#!/bin/sh
+g15new
+g15print "percentage bar",0,1,1,1,i
+for i in `seq 1 10`; do
+	g15bar 1,20,160,30,1,$i,10,0
+	g15flush
+	sleep .2
+done
+g15flush
+sleep 1
+g15quit
+
+BUGS:
+There are probably plenty. 
+
+TODO:
+- Write documentation
+- Add truetype font support
+- Add ability to receive keypresses
+- Add wbmp support for splash screens etc.
