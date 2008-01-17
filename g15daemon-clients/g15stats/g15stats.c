@@ -56,6 +56,7 @@ int leaving=0;
 int g15screen_fd;
 int cycle = 0;
 
+
 void drawBar_reversed (g15canvas * canvas, int x1, int y1, int x2, int y2, int color,
 	      int num, int max, int type)
 {
@@ -101,6 +102,38 @@ void drawBar_reversed (g15canvas * canvas, int x1, int y1, int x2, int y2, int c
     for(x=x2-2;x>(x2-length);x-=2)
       g15r_drawLine (canvas, x, y1, x, y2, color^1);
   }
+}
+
+
+int daemonise(int nochdir, int noclose) {
+  pid_t pid;
+  
+  if(nochdir<1)
+    chdir("/");
+  pid = fork();
+
+  switch(pid){
+    case -1:
+     printf("Unable to daemonise!\n");
+     return -1;
+     break;
+    case 0: {
+      umask(0);
+      if(setsid()==-1) {
+       perror("setsid");
+        return -1;
+      }
+      if(noclose<1) {
+        freopen( "/dev/null", "r", stdin);
+        freopen( "/dev/null", "w", stdout);
+        freopen( "/dev/null", "w", stderr);
+      }
+      break;
+    }
+    default:
+      _exit(0);
+  }
+  return 0;
 }
 
 void draw_mem_screen(g15canvas *canvas) {
@@ -252,20 +285,37 @@ void *keyboard_watch(void) {
         usleep(100*900);
   }
 
+  return NULL;
 }
 
 int main(int argc, char *argv[]){
 
     g15canvas *canvas;
     pthread_t keys_thread;
-        
+    int i;
+    int go_daemon=0;
+    
+    for (i=0;i<argc;i++) {
+      if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
+        go_daemon=1;
+      }
+      if(0==strncmp(argv[i],"-h",2)||0==strncmp(argv[i],"--help",6)) {
+        printf("%s (c) 2008 Mike Lampard\n",PACKAGE_NAME);
+        printf("\nOptions:\n");
+        printf("--daemon (-d) run in background\n");
+        printf("--help (-h) this help text.\n");
+        return 0;
+      }
+    }        
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
         return -1;
     }
 
     canvas = (g15canvas *) malloc (sizeof (g15canvas));
-    
+    if(go_daemon==1) 
+      daemonise(0,0);
+        
     if(canvas != NULL)
         g15r_initCanvas(canvas);
     else
