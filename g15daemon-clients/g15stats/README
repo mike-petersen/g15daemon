@@ -13,6 +13,11 @@ Buffered+Cached Memory.
 Swap Screen displays Used, Free and Total swap space, along with the number
 of pages currently paged in/out.
 
+Network Screen displays Total bytes In/Out, history graph, Peak speed.
+
+Options:
+-i interface	Gather statistics from named interface (ie -i eth0)
+
 Usage:
 $> g15stats
 
@@ -21,6 +26,7 @@ Once running, the separate screens can be switched to as follows:
 L2: CPU Usage (default)
 L3: Memory Usage
 L4: Swap Usage.
+L5: Network Interface Statistics (if g15stats is run with -i 'interface')
 
 BUGS:
 none currently known.
