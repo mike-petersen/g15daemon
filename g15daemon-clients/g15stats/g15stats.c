@@ -137,36 +137,36 @@ int daemonise(int nochdir, int noclose) {
 }
 
 void draw_mem_screen(g15canvas *canvas) {
+    glibtop_mem mem;
     char tmpstr[1024];
 
-    glibtop_mem mem;
+    g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
     glibtop_get_mem(&mem);
 
-    g15r_clearScreen (canvas, G15_COLOR_WHITE);
-//  g15r_pixelBox (canvas, 1, 0, 159, 42, 1, 1, 0);
+    sprintf(tmpstr,"Usr %2.f%%",((float)mem.user/(float)mem.total)*100);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 2);
+    sprintf(tmpstr,"Buf %2.f%%",((float)mem.buffer/(float)mem.total)*100);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 14);
+    sprintf(tmpstr,"Che %2.f%%",((float)mem.cached/(float)mem.total)*100);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 26);
 
-//  g15r_pixelBox (canvas, 1, 0, 159, 21, 1, 1, 0);
-//  g15r_pixelBox (canvas, 1, 21, 159, 42, 1, 1, 0);
-    g15r_drawLine (canvas, 2, 20, 158, 20, 1);
-    g15r_drawLine (canvas, 2, 21, 158, 21, 1);
-    g15r_drawLine (canvas, 2, 22, 158, 22, 1);
+    g15r_drawBar(canvas,43,1,150,10,1,mem.user,mem.total,4);
+    g15r_drawBar(canvas,43,12,150,21,1,mem.buffer,mem.total,4);
+    g15r_drawBar(canvas,43,23,150,32,1,mem.cached,mem.total,4);
+    drawBar_reversed(canvas,43,1,150,32,1,mem.free,mem.total,5);
 
-    g15r_drawBar(canvas,2,9,158,21,1,mem.user,mem.total,4);
-    drawBar_reversed(canvas,2,21,158,33,1,mem.cached+mem.buffer,mem.total,4);
+    g15r_drawLine (canvas, 40, 1, 40, 32, 1);
+    g15r_drawLine (canvas, 41, 1, 41, 32, 1);
 
-    canvas->mode_xor = 1;
-    sprintf(tmpstr,"Memory Total %uMb",(unsigned int)mem.total/(1024*1000));
-    g15r_renderString (canvas, (unsigned char *)tmpstr, 0, G15_TEXT_MED, 80-(strlen(tmpstr)*5)/2, 2);
-    sprintf(tmpstr,"User %uMb",(unsigned int)mem.user/(1024*1000));
-    g15r_renderString (canvas, (unsigned char *)tmpstr, 0, G15_TEXT_MED, 10, 13);
+    g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, 152, 4);
 
-    sprintf(tmpstr,"Cache %uMb",(unsigned int)(mem.cached+mem.buffer)/(1024*1000));
-    g15r_renderString (canvas, (unsigned char *)tmpstr, 0, G15_TEXT_MED, 148-(strlen(tmpstr)*5), 25);
-    sprintf(tmpstr,"Memory Free %uMb",(unsigned int)mem.free/(1024*1000));
-    g15r_renderString (canvas, (unsigned char *)tmpstr, 0, G15_TEXT_MED, 80-(strlen(tmpstr)*5)/2, 35);
+    sprintf(tmpstr,"Memory Used %dMb | Memory Total %dMb",(mem.buffer+mem.cached+mem.user)/(1024*1024),mem.total/(1024*1024));
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
 
-    canvas->mode_xor = 0; 
 }
 
 void draw_swap_screen(g15canvas *canvas) {
@@ -188,6 +188,8 @@ void draw_swap_screen(g15canvas *canvas) {
     sprintf(tmpstr,"Paged in: %u, Paged out: %u",(unsigned int)swap.pagein,(unsigned int)swap.pageout);
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 80-(strlen(tmpstr)*5)/2, 35);
 }
+
+
 
 void draw_cpu_screen(g15canvas *canvas) {
     glibtop_cpu cpu;
