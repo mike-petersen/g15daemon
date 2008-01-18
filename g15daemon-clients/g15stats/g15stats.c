@@ -54,8 +54,9 @@ This is a cpu and memory stats client
 
 int g15screen_fd;
 int cycle = 0;
+#define MAX_NET_HIST 107
 
-unsigned int net_hist[100][2];
+unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
 unsigned long net_max_in=0;
 unsigned long net_max_out=0;
@@ -310,7 +311,7 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
     // in
     x=53;
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
-    for(i=net_rr_index+1;i<99;i++) {
+    for(i=net_rr_index+1;i<MAX_NET_HIST;i++) {
       diff = (float) net_max_in / (float) net_hist[i][0];
       height = 16-(16/diff);
       g15r_setPixel(canvas,x,height,1);
@@ -327,7 +328,7 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
     }
     // out
     x=53;
-    for(i=net_rr_index+1;i<99;i++) {
+    for(i=net_rr_index+1;i<MAX_NET_HIST;i++) {
       diff = (float) net_max_out / (float) net_hist[i][1];
       height = 34-(16/diff);
       g15r_setPixel(canvas,x,height,1);
@@ -406,7 +407,7 @@ void network_watch(void *iface) {
     net_max_out = maxi(net_max_out,netload.bytes_out-previous_out);
 
     net_rr_index=i;    
-    i++; if(i>99) i=0;
+    i++; if(i>MAX_NET_HIST) i=0;
     
     sleep (1);
     last:
