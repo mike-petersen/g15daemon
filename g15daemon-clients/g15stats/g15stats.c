@@ -52,7 +52,6 @@ This is a cpu and memory stats client
 #include <glibtop/loadavg.h>
 #include <glibtop/uptime.h>
 
-int leaving=0;
 int g15screen_fd;
 int cycle = 0;
 
@@ -366,11 +365,10 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
 void keyboard_watch(void) {
     unsigned int keystate;
 
-    while(!leaving) {
+    while(1) {
         recv(g15screen_fd,&keystate,4,0);
 
         if(keystate & G15_KEY_L1) {
-            leaving=1;
         }
         else if(keystate & G15_KEY_L2) {
             cycle=0;
@@ -397,7 +395,7 @@ void network_watch(void *iface) {
   static unsigned long previous_in;
   static unsigned long previous_out;
 
-  while(leaving==0) {
+  while(1) {
     glibtop_get_netload(&netload,interface);
     if(previous_in+previous_out==0)
       goto last;
@@ -468,7 +466,7 @@ int main(int argc, char *argv[]){
     if(have_nic==1)
       pthread_create(&net_thread,NULL,(void*)network_watch,&interface);
     
-    while(leaving==0) {
+    while(1) {
 
         switch(cycle) {
             case 0:
