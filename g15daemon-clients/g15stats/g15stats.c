@@ -164,31 +164,39 @@ void draw_mem_screen(g15canvas *canvas) {
     g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, 152, 4);
     g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, 152, 4);
 
-    sprintf(tmpstr,"Memory Used %dMb | Memory Total %dMb",(mem.buffer+mem.cached+mem.user)/(1024*1024),mem.total/(1024*1024));
+    sprintf(tmpstr,"Memory Used %dMb | Memory Total %dMb",(unsigned int)((mem.buffer+mem.cached+mem.user)/(1024*1024)),(unsigned int)(mem.total/(1024*1024)));
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
 
 }
 
 void draw_swap_screen(g15canvas *canvas) {
-    char tmpstr[1024];
-
     glibtop_swap swap;
-
-    glibtop_get_swap(&swap);
+    char tmpstr[1024];
 
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
-    sprintf(tmpstr,"Swap Used %ukb of %ukb",(unsigned int)swap.used/1024,(unsigned int)swap.total/1024);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 80-(strlen(tmpstr)*5)/2, 2);
-    g15r_drawBar(canvas,3,12,157,19,1,(unsigned int)swap.used/(1024),(unsigned int)swap.total/1024,1);
+    glibtop_get_swap(&swap);
 
-    sprintf(tmpstr,"Free Swap: %ukb",(unsigned int)swap.free/1024);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 80-(strlen(tmpstr)*5)/2, 23);
+    g15r_renderString (canvas, (unsigned char*)"Swap", 0, G15_TEXT_MED, 1, 9);
+    sprintf(tmpstr,"Used %i%%",(unsigned int)(((float)swap.used/(float)swap.total)*100));
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 19);
 
-    sprintf(tmpstr,"Paged in: %u, Paged out: %u",(unsigned int)swap.pagein,(unsigned int)swap.pageout);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 80-(strlen(tmpstr)*5)/2, 35);
+    g15r_drawBar(canvas,43,1,150,32,1,(swap.used/1024),swap.total/1024,4);
+
+    drawBar_reversed(canvas,43,1,150,32,1,(swap.total/1024)-(swap.used/1024),swap.total/1024,5);
+
+    g15r_drawLine (canvas, 40, 1, 40, 32, 1);
+    g15r_drawLine (canvas, 41, 1, 41, 32, 1);
+
+    g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, 152, 4);
+
+    sprintf(tmpstr,"Swap Used %dMb | Swap Avail. %dMb",(unsigned int)(swap.used/(1024*1024)),(unsigned int)(swap.total/(1024*1024)));
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+
 }
-
 
 
 void draw_cpu_screen(g15canvas *canvas) {
