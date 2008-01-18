@@ -329,7 +329,7 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
     // out
     x=53;
     for(i=net_rr_index+1;i<99;i++) {
-      diff = (float) net_max_in / (float) net_hist[i][1];
+      diff = (float) net_max_out / (float) net_hist[i][1];
       height = 34-(16/diff);
       g15r_setPixel(canvas,x,height,1);
       g15r_drawLine(canvas,x,height,x-1,last,1);
@@ -337,7 +337,7 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
       x++;
     }
     for(i=0;i<net_rr_index;i++) {
-      diff = (float) net_max_in / (float) net_hist[i][1];
+      diff = (float) net_max_out / (float) net_hist[i][1];
       height = 34-(16 / diff);
       g15r_drawLine(canvas,x,height,x-1,last,1);
       last=height;
