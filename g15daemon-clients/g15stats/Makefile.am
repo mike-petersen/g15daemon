@@ -6,7 +6,7 @@ bin_PROGRAMS = g15stats
 docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 doc_DATA = README ChangeLog AUTHORS NEWS COPYING
 
-LIBS = -lg15daemon_client -lg15render `pkg-config --libs libgtop-2.0`
+LIBS = -lg15daemon_client -lg15render 
 IMCLUDES = -I
 g15stats_LDFLAGS = -avoid-version
 g15stats_SOURCES =  g15stats.c
