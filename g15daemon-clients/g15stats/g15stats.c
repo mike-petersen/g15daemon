@@ -61,6 +61,8 @@ int net_rr_index=0;
 unsigned long net_max_in=0;
 unsigned long net_max_out=0;
 
+_Bool net_scale_absolute=0;
+
 unsigned long maxi(unsigned long a, unsigned long b) {
   if(a>b)
     return a;
@@ -397,24 +399,37 @@ void network_watch(void *iface) {
   static unsigned long previous_out;
 
   while(1) {
+    int j=0, max_in=0, max_out=0;
     glibtop_get_netload(&netload,interface);
+
     if(previous_in+previous_out==0)
-      goto last;
+       goto last;
       
-    net_hist[i][0] = netload.bytes_in-previous_in;
-    net_hist[i][1] = netload.bytes_out-previous_out;
-    net_max_in = maxi(net_max_in,netload.bytes_in-previous_in);
-    net_max_out = maxi(net_max_out,netload.bytes_out-previous_out);
+      net_hist[i][0] = netload.bytes_in-previous_in;
+      net_hist[i][1] = netload.bytes_out-previous_out;
+      if(net_scale_absolute==1) {
+         net_max_in = maxi(net_max_in,netload.bytes_in-previous_in);
+         net_max_out = maxi(net_max_out,netload.bytes_out-previous_out);
+      } else {
+        /* Try ti auto-resize the net graph */
+        /* check for max value */
+        for (j=0;j<MAX_NET_HIST;j++){
+      	  max_in = maxi(max_in,net_hist[j][0]);
+      	  max_out = maxi(max_out,net_hist[j][1]);
+        }
 
-    net_rr_index=i;    
-    i++; if(i>MAX_NET_HIST) i=0;
-    
-    sleep (1);
-    last:
-    previous_in = netload.bytes_in;
-    previous_out = netload.bytes_out;
-
-  }
+        /* Assign new values */
+        net_max_in = max_in;
+        net_max_out = max_out;
+    }
+      net_rr_index=i;    
+      i++; if(i>MAX_NET_HIST) i=0;
+      
+      sleep (1);
+      last: 
+      previous_in = netload.bytes_in;
+      previous_out = netload.bytes_out;
+    }
 }
 
 int main(int argc, char *argv[]){
@@ -431,11 +446,17 @@ int main(int argc, char *argv[]){
         if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
             go_daemon=1;
         }
+        if(0==strncmp(argv[i],"-nsa",4)||0==strncmp(argv[i],"--net-scale-absolute",20)) {
+            net_scale_absolute=1;
+        }
+
         if(0==strncmp(argv[i],"-h",2)||0==strncmp(argv[i],"--help",6)) {
             printf("%s (c) 2008 Mike Lampard\n",PACKAGE_NAME);
             printf("\nOptions:\n");
             printf("--daemon (-d) run in background\n");
             printf("--help (-h) this help text.\n");
+            printf("--interface [interface] (-i) monitor network interface [interface] ie -i eth0\n");
+            printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
             return 0;
         }
         if(0==strncmp(argv[i],"-i",2)||0==strncmp(argv[i],"--interface",8)) {

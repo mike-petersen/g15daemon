@@ -1,1 +1,4 @@
 0.1 Initial release
+SVN:
+- Change net scale from absolute to relative, with option to revert to
+  absolute (-nsa --net-scale-absolute).
