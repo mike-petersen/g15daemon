@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdio.h>
 
 #include <config.h>
 
@@ -51,14 +52,60 @@ const char *g15daemon_version () {
   return VERSION;
 }
 
+#ifdef HAVE_BACKTRACE
+
+#include <signal.h>
+#ifdef HAVE_EXECINFO_H
+#include <execinfo.h>
+#endif
+#define BACKTRACE_LEN 100
+_Bool segv_init = 0;
+
+/* sighandler function to print backtrace on segfault */
+
+void g15_sighandler(int sig) {
+  int i,nptrs;
+  void *buf[BACKTRACE_LEN];
+  char **btfuncs;
+
+  switch (sig) {
+    case SIGSEGV:
+    #ifdef HAVE_EXECINFO_H
+        fprintf(stderr, "The application caught a Segmentation Fault. Backtrace follows:\n");
+        nptrs = backtrace(buf,BACKTRACE_LEN);
+    
+        btfuncs = backtrace_symbols(buf,nptrs);
+        if(btfuncs == NULL)
+          return;
+      
+        for(i=0;i<nptrs;i++)
+          fprintf(stderr,"Backtrace: %s\n",btfuncs[i]);
+      
+        free(btfuncs);
+    #endif
+    break;
+  }
+}
+#endif
+
 int new_g15_screen(int screentype)
 {
+    struct sigaction new_sigaction;
     int g15screen_fd;
     struct sockaddr_in serv_addr;
+    static int sighandler_init=0;
     /* raise the priority of our packets */
     int tos = 0x6;
 
     char buffer[256];
+    if(sighandler_init==0) {
+#ifdef HAVE_BACKTRACE    
+      new_sigaction.sa_handler = g15_sighandler;
+      new_sigaction.sa_flags = 0;
+      sigaction(SIGSEGV,&new_sigaction,NULL);
+#endif      
+      sighandler_init=1;
+    }
     
     g15screen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (g15screen_fd < 0) 
