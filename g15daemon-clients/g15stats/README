@@ -17,6 +17,10 @@ Network Screen displays Total bytes In/Out, history graph, Peak speed.
 
 Options:
 -i interface	Gather statistics from named interface (ie -i eth0)
+-d 		Run in background (daemonise)
+-nsa		Scale network graphs against highest speed recorded.  The
+		default is to scale against the highest peak in the current graph.
+-h		Show help
 
 Usage:
 $> g15stats
