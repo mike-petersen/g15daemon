@@ -227,6 +227,8 @@ pthread_mutex_t g15lib_mutex;
 void g15daemon_init_refresh();
 void g15daemon_quit_refresh();
 int uf_write_buf_to_g15(lcd_t *lcd);
+/* write a pbm format file 'filename' with image contained in 'buf' */
+int uf_screendump_pbm(unsigned char *buf,char *filename);
 int uf_read_keypresses(unsigned int *keypresses, unsigned int timeout);
 /* return the pid of a running copy of g15daemon, else -1 */
 int uf_return_running();

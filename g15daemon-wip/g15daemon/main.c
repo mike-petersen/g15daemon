@@ -95,6 +95,14 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                     displaying->backlight_state++;  
                     displaying->backlight_state %= 3; // limit to 0-2 inclusive 
                 }
+                if(value & G15_KEY_M1 && value & G15_KEY_M3) {
+                  static int scr_num=0;
+                  char filename[128];
+                  lcd_t *displaying = lcd->masterlist->current->lcd;
+                  sprintf(filename,"/tmp/g15daemon-sc-%i.pbm",scr_num);
+                  uf_screendump_pbm(displaying->buf,filename);
+                  scr_num++;
+                }
                 free(newevent);
             }else{
                 /* hacky attempt to double-time the use of L1, if the key is pressed less than half a second, it cycles the screens.  If held for longer, the key is sent to the application for use instead */

@@ -44,6 +44,7 @@
 #include "g15daemon.h"
 #include <libg15.h>
 #include <stdarg.h>
+#include <libg15render.h>
 
 extern unsigned int g15daemon_debug;
 extern volatile int leaving;
@@ -656,6 +657,27 @@ int uf_conf_open(g15daemon_t *list, char *filename) {
     }
 
     free(buffer);
+    return 0;
+}
+
+int uf_screendump_pbm(unsigned char *buffer,char *filename) {
+    FILE *f;
+    int x,y;
+    #define WIDTH 40
+    g15canvas *canvas=g15daemon_xmalloc(sizeof(g15canvas));
+    memcpy(canvas->buffer,buffer,LCD_BUFSIZE);
+    f = fopen(filename,"w+");
+    fprintf(f,"P1\n160 43\n");
+    fprintf(f,"# G15 screendump - %s\n\n",filename);
+    for(y=0;y<43;y++)
+      for(x=0;x<160;x++) {
+        fprintf(f,"%i",g15r_getPixel(canvas,x,y));
+            if(x%WIDTH==WIDTH-1)
+              fprintf(f,"\n");
+        }
+
+        fclose(f);
+    free(canvas);
     return 0;
 }
 
