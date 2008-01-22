@@ -172,7 +172,6 @@ typedef struct lcd_s
     int max_x;
     int max_y;
     int connection;
-    long int ident;
     unsigned int backlight_state;
     unsigned int mkey_state;
     unsigned int contrast_state;

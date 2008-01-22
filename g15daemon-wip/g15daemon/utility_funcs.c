@@ -82,9 +82,6 @@ void g15daemon_init_refresh() {
 }
 
 void g15daemon_send_refresh(lcd_t *lcd) {
-    struct timeval t;
-    gettimeofday(&t,NULL);
-    lcd->ident=t.tv_usec+random();
     if(lcd==lcd->masterlist->current->lcd||lcd->state_changed)
       pthread_cond_broadcast(&lcd_refresh);
 }

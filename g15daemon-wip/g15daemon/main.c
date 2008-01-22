@@ -223,7 +223,6 @@ static void *keyboard_watch_thread(void *lcdlist){
 static void *lcd_draw_thread(void *lcdlist){
 
     g15daemon_t *masterlist = (g15daemon_t*)(lcdlist);
-    static long int lastlcd = 1;
     static unsigned int lastscreentime;
     /* unsigned int fps = 0; */
     lcd_t *displaying = masterlist->tail->lcd;
@@ -239,21 +238,18 @@ static void *lcd_draw_thread(void *lcdlist){
         pthread_mutex_lock(&lcdlist_mutex);
         displaying = masterlist->current->lcd;
                 
-        if(displaying->ident != lastlcd){
-            /* monitor 'fps' - due to the TCP protocol, some frames will be bunched up.
-            discard excess to reduce load on the bus */
-            /* fps = 1000 / (g15daemon_gettime_ms() - lastscreentime); */
-            /* if the current screen is less than 20ms from the previous (equivelant to 50fps) delay it */
-            /* this allows a real-world fps of 40fps with no almost frame loss and reduces peak usb bus-load */
+        /* monitor 'fps' - due to the TCP protocol, some frames will be bunched up.
+           discard excess to reduce load on the bus */
+        /* fps = 1000 / (g15daemon_gettime_ms() - lastscreentime); */
+        /* if the current screen is less than 20ms from the previous (equivelant to 50fps) delay it */
+        /* this allows a real-world fps of 40fps with no almost frame loss and reduces peak usb bus-load */
                         
-            if((g15daemon_gettime_ms() - lastscreentime)>=20||(char*)displaying!=lastdisplayed){  
-                g15daemon_log(LOG_DEBUG,"Updating LCD");        
-                uf_write_buf_to_g15(displaying);
-                lastscreentime = g15daemon_gettime_ms();
-                lastdisplayed = (char*)displaying;
-                lastlcd = displaying->ident;
-                g15daemon_log(LOG_DEBUG,"LCD Update Complete");
-            }
+        if((g15daemon_gettime_ms() - lastscreentime)>=20||(char*)displaying!=lastdisplayed){  
+            g15daemon_log(LOG_DEBUG,"Updating LCD");        
+            uf_write_buf_to_g15(displaying);
+            lastscreentime = g15daemon_gettime_ms();
+            lastdisplayed = (char*)displaying;
+            g15daemon_log(LOG_DEBUG,"LCD Update Complete");
         }
         
         if(displaying->state_changed){
