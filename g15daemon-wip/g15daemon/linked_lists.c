@@ -188,6 +188,7 @@ void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
         (*prev)->next = (*masterlist)->tail;
         (*masterlist)->head = oldnode->prev;
     }
+    g15daemon_send_refresh((*masterlist)->current->lcd);
 
     free(oldnode);
     
