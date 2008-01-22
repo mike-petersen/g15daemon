@@ -158,3 +158,4 @@ allow clients use of all 'L' keys.
 - Feature: Add screendump ability.  Pressing M1+M3 simultaneously will write
 	  a pbm format image of the currently displayed screen to 
 	  /tmp/g15daemon-sc-?.pbm, where ? is an incremental number.
+- BugFix: Only wakeup display thread if LCD buffer is visible.
