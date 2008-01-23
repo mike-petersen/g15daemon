@@ -984,8 +984,9 @@ int main(int argc, char **argv)
         if(display_timeout<=0){
             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
             if (fg_check==1) { // foreground 
-                    g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
-            	    g15r_loadWbmpSplash(canvas, splashpath);
+                    do {
+                      g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
+                    } while(g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy)==1);
             }
 
            usleep(500*1000);
@@ -1008,6 +1009,6 @@ int main(int argc, char **argv)
     change_keymap(0);
     close(g15screen_fd);
 close_and_exit:
-    XCloseDisplay(dpy);    
+    /*    XCloseDisplay(dpy);  */
     return 0;
 }
