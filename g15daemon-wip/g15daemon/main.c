@@ -90,10 +90,9 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                 if(value & G15_KEY_LIGHT){ // the backlight key was pressed - maintain user-selected state 
                   lcd_t *displaying = lcd->masterlist->tail->lcd;  
                   lcd->masterlist->kb_backlight_state++;
-                  if(lcd->masterlist->kb_backlight_state>2)
-                    lcd->masterlist->kb_backlight_state=0;
-                    displaying->backlight_state++;  
-                    displaying->backlight_state %= 3; // limit to 0-2 inclusive 
+                  lcd->masterlist->kb_backlight_state %= 3;
+                  displaying->backlight_state++;  
+                  displaying->backlight_state %= 3; // limit to 0-2 inclusive 
                 }
                 if(value & G15_KEY_M1 && value & G15_KEY_M3) {
                   static int scr_num=0;
@@ -164,6 +163,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
                 }
             }
             pthread_mutex_unlock(&lcdlist_mutex);
+            g15daemon_send_refresh((lcd_t*)lcdnode->list->current->lcd);
             break;
         }
         case G15_EVENT_VISIBILITY_CHANGED:
