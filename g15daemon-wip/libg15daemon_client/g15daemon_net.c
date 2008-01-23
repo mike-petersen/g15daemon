@@ -25,6 +25,7 @@
 */
 
 #include <string.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -71,7 +72,7 @@ void g15_sighandler(int sig) {
   switch (sig) {
     case SIGSEGV:
     #ifdef HAVE_EXECINFO_H
-        fprintf(stderr, "The application caught a Segmentation Fault. Backtrace follows:\n");
+        fprintf(stderr, "The application (or it's libraries) caught a Segmentation Fault. Backtrace follows:\n");
         nptrs = backtrace(buf,BACKTRACE_LEN);
     
         btfuncs = backtrace_symbols(buf,nptrs);
@@ -80,8 +81,9 @@ void g15_sighandler(int sig) {
       
         for(i=0;i<nptrs;i++)
           fprintf(stderr,"Backtrace: %s\n",btfuncs[i]);
-      
+        fprintf(stderr,"End of Backtrace.\n");      
         free(btfuncs);
+        exit(1);
     #endif
     break;
   }
@@ -99,7 +101,7 @@ int new_g15_screen(int screentype)
 
     char buffer[256];
     if(sighandler_init==0) {
-#ifdef HAVE_BACKTRACE    
+#ifdef HAVE_BACKTRACE
       new_sigaction.sa_handler = g15_sighandler;
       new_sigaction.sa_flags = 0;
       sigaction(SIGSEGV,&new_sigaction,NULL);
