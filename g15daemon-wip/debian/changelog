@@ -1,3 +1,15 @@
+1.9.5 edgy; urgency=low
+  * Add example udev helper scripts to contrib directory.
+  * API:     Add NEVER_SELECT cmd to client API to enforce non-display on
+	     client-switch.  Used by G15Macro if available.
+  * Debug:   Add segfault handler to libg15daemon_client to aid debugging
+	     clients.
+  * Feature: Add screendump ability.  Pressing M1+M3 simultaneously will write
+	     a pbm format image of the currently displayed screen to 
+	     /tmp/g15daemon-sc-?.pbm, where ? is an incremental number.
+  * BugFix:  Only wakeup display thread if LCD buffer is visible.
+  * Packaging: Fix debian packaging to include plugins.
+
 g15daemon 1.9.4 edgy; urgency=low
   * Debug:   Log warning if keyboard disappears.
   * Bugfix:  Fix autoconf autodetect bugs re uinput plugin.
