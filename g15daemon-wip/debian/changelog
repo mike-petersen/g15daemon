@@ -1,3 +1,7 @@
+1.9.5.1 edgy; urgency=high
+  * BugFix: If lcd refresh is requested whilst processing, refreshes were missed.
+  * Optimisation: The delay between screen updates is no longer required. remove.
+
 1.9.5 edgy; urgency=low
   * Add example udev helper scripts to contrib directory.
   * API:     Add NEVER_SELECT cmd to client API to enforce non-display on
