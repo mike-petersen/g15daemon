@@ -15,3 +15,4 @@ SVN
   through playlist if --quickscroll option is used, otherwise uses prev/next
   keys.
 - Only respond to mmedia keys if the display is in the foreground.
+- Fix segfault when exiting due to unavailability of MPD server.

@@ -653,7 +653,7 @@ int main(int argc, char **argv)
     /* Set timeout */
     mpd_set_connection_timeout(obj, 10);
 
-    if(!mpd_connect(obj))
+    if(0==mpd_connect(obj))
     {
         char buffer[20];
         pthread_attr_t attr;
@@ -707,8 +707,14 @@ int main(int argc, char **argv)
             pthread_mutex_unlock(&daemon_mutex);
 
         }while(!usleep(5000) &&  !leaving);
-    }
-    mpd_free(obj);
+      leaving = 1;
+      pthread_join(Lkeys,NULL);
+      pthread_join(g15display,NULL);
+    }else
+      printf("Unable to connect to MPD server. Exiting\n");
+
+    if(obj)
+      mpd_free(obj);
     close(fdstdin);
 
     if(canvas!=NULL)
@@ -716,9 +722,6 @@ int main(int argc, char **argv)
 
     close(g15screen_fd);
     close(mmedia_fd);
-    leaving = 1;
-    pthread_join(Lkeys,NULL);
-    pthread_join(g15display,NULL);
 
     pthread_mutex_destroy(&lockit);
 
