@@ -75,34 +75,39 @@ void *g15daemon_xmalloc(size_t size) {
     return ptr;
 }
 
-
+static int refresh_pending=0;
 void g15daemon_init_refresh() {
   pthread_condattr_t attr;
   pthread_cond_init(&lcd_refresh, &attr);
 }
 
 void g15daemon_send_refresh(lcd_t *lcd) {
-    if(lcd==lcd->masterlist->current->lcd||lcd->state_changed)
+    if(lcd==lcd->masterlist->current->lcd||lcd->state_changed) {
       pthread_cond_broadcast(&lcd_refresh);
+      refresh_pending++;
+    }
 }
 
 void g15daemon_wait_refresh() {
     pthread_mutex_t dummy_mutex;
     struct timespec timeout;
     int retval;
-    /* Create a dummy mutex which doesn't unlock for sure while waiting. */
-    pthread_mutex_init(&dummy_mutex, NULL);
-    pthread_mutex_lock(&dummy_mutex);
+    if(refresh_pending<1) {
+      /* Create a dummy mutex which doesn't unlock for sure while waiting. */
+      pthread_mutex_init(&dummy_mutex, NULL);
+      pthread_mutex_lock(&dummy_mutex);
 start:
-    time(&timeout.tv_sec);
-    timeout.tv_sec += 1;
-    timeout.tv_nsec = 0L;
+      time(&timeout.tv_sec);
+      timeout.tv_sec += 1;
+      timeout.tv_nsec = 0L;
 
-    retval=pthread_cond_timedwait(&lcd_refresh, &dummy_mutex, &timeout);
-    if(!leaving && retval == ETIMEDOUT)
-      goto start;
-    pthread_mutex_unlock(&dummy_mutex);
-    pthread_mutex_destroy(&dummy_mutex);
+      retval=pthread_cond_timedwait(&lcd_refresh, &dummy_mutex, &timeout);
+      if(!leaving && retval == ETIMEDOUT)
+        goto start;
+      pthread_mutex_unlock(&dummy_mutex);
+      pthread_mutex_destroy(&dummy_mutex);
+    }
+    refresh_pending--;
 }
 
 void g15daemon_quit_refresh() {
