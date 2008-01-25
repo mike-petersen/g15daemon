@@ -226,7 +226,7 @@ static void *lcd_draw_thread(void *lcdlist){
     /* unsigned int fps = 0; */
     lcd_t *displaying = masterlist->tail->lcd;
     memset(displaying->buf,0,1024);
-    
+    static int prev_state=0;
     g15daemon_sleep(2);
 
     while (!leaving) {
@@ -246,15 +246,18 @@ static void *lcd_draw_thread(void *lcdlist){
         uf_write_buf_to_g15(displaying);
         g15daemon_log(LOG_DEBUG,"LCD Update Complete");
         
+        if(prev_state!=displaying->backlight_state) {
+              prev_state=displaying->backlight_state;
+              pthread_mutex_lock(&g15lib_mutex);
+              setLCDBrightness(displaying->backlight_state);
+              pthread_mutex_unlock(&g15lib_mutex);
+        }
+
         if(displaying->state_changed){
             pthread_mutex_lock(&g15lib_mutex);
             setLCDContrast(displaying->contrast_state);
             if(displaying->masterlist->remote_keyhandler_sock==0) // only allow mled control if the macro recorder isnt running
               setLEDs(displaying->mkey_state);
-            if(masterlist->kb_backlight_state)
-              setLCDBrightness(displaying->backlight_state);
-            else
-              setLCDBrightness(masterlist->kb_backlight_state);
             pthread_mutex_unlock(&g15lib_mutex);
             displaying->state_changed = 0;
         }

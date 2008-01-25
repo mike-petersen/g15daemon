@@ -165,3 +165,4 @@ allow clients use of all 'L' keys.
 - Optimisation: The delay between screen updates is no longer required. remove.
 SVN:
 - BugFix: IS_USER_SELECTED client command was broken. fix it.
+- BugFix: restore client ability to change backlight state.
