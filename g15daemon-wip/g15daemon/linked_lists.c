@@ -124,8 +124,8 @@ skip:
     g15daemon_send_event(current_screen->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_HIDDEN);
     do
     {
-        g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 0);
-        
+        masterlist->current->lcd->usr_foreground=0;        
+
         if(masterlist->tail == masterlist->current){
             masterlist->current = masterlist->head;
         }else{
@@ -147,7 +147,7 @@ skip:
     masterlist->current->last_priority =  masterlist->current;
     pthread_mutex_unlock(&lcdlist_mutex);
 
-    g15daemon_send_event(current_screen->lcd, G15_EVENT_USER_FOREGROUND, 1);
+    masterlist->current->lcd->usr_foreground=1;
     g15daemon_send_event(masterlist->current->lcd, G15_EVENT_VISIBILITY_CHANGED, SCR_VISIBLE);
 
 }

@@ -160,6 +160,8 @@ allow clients use of all 'L' keys.
 	  /tmp/g15daemon-sc-?.pbm, where ? is an incremental number.
 - BugFix: Only wakeup display thread if LCD buffer is visible.
 - Packaging: Fix debian packaging to include plugins.
-SVN: (1.9.6)
+1.9.5.1:
 - BugFix: If lcd refresh is requested whilst processing, refreshes were missed.
 - Optimisation: The delay between screen updates is no longer required. remove.
+SVN:
+- BugFix: IS_USER_SELECTED client command was broken. fix it.

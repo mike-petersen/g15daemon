@@ -89,12 +89,12 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
     } 
     case CLIENT_CMD_IS_USER_SELECTED: { /* client wants to know if it was set to foreground by the user */
         pthread_mutex_lock(&lcdlist_mutex);
-        if(lcdnode->lcd->usr_foreground)  /* user manually selected this lcd */
-            msgbuf[0] = '1';
+        if(lcdnode->lcd->usr_foreground==1)  /* user manually selected this lcd */
+            msgbuf[0] = 1;
         else
-            msgbuf[0] = '0';
+            msgbuf[0] = 0;
         pthread_mutex_unlock(&lcdlist_mutex);
-        send(sock,msgbuf,1,0);
+        send(sock,msgbuf,1,MSG_OOB);
         break;
     } 
     default:

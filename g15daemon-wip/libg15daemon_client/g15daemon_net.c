@@ -286,12 +286,12 @@ unsigned long g15_send_cmd (int sock, unsigned char command, unsigned char value
         case G15DAEMON_IS_USER_SELECTED:{
             packet[0] = (unsigned char)command;
             send( sock, packet, 1, MSG_OOB );
-            retval = g15_recv_oob_answer(sock) - 48;
+            retval = g15_recv_oob_answer(sock);
             break;
         }       
         default:
             return -1;    
     }
-    
+    usleep(1000);    
     return retval;       
 }
