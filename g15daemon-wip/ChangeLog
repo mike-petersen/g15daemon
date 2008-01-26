@@ -163,6 +163,6 @@ allow clients use of all 'L' keys.
 1.9.5.1:
 - BugFix: If lcd refresh is requested whilst processing, refreshes were missed.
 - Optimisation: The delay between screen updates is no longer required. remove.
-SVN:
+1.9.5.2:
 - BugFix: IS_USER_SELECTED client command was broken. fix it.
 - BugFix: restore client ability to change backlight state.
