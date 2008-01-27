@@ -843,6 +843,15 @@ int main(int argc, char **argv)
         }
     }
 
+    canvas = (g15canvas *) malloc (sizeof (g15canvas));
+
+    if (canvas != NULL) {
+        g15r_initCanvas(canvas);
+    } else {
+        printf("Unable to initialise the libg15render canvas\nExiting\n");
+        return 1;
+    }
+
     do {
       dpy = XOpenDisplay(getenv("DISPLAY"));
       if (!dpy) {
@@ -916,20 +925,13 @@ int main(int argc, char **argv)
     usleep(1000);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
     usleep(1000);
-    canvas = (g15canvas *) malloc (sizeof (g15canvas));
-
-    if (canvas != NULL) {
-        g15r_initCanvas(canvas);
-    } else {
-        printf("Unable to initialise the libg15render canvas\nExiting\n");
-        return 1;
-    }
 
     root_win = DefaultRootWindow(dpy);
     if (!root_win) {
         printf("Cant find root window\n");
         return 1;
     }
+
 
     have_xtest = False;
 #ifdef HAVE_XTEST

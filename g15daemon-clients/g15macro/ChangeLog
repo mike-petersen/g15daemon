@@ -24,3 +24,6 @@
   any of the M keys, and moves repeated code into their own functions.
 - Add --help, --keysonly cmdline options.  --keysonly configures keymaps
   (including multimedia keys) then exits.
+SVN:
+- Move g15r_initCanvas() higher in main() to work around a segfault when
+  libg15render is compiled with FreeType support.
