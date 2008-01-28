@@ -219,7 +219,7 @@ static int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
                 }
            	process_client_cmds(lcdnode, sock, msgbuf,len);
             }
-            else if(pfd[0].revents & POLLIN && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) {
+            else if(pfd[0].revents & POLLIN && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL || pfd[0].revents & POLLPRI)) {
 
                 retval = recv(sock, buf+total, bytesleft, 0);
                 if (retval < 1) { 
