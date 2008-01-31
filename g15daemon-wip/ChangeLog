@@ -169,3 +169,7 @@ allow clients use of all 'L' keys.
 SVN:
 - BugFix: plugins/g15daemon_net.c: ensure that OOB traffic is not mixed with
           normal image buffers.
+- Feature: Add --set-backlight to allow clients (and the backlight button)
+	to set the backlight level for the currently shown screen only.  Default is
+	now to disallow clients changing backlight, and to set backlight globally
+	via the button.
