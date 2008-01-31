@@ -166,7 +166,7 @@ allow clients use of all 'L' keys.
 1.9.5.2:
 - BugFix: IS_USER_SELECTED client command was broken. fix it.
 - BugFix: restore client ability to change backlight state.
-SVN:
+1.9.5.3:
 - BugFix: plugins/g15daemon_net.c: ensure that OOB traffic is not mixed with
           normal image buffers.
 - Feature: Add --set-backlight to allow clients (and the backlight button)

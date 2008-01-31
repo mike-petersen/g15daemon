@@ -1,3 +1,13 @@
+g15daemon 1.9.5.3 edgy; urgency=low
+ * BugFix: plugins/g15daemon_net.c: ensure that OOB traffic is not mixed with
+           normal image buffers.
+ * Feature: Add --set-backlight to allow clients (and the backlight button)
+           to set the backlight level for the currently shown screen only. 
+ 	   Default is now to disallow clients changing backlight, and to set 
+	   backlight globally via the button.
+
+ -- Mike Lampard <mlampard@users.sourceforge.net> Thu, 31 Jan 2008 15:47:06 +1030
+
 g15daemon 1.9.5.2 edgy; urgency=high
   * BugFix: IS_USER_SELECTED client command was broken. fix it.
   * BugFix: restore client ability to change backlight state.
