@@ -27,3 +27,4 @@
 SVN:
 - Move g15r_initCanvas() higher in main() to work around a segfault when
   libg15render is compiled with FreeType support.
+- Save macro to disk on completion of every recording, not only on exit.

@@ -72,6 +72,8 @@ int display_timeout=500;
 int have_xtest = False;
 int debug = 0;
 
+char configpath[1024];
+
 unsigned char recstring[1024];
 
 static unsigned int mled_state = G15_LED_M1;
@@ -321,6 +323,7 @@ void record_complete(unsigned long keystate)
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
 
     record_cleanup();
+    save_macros(configpath);
 }
 
 int calc_mkey_offset() {
@@ -664,7 +667,7 @@ void xkey_handler(XEvent *event) {
         /* now the default stuff */
         pthread_mutex_lock(&x11mutex);        
           XUngrabKeyboard(dpy,CurrentTime);
-       pthread_mutex_unlock(&x11mutex);
+        pthread_mutex_unlock(&x11mutex);
 
         fake_keyevent(keycode,press,event->xkey.state);
        
@@ -689,6 +692,8 @@ void xkey_handler(XEvent *event) {
           pthread_mutex_unlock(&x11mutex);
           recording = 0;
           rec_index = 0;
+          printf("saving macro\n");
+          save_macros(configpath);
         }
 
     }else
@@ -784,7 +789,6 @@ int main(int argc, char **argv)
     int dummy=0,i=0;
     unsigned char user[256];
     struct passwd *username;
-    char configpath[1024];
     char splashpath[1024];
     unsigned int dump = 0;
     unsigned int keysonly = 0;
