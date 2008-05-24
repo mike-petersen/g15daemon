@@ -1,3 +1,4 @@
+
 /*
   This file is part of g15daemon.
   
@@ -69,7 +70,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.4"
+#define PLUGIN_VERSION "2.5.5"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
@@ -116,6 +117,9 @@ static unsigned int detached_peak;
 /* Boolean. Enable Analog Mode */
 static unsigned int analog_mode;
 
+/* Boolean. Enable Line Mode */
+static unsigned int line_mode;
+
 /* Integer. Step for leds in Analog Mode. Min value:  2 */
 static unsigned int analog_step;
 
@@ -146,6 +150,7 @@ static unsigned int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE
 static unsigned int def_enable_peak = TRUE;
 static unsigned int def_detached_peak = TRUE;
 static unsigned int def_analog_mode = FALSE;
+static unsigned int def_line_mode = FALSE;
 static unsigned int def_analog_step = 2;
 static unsigned int def_enable_keybindings = FALSE;
 static unsigned int def_show_title = TRUE;
@@ -201,7 +206,7 @@ static GtkWidget *configure_win = NULL;
 static GtkWidget *vbox;
 static GtkWidget *bbox, *ok, *cancel, *apply, *defaults;
 static GtkWidget *t_options_bars_radio, *t_options_scope_radio;
-static GtkWidget *t_options_effect_no, *t_options_effect_peak, *t_options_effect_analog;
+static GtkWidget *t_options_effect_no, *t_options_effect_line, *t_options_effect_peak, *t_options_effect_analog;
 static GtkWidget *t_options_vistype;
 static GtkWidget *t_options_bars, *t_options_bars_effects;
 static GtkWidget *g_options_frame ,*g_options_enable_keybindings, *g_options_enable_dpeak;
@@ -213,7 +218,6 @@ static GtkObject *adj_bars, *adj_lin, *adj_ampli, *adj_step, *adj_rownum;
 
 static gint tmp_bars=-1, tmp_step=-1, tmp_ampli=-1000, tmp_rownum=-1; 
 static gfloat tmp_lin=-1;
-
 
 VisPlugin g15analyser_vp = {
 #ifdef OLD_PLUGIN
@@ -294,6 +298,7 @@ void g15spectrum_read_config(void)
       bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "num_bars", (int*)&num_bars);
       bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_peak", (int*)&enable_peak);
       bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "detached_peak", (int*)&detached_peak);
+      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "line_mode", (int*)&line_mode);
       bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_mode", (int*)&analog_mode);
       bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_step", (int*)&analog_step);
       bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
@@ -327,6 +332,8 @@ void g15spectrum_read_config(void)
     detached_peak = def_detached_peak;
   if (analog_mode != FALSE && analog_mode != TRUE)
     analog_mode = def_analog_mode;
+  if (line_mode != FALSE && line_mode != TRUE)
+    line_mode = def_line_mode;
   if (show_title != FALSE && show_title != TRUE)
     show_title = def_show_title;
   if (show_pbar != FALSE && show_pbar != TRUE)
@@ -356,6 +363,7 @@ void g15spectrum_write_config(void)
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "enable_peak", enable_peak);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "detached_peak", detached_peak);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "analog_mode", analog_mode);
+      bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "line_mode", line_mode);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "analog_step", analog_step);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "enable_keybindings", enable_keybindings);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "show_title", show_title);
@@ -388,9 +396,11 @@ void g15analyser_conf_apply(void){
   if (GTK_TOGGLE_BUTTON(t_options_effect_no)->active){
     enable_peak = 0;
     analog_mode = 0;
+    line_mode = 0;
   } else {
     enable_peak = GTK_TOGGLE_BUTTON(t_options_effect_peak)->active;
     analog_mode = GTK_TOGGLE_BUTTON(t_options_effect_analog)->active;
+    line_mode = GTK_TOGGLE_BUTTON(t_options_effect_line)->active;
   }
   detached_peak = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_dpeak));
   enable_keybindings =  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_enable_keybindings));
@@ -413,6 +423,7 @@ void g15analyser_conf_reset(void){
   limit = def_limit;
   enable_peak = def_enable_peak;
   detached_peak = def_detached_peak;
+  line_mode = def_line_mode;
   analog_mode = def_analog_mode;
   analog_step = def_analog_step;
   enable_keybindings = def_enable_keybindings;
@@ -443,9 +454,10 @@ static void g15analyser_conf_reset_defaults_gui(void){
   tmp_rownum = def_rownum;
   gtk_adjustment_set_value((GtkAdjustment *)adj_rownum,tmp_rownum);
   
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no),    !def_enable_peak && !def_analog_mode);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak),   def_enable_peak && !def_analog_mode);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog),!def_enable_peak &&  def_analog_mode);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no),    !def_enable_peak && !def_analog_mode && !def_line_mode);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_line),  !def_enable_peak && !def_analog_mode && def_line_mode);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak),   def_enable_peak && !def_analog_mode && !def_line_mode);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog),!def_enable_peak &&  def_analog_mode && !def_line_mode);
   
   
   tmp_step = def_analog_step;
@@ -638,19 +650,24 @@ void g15analyser_conf(void){
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame_bars_effects), 5);
   t_options_bars_effects = gtk_vbox_new(FALSE, 5);
   /* radio effect type */
-  t_options_effect_no = gtk_radio_button_new_with_label(NULL, "None");
-  t_options_effect_peak = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_effect_no)), "Peaks");
+  t_options_effect_no     = gtk_radio_button_new_with_label(NULL, "None");
+  t_options_effect_line   = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_effect_no)), "Line");
+  t_options_effect_peak   = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_effect_line)), "Peaks");
   t_options_effect_analog = gtk_radio_button_new_with_label(gtk_radio_button_group(GTK_RADIO_BUTTON(t_options_effect_peak)), "Analog");
   /* no effect radio */
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no), (enable_peak == FALSE && analog_mode == FALSE));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_no), (enable_peak == FALSE && analog_mode == FALSE && line_mode == FALSE));
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_no, FALSE, FALSE, 0);
   gtk_widget_show(t_options_effect_no);
+  /* line effect radio */
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_line), (enable_peak == FALSE && analog_mode == FALSE && line_mode == TRUE));
+  gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_line, FALSE, FALSE, 0);
+  gtk_widget_show(t_options_effect_line);
   /* peak effect radio */
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak), (enable_peak == TRUE && analog_mode == FALSE));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_peak), (enable_peak == TRUE && analog_mode == FALSE && line_mode == FALSE));
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_peak, FALSE, FALSE, 0);
   gtk_widget_show(t_options_effect_peak);
   /* analog effect radio */
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog), (enable_peak == FALSE && analog_mode == TRUE));
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(t_options_effect_analog), (enable_peak == FALSE && analog_mode == TRUE && line_mode == FALSE));
   gtk_box_pack_start(GTK_BOX(t_options_bars_effects), t_options_effect_analog, FALSE, FALSE, 0);
   gtk_widget_show(t_options_effect_analog);
   
@@ -731,15 +748,15 @@ void g15analyser_about(void){
   
   /* Something about us... */
   label = gtk_label_new (PLUGIN_NAME"\n\
-      v. " PLUGIN_VERSION "\n\
-      \n\
-      by Mike Lampard <mlampard@users.sf.net>\n\
-      Anthony J. Mirabella <aneurysm9>\n\
-      Antonio Bartolini <robynhub@users.sf.net>\n\
-      and others...\n\
-      \n\
-      get the newest version from:\n\
-      http://g15daemon.sf.net/\n\
+      v. " PLUGIN_VERSION "\n	       \
+      \n					\
+      by Mike Lampard <mlampard@users.sf.net>\n	\
+      Anthony J. Mirabella <aneurysm9>\n		\
+      Antonio Bartolini <robynhub@users.sf.net>\n	\
+      and others...\n					\
+      \n						\
+      get the newest version from:\n			\
+      http://g15daemon.sf.net/\n			\
       ");
   
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), label, FALSE, FALSE, 0);
@@ -864,7 +881,7 @@ static int poll_mmediakeys()
 #ifdef OLD_PLUGIN
 	xmms_remote_playlist_next(g15analyser_vp.xmms_session);
 #else
-        audacious_drct_playlist_next();
+    audacious_drct_playlist_next();
 #endif
     
     if(event.xkey.keycode==XKeysymToKeycode(dpy, XF86XK_AudioPrev))
@@ -872,7 +889,7 @@ static int poll_mmediakeys()
 #ifdef OLD_PLUGIN
 	xmms_remote_playlist_prev(g15analyser_vp.xmms_session);
 #else
-        audacious_drct_playlist_prev();
+    audacious_drct_playlist_prev();
 #endif
   }
   return TRUE;
@@ -891,14 +908,14 @@ static int g15send_func() {
   
   pthread_mutex_lock (&g15buf_mutex);
   g15r_clearScreen (canvas, G15_COLOR_WHITE);
-
+  
 #ifdef OLD_PLUGIN  
   if (xmms_remote_get_playlist_length(g15analyser_vp.xmms_session) > 0){
-      playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
-      
-      title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
+    playlist_pos = xmms_remote_get_playlist_pos(g15analyser_vp.xmms_session);
+    
+    title = xmms_remote_get_playlist_title(g15analyser_vp.xmms_session, playlist_pos);
 #else
-  if (audacious_drct_get_playlist_length() > 0){
+    if (audacious_drct_get_playlist_length() > 0){
       playlist_pos = audacious_drct_get_playlist_pos();
       title = audacious_drct_get_playlist_title(playlist_pos);
 #endif 
@@ -1005,7 +1022,7 @@ static int g15send_func() {
 	int output_time = audacious_drct_get_output_time()/1000;
 	int playlist_time = audacious_drct_get_playlist_time(playlist_pos)/1000;
 #endif
-
+	
 	/* bugfix: Sometimes xmms don't get the output time */
 	if (playlist_time == 0){
 	  playlist_time = 1000;
@@ -1048,7 +1065,7 @@ static int g15send_func() {
 		  if (y1 > limit - 2)   /* check new limit for bars to show peaks even when max */
 		    y1 = limit - 2;
 		  /* check for new peak */
-		  if(y1 >= bar_heights_peak[i]) {          
+		  if(y1 > bar_heights_peak[i]) {          
 		    bar_heights_peak[i] = y1;
 		  } else 
 		    /* decrement old peak */
@@ -1058,25 +1075,32 @@ static int g15send_func() {
 		y1 = bottom_line - y1; /* always show bottom of the bars */
 		
 		/* Analog Mode */
-		if (analog_mode){
+		if (analog_mode && ! line_mode){
 		  int end =  y1  + analog_step - (y1 % analog_step) - 1; /* superior approx to multiple */
 		  for(j = bottom_line ; j >= end; j-= analog_step){
 		    /* draw leds :-) */
 		    g15r_pixelBox (canvas, i, j - analog_step + 2 ,i + bar_width - 2, j , G15_COLOR_BLACK, 1, 1); 
 		  }		  
-		} else
-		  g15r_pixelBox (canvas, i, y1 , i + bar_width - 2, bottom_line, G15_COLOR_BLACK, 1, 1);
-		
+		} else {
+		  /* line mode */
+		  if (line_mode)
+		    g15r_drawLine (canvas, i, y1 , i + bar_width - 1, y1, G15_COLOR_BLACK);
+		  else
+		    g15r_pixelBox (canvas, i, y1 , i + bar_width - 2, bottom_line, G15_COLOR_BLACK, 1, 1);
+		  
+		}
 		/* Enable peak*/
-		if (enable_peak && ! analog_mode){        
+		if (enable_peak && ! analog_mode && ! line_mode){        
 		  int peak;
 		  /* superior limit */
 		  if (bar_heights_peak[i] < limit){     
 		    peak = bottom_line - bar_heights_peak[i] - detached_peak*2; /* height of peak */
+		    
 		    /* inferior limit */
 		    if ( bar_heights_peak[i] > 0)                    
 		      g15r_pixelBox (canvas, i, peak  , i + bar_width - 2, peak, G15_COLOR_BLACK, 1, 1);
 		  }
+		  
 		}
 	      }
 	    }
@@ -1096,226 +1120,226 @@ static int g15send_func() {
 	g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
       
     }
-  else
-    g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
-  
-  if(lastvolume!=get_main_volume() || vol_timeout>=0) {
-    if(lastvolume!=get_main_volume())
-      vol_timeout=10;
     else
-      vol_timeout--;
-    /* render volume */
-    lastvolume = get_main_volume();
-    if (lastvolume >= 0)	
-      g15r_drawBar (canvas, 10, 15, 149, 28, G15_COLOR_BLACK, lastvolume, 100, 1);
-    canvas->mode_xor=1;
-    g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 18);
-    canvas->mode_xor=0;
-  }
-  /* do a quicky checksum - only send frame if different */
-  for(i=0;i<G15_BUFFER_LEN;i++){
-    chksum+=canvas->buffer[i]*i;
-  }
-  if(last_chksum!=chksum) {
-    if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
-      perror("lost connection, tryng again\n");
-      /* connection error occurred - try to reconnect to the daemon */
-      g15screen_fd=new_g15_screen(G15_G15RBUF);
-    }
-  }
-  last_chksum=chksum;
-  
-  pthread_mutex_unlock(&g15buf_mutex);
-  return TRUE;
-}
-
-int myx_error_handler(Display *dpy, XErrorEvent *err){
-  
-  printf("error (%i) occured - ignoring\n",err->error_code);
-  return 0;
-}
-
-
-static void g15analyser_init(void) {
-  
-  pthread_mutex_init(&g15buf_mutex, NULL); 
-  g15analyser_conf_reset();
-  g15spectrum_read_config();
-  
-  pthread_mutex_lock(&g15buf_mutex);
-  
-  if (enable_keybindings) {
-    dpy = XOpenDisplay(getenv("DISPLAY"));
-    if (!dpy) {
-      printf("Can't open display\n");
-      return;
-    }
-    root_win = DefaultRootWindow(dpy);
-    if (!root_win) {
-      printf("Cant find root window\n");
-      return;
-    }
+      g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
     
-    /* completely ignore errors and carry on */
-    XSetErrorHandler(myx_error_handler);
-    XFlush(dpy);
+    if(lastvolume!=get_main_volume() || vol_timeout>=0) {
+      if(lastvolume!=get_main_volume())
+	vol_timeout=10;
+      else
+	vol_timeout--;
+      /* render volume */
+      lastvolume = get_main_volume();
+      if (lastvolume >= 0)	
+	g15r_drawBar (canvas, 10, 15, 149, 28, G15_COLOR_BLACK, lastvolume, 100, 1);
+      canvas->mode_xor=1;
+      g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 18);
+      canvas->mode_xor=0;
+    }
+    /* do a quicky checksum - only send frame if different */
+    for(i=0;i<G15_BUFFER_LEN;i++){
+      chksum+=canvas->buffer[i]*i;
+    }
+    if(last_chksum!=chksum) {
+      if(g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN)<0) {
+	perror("lost connection, tryng again\n");
+	/* connection error occurred - try to reconnect to the daemon */
+	g15screen_fd=new_g15_screen(G15_G15RBUF);
+      }
+    }
+    last_chksum=chksum;
     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPlay), AnyModifier, root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioStop), AnyModifier, root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPrev), AnyModifier, root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioNext), AnyModifier, root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume),Mod2Mask , root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume), Mod2Mask, root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-    XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioMute), Mod2Mask, root_win,
-	     False, GrabModeAsync, GrabModeAsync);                                     
-  }
-  
-  g15screen_fd = new_g15_screen(G15_G15RBUF);
-  if(g15screen_fd < 0 ){
-    printf("Cant connect with G15daemon !\n");
     pthread_mutex_unlock(&g15buf_mutex);
-    gtk_idle_add (g15analyser_disable,NULL);
-    return;
+    return TRUE;
   }
-  canvas = (g15canvas *) malloc (sizeof (g15canvas));
-  if (canvas != NULL)
-    {
-      memset(canvas->buffer, 0, G15_BUFFER_LEN);
-      canvas->mode_cache = 0;
-      canvas->mode_reverse = 0;
-      canvas->mode_xor = 0;
-    }
   
-  
-  pthread_mutex_unlock(&g15buf_mutex);
-  /* increase lcd drive voltage/contrast for this client */
-  g15_send_cmd(g15screen_fd, G15DAEMON_CONTRAST,2);
-  
-  pthread_attr_t attr;
-  memset(&attr,0,sizeof(pthread_attr_t));
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-  if (enable_keybindings){
-    mmedia_timeout_handle = g_timeout_add(100, poll_mmediakeys, NULL);
-    g15keys_timeout_handle = g_timeout_add(100, poll_g15keys, NULL);
-  }
-  g15disp_timeout_handle = g_timeout_add(75, g15send_func, NULL);
-  
-}
-
-static void g15analyser_cleanup(void) {
-  
-  pthread_mutex_lock (&g15buf_mutex);
-  /* Write down config */
-  g15spectrum_write_config();
-  if (canvas != NULL)
-    free(canvas);
-  if(g15screen_fd)
-    close(g15screen_fd);
-  pthread_mutex_unlock (&g15buf_mutex);
-  if (enable_keybindings){
-    XUngrabKey(dpy, XF86XK_AudioPrev, AnyModifier, root_win);
-    XUngrabKey(dpy, XF86XK_AudioNext, AnyModifier, root_win);
-    XUngrabKey(dpy, XF86XK_AudioPlay, AnyModifier, root_win);
-    XUngrabKey(dpy, XF86XK_AudioStop, AnyModifier, root_win);
-    XUngrabKey(dpy, XF86XK_AudioLowerVolume, Mod2Mask, root_win);
-    XUngrabKey(dpy, XF86XK_AudioRaiseVolume, Mod2Mask, root_win);
-    XUngrabKey(dpy, XF86XK_AudioMute, AnyModifier, root_win);
+  int myx_error_handler(Display *dpy, XErrorEvent *err){
     
-    gtk_timeout_remove(mmedia_timeout_handle);
-    gtk_timeout_remove(g15keys_timeout_handle);
+    printf("error (%i) occured - ignoring\n",err->error_code);
+    return 0;
   }
-  gtk_timeout_remove(g15disp_timeout_handle);
-  if (enable_keybindings)
-    XCloseDisplay(dpy);
-  
-  return;
-}
-
-static void g15analyser_playback_start(void) {
-  
-  pthread_mutex_lock (&g15buf_mutex);
-  playing = 1;
-  paused = 0;
-  pthread_mutex_unlock (&g15buf_mutex);
-  return;
-  
-}
-
-static void g15analyser_playback_stop(void) {
-  
-  pthread_mutex_lock (&g15buf_mutex);
-  playing = 0;
-  paused = 0;
-  pthread_mutex_unlock (&g15buf_mutex);
-  return;
-  
-}
-
-static void g15analyser_render_pcm(gint16 data[2][512]) {
-  pthread_mutex_lock (&g15buf_mutex);
-  
-  if (playing)
-    {
-      gint i;
-      gint max;
-      gint scale = 128;
-      
-      do
-	{
-	  max = 0;
-	  for (i = 0; i < G15_LCD_WIDTH; i++)
-	    {
-	      scope_data[i] = data[0][i] / scale;  /* FIXME: Use both channels? */
-	      if (abs(scope_data[i]) > abs(max))
-		max = scope_data[i];
-	    }
-	  scale += 128;
-	} while (abs(max) > 10);
-    }
-  
-  pthread_mutex_unlock (&g15buf_mutex);
-}
-
-static void g15analyser_render_freq(gint16 data[2][256]) {
   
   
-  pthread_mutex_lock(&g15buf_mutex);
-  
-  if (playing)
-    {
-      gint i,drawable_space;
-      gdouble y;
-      /* code from version 0.1 */
-      
-      /* dynamically calculate the scale (maybe changed in config) */
-      drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*(1-title_overlay)*show_title*rownum + amplification;
-      scale = drawable_space / ( log((1 - linearity) / linearity) *2 );  
-      x00 = linearity*linearity*32768.0/(2 * linearity - 1);
-      y00 = -log(-x00) * scale;
-      
-      for (i = 0; i < WIDTH; i++) {
-	y = (gdouble)data[0][i] * (i + 1); /* Compensating the energy */  /* FIXME: Use both channels? */
-	y = ( log(y - x00) * scale + y00 ); /* Logarithmic amplitude */
-	
-	y = ( (dif-2)*y + /* FIXME: conditionals should be rolled out of the loop */
-	      (i==0       ? y : bar_heights[i-1]) +
-	      (i==WIDTH-1 ? y : bar_heights[i+1])) / dif; /* Add some diffusion */
-	y = ((tau-1)*bar_heights[i] + y) / tau; /* Add some dynamics */
-	bar_heights[i] = (gint16)y; 
+  static void g15analyser_init(void) {
+    
+    pthread_mutex_init(&g15buf_mutex, NULL); 
+    g15analyser_conf_reset();
+    g15spectrum_read_config();
+    
+    pthread_mutex_lock(&g15buf_mutex);
+    
+    if (enable_keybindings) {
+      dpy = XOpenDisplay(getenv("DISPLAY"));
+      if (!dpy) {
+	printf("Can't open display\n");
+	return;
+      }
+      root_win = DefaultRootWindow(dpy);
+      if (!root_win) {
+	printf("Cant find root window\n");
+	return;
       }
       
+      /* completely ignore errors and carry on */
+      XSetErrorHandler(myx_error_handler);
+      XFlush(dpy);
+      
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPlay), AnyModifier, root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioStop), AnyModifier, root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioPrev), AnyModifier, root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioNext), AnyModifier, root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioLowerVolume),Mod2Mask , root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioRaiseVolume), Mod2Mask, root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
+      XGrabKey(dpy,XKeysymToKeycode(dpy, XF86XK_AudioMute), Mod2Mask, root_win,
+	       False, GrabModeAsync, GrabModeAsync);                                     
     }
+    
+    g15screen_fd = new_g15_screen(G15_G15RBUF);
+    if(g15screen_fd < 0 ){
+      printf("Cant connect with G15daemon !\n");
+      pthread_mutex_unlock(&g15buf_mutex);
+      gtk_idle_add (g15analyser_disable,NULL);
+      return;
+    }
+    canvas = (g15canvas *) malloc (sizeof (g15canvas));
+    if (canvas != NULL)
+      {
+	memset(canvas->buffer, 0, G15_BUFFER_LEN);
+	canvas->mode_cache = 0;
+	canvas->mode_reverse = 0;
+	canvas->mode_xor = 0;
+      }
+    
+    
+    pthread_mutex_unlock(&g15buf_mutex);
+    /* increase lcd drive voltage/contrast for this client */
+    g15_send_cmd(g15screen_fd, G15DAEMON_CONTRAST,2);
+    
+    pthread_attr_t attr;
+    memset(&attr,0,sizeof(pthread_attr_t));
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    if (enable_keybindings){
+      mmedia_timeout_handle = g_timeout_add(100, poll_mmediakeys, NULL);
+      g15keys_timeout_handle = g_timeout_add(100, poll_g15keys, NULL);
+    }
+    g15disp_timeout_handle = g_timeout_add(75, g15send_func, NULL);
+    
+  }
   
-  pthread_mutex_unlock(&g15buf_mutex);
+  static void g15analyser_cleanup(void) {
+    
+    pthread_mutex_lock (&g15buf_mutex);
+    /* Write down config */
+    g15spectrum_write_config();
+    if (canvas != NULL)
+      free(canvas);
+    if(g15screen_fd)
+      close(g15screen_fd);
+    pthread_mutex_unlock (&g15buf_mutex);
+    if (enable_keybindings){
+      XUngrabKey(dpy, XF86XK_AudioPrev, AnyModifier, root_win);
+      XUngrabKey(dpy, XF86XK_AudioNext, AnyModifier, root_win);
+      XUngrabKey(dpy, XF86XK_AudioPlay, AnyModifier, root_win);
+      XUngrabKey(dpy, XF86XK_AudioStop, AnyModifier, root_win);
+      XUngrabKey(dpy, XF86XK_AudioLowerVolume, Mod2Mask, root_win);
+      XUngrabKey(dpy, XF86XK_AudioRaiseVolume, Mod2Mask, root_win);
+      XUngrabKey(dpy, XF86XK_AudioMute, AnyModifier, root_win);
+      
+      gtk_timeout_remove(mmedia_timeout_handle);
+      gtk_timeout_remove(g15keys_timeout_handle);
+    }
+    gtk_timeout_remove(g15disp_timeout_handle);
+    if (enable_keybindings)
+      XCloseDisplay(dpy);
+    
+    return;
+  }
   
-  return;
+  static void g15analyser_playback_start(void) {
+    
+    pthread_mutex_lock (&g15buf_mutex);
+    playing = 1;
+    paused = 0;
+    pthread_mutex_unlock (&g15buf_mutex);
+    return;
+    
+  }
   
-}
-
+  static void g15analyser_playback_stop(void) {
+    
+    pthread_mutex_lock (&g15buf_mutex);
+    playing = 0;
+    paused = 0;
+    pthread_mutex_unlock (&g15buf_mutex);
+    return;
+    
+  }
+  
+  static void g15analyser_render_pcm(gint16 data[2][512]) {
+    pthread_mutex_lock (&g15buf_mutex);
+    
+    if (playing)
+      {
+	gint i;
+	gint max;
+	gint scale = 128;
+	
+	do
+	  {
+	    max = 0;
+	    for (i = 0; i < G15_LCD_WIDTH; i++)
+	      {
+		scope_data[i] = data[0][i] / scale;  /* FIXME: Use both channels? */
+		if (abs(scope_data[i]) > abs(max))
+		  max = scope_data[i];
+	      }
+	    scale += 128;
+	  } while (abs(max) > 10);
+      }
+    
+    pthread_mutex_unlock (&g15buf_mutex);
+  }
+  
+  static void g15analyser_render_freq(gint16 data[2][256]) {
+    
+    
+    pthread_mutex_lock(&g15buf_mutex);
+    
+    if (playing)
+      {
+	gint i,drawable_space;
+	gdouble y;
+	/* code from version 0.1 */
+	
+	/* dynamically calculate the scale (maybe changed in config) */
+	drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*(1-title_overlay)*show_title*rownum + amplification;
+	scale = drawable_space / ( log((1 - linearity) / linearity) *2 );  
+	x00 = linearity*linearity*32768.0/(2 * linearity - 1);
+	y00 = -log(-x00) * scale;
+	
+	for (i = 0; i < WIDTH; i++) {
+	  y = (gdouble)data[0][i] * (i + 1); /* Compensating the energy */  /* FIXME: Use both channels? */
+	  y = ( log(y - x00) * scale + y00 ); /* Logarithmic amplitude */
+	  
+	  y = ( (dif-2)*y + /* FIXME: conditionals should be rolled out of the loop */
+		(i==0       ? y : bar_heights[i-1]) +
+		(i==WIDTH-1 ? y : bar_heights[i+1])) / dif; /* Add some diffusion */
+	  y = ((tau-1)*bar_heights[i] + y) / tau; /* Add some dynamics */
+	  bar_heights[i] = (gint16)y; 
+	}
+	
+      }
+    
+    pthread_mutex_unlock(&g15buf_mutex);
+    
+    return;
+    
+  }
+  
