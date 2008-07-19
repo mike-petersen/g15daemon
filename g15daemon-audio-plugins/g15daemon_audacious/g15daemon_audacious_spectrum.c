@@ -70,7 +70,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.5"
+#define PLUGIN_VERSION "2.5.6"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
@@ -203,7 +203,7 @@ static int volume;
 
 /* gdk stuff */
 static GtkWidget *configure_win = NULL;
-static GtkWidget *vbox;
+static GtkWidget *vbox, *hbox;
 static GtkWidget *bbox, *ok, *cancel, *apply, *defaults;
 static GtkWidget *t_options_bars_radio, *t_options_scope_radio;
 static GtkWidget *t_options_effect_no, *t_options_effect_line, *t_options_effect_peak, *t_options_effect_analog;
@@ -520,13 +520,16 @@ void g15analyser_conf(void){
   gtk_window_set_policy(GTK_WINDOW(configure_win), FALSE, FALSE, FALSE);
   gtk_window_set_position(GTK_WINDOW(configure_win), GTK_WIN_POS_MOUSE);
   gtk_signal_connect(GTK_OBJECT(configure_win), "destroy", GTK_SIGNAL_FUNC(gtk_widget_destroyed), &configure_win);
-  
+
   vbox = gtk_vbox_new(FALSE, 5);
-  
+  gtk_widget_show(vbox);
+  gtk_container_add(GTK_CONTAINER(configure_win), vbox);
+ 
   /* general config */
   
   g_options_frame = gtk_frame_new("General:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame), 5);
+  gtk_widget_set_size_request (g_options_frame, 258, -1);
   t_options_vistype = gtk_vbox_new(FALSE, 5);
   label = gtk_label_new("Visualization Type:");
   gtk_misc_set_alignment(GTK_MISC (label), 0, 0);
@@ -594,10 +597,16 @@ void g15analyser_conf(void){
   gtk_widget_show(g_options_frame);
   
   
+  hbox = gtk_hbox_new(FALSE, 5);
+  gtk_widget_show(hbox);
+  //gtk_container_add(GTK_BOX (vbox), hbox);
+  gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, TRUE, 0);
+
   /* bars config */
   
   g_options_frame_bars = gtk_frame_new("Spectrum bars options:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame), 5);
+  //gtk_widget_set_size_request (g_options_frame_bars, 258, 258);
   t_options_bars = gtk_vbox_new(FALSE, 5);
   /* number of the bars */
   label_bars=gtk_label_new("Num Bars:");
@@ -641,13 +650,14 @@ void g15analyser_conf(void){
   /* draw frame */
   gtk_container_add(GTK_CONTAINER(g_options_frame_bars), t_options_bars); 
   gtk_widget_show(t_options_bars);
-  gtk_box_pack_start(GTK_BOX(vbox), g_options_frame_bars, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(hbox), g_options_frame_bars, TRUE, TRUE, 0);
   gtk_widget_show(g_options_frame_bars);
   
   
   /* bars effects */
   g_options_frame_bars_effects = gtk_frame_new("Spectrum bars effects:");
   gtk_container_set_border_width(GTK_CONTAINER(g_options_frame_bars_effects), 5);
+  //gtk_widget_set_size_request (g_options_frame_bars_effects, 258, 268);
   t_options_bars_effects = gtk_vbox_new(FALSE, 5);
   /* radio effect type */
   t_options_effect_no     = gtk_radio_button_new_with_label(NULL, "None");
@@ -694,7 +704,7 @@ void g15analyser_conf(void){
   /* draw frame */
   gtk_container_add(GTK_CONTAINER(g_options_frame_bars_effects), t_options_bars_effects); 
   gtk_widget_show(t_options_bars_effects);
-  gtk_box_pack_start(GTK_BOX(vbox), g_options_frame_bars_effects, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(hbox), g_options_frame_bars_effects, TRUE, TRUE, 0);
   gtk_widget_show(g_options_frame_bars_effects);
   
   
@@ -704,34 +714,33 @@ void g15analyser_conf(void){
   gtk_button_box_set_spacing(GTK_BUTTON_BOX(bbox), 5);
   gtk_box_pack_start(GTK_BOX(vbox), bbox, FALSE, FALSE, 0);
   
-  ok = gtk_button_new_with_label(" Ok ");
+  ok = gtk_button_new_from_stock ("gtk-save");
   gtk_signal_connect(GTK_OBJECT(ok), "clicked", GTK_SIGNAL_FUNC(g15analyser_conf_ok), NULL);
   GTK_WIDGET_SET_FLAGS(ok, GTK_CAN_DEFAULT);
   gtk_box_pack_start(GTK_BOX(bbox), ok, TRUE, TRUE, 0);
   gtk_widget_show(ok);
   
-  apply = gtk_button_new_with_label(" Apply ");
+  apply = gtk_button_new_from_stock ("gtk-apply");
   gtk_signal_connect(GTK_OBJECT(apply), "clicked", GTK_SIGNAL_FUNC(g15analyser_conf_apply), NULL);
   GTK_WIDGET_SET_FLAGS(apply, GTK_CAN_DEFAULT);
   gtk_box_pack_start(GTK_BOX(bbox), apply, TRUE, TRUE, 0);
   gtk_widget_show(apply);
   
-  defaults = gtk_button_new_with_label(" Reset ");
+  defaults = gtk_button_new_from_stock ("gtk-revert-to-saved");
   gtk_signal_connect(GTK_OBJECT(defaults), "clicked", GTK_SIGNAL_FUNC(g15analyser_conf_reset_defaults_gui), NULL);
   GTK_WIDGET_SET_FLAGS(defaults, GTK_CAN_DEFAULT);
   gtk_box_pack_start(GTK_BOX(bbox), defaults, TRUE, TRUE, 0);
   gtk_widget_show(defaults);
   
-  cancel = gtk_button_new_with_label("Cancel");
+  cancel = gtk_button_new_from_stock ("gtk-cancel");
   gtk_signal_connect_object(GTK_OBJECT(cancel), "clicked", GTK_SIGNAL_FUNC(g15analyser_conf_cancel), GTK_OBJECT(configure_win));
   GTK_WIDGET_SET_FLAGS(cancel, GTK_CAN_DEFAULT);
   gtk_box_pack_start(GTK_BOX(bbox), cancel, TRUE, TRUE, 0);
   
-  gtk_container_add(GTK_CONTAINER(configure_win), vbox);
   /* Show all */
   gtk_widget_show(cancel);
   gtk_widget_show(bbox);
-  gtk_widget_show(vbox);
+
   gtk_widget_show(configure_win);
   return;
 }
