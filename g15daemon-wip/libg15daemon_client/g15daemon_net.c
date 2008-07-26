@@ -217,7 +217,7 @@ int g15_recv_oob_answer(int sock) {
     if(poll(pfd,1,100)>0){
        if(pfd[0].revents & POLLPRI && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) { 
              memset(packet,0,sizeof(packet));
-             msgret = recv(sock, packet, 10 , MSG_OOB);
+             msgret = recv(sock, packet, sizeof(packet), MSG_OOB);
              if (msgret < 1) {
                   return -1;
               }

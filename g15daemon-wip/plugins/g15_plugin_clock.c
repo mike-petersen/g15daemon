@@ -92,8 +92,6 @@ static void draw_static_canvas(void)
   int i;
   
   g15r_clearScreen (c, G15_COLOR_WHITE);
-  g15r_drawCircle(c, CLOCK_CENTERX, CLOCK_CENTERY, CLOCK_RADIUS, 0, G15_COLOR_BLACK);
-  g15r_drawCircle(c, CLOCK_CENTERX, CLOCK_CENTERY, 2,            1, G15_COLOR_BLACK);
 
   for (i=0; i<60; i+=5)
   {
@@ -131,6 +129,9 @@ static void draw_static_canvas(void)
 	  g15r_setPixel(c, x1+dir, y1+dir, G15_COLOR_BLACK);
 	}
   }
+
+  g15r_drawCircle(c, CLOCK_CENTERX, CLOCK_CENTERY, CLOCK_RADIUS, 0, G15_COLOR_BLACK);
+  g15r_drawCircle(c, CLOCK_CENTERX, CLOCK_CENTERY, 2,            1, G15_COLOR_BLACK);
 }
 
 static int draw_digital(g15canvas *canvas)
