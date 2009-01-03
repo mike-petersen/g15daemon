@@ -1,4 +1,4 @@
-G15Stats - a CPU/Memory/Swap usage meter for G15Daemon.
+G15Stats - a CPU/Memory/Swap/Network/Battery usage meter for G15Daemon.
 
 This first version of G15Stats requires libgtop development packages to be
 installed before compilation.
@@ -15,6 +15,8 @@ of pages currently paged in/out.
 
 Network Screen displays Total bytes In/Out, history graph, Peak speed.
 
+Battery Status Screen displays battery charge data for up to three batteries
+
 Options:
 -i interface	Gather statistics from named interface (ie -i eth0)
 -d 		Run in background (daemonise)
@@ -27,10 +29,8 @@ $> g15stats
 
 Once running, the separate screens can be switched to as follows:
 
-L2: CPU Usage (default)
-L3: Memory Usage
-L4: Swap Usage.
-L5: Network Interface Statistics (if g15stats is run with -i 'interface')
+L2: Previous Screen
+L3: Next Screen
 
 BUGS:
 none currently known.
