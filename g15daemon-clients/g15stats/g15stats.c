@@ -26,7 +26,7 @@ Client screens can be cycled through by pressing the 'L1' key.
 This is a cpu and memory stats client
 */
 
-
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,10 +51,10 @@ This is a cpu and memory stats client
 #include <glibtop/swap.h> 
 #include <glibtop/loadavg.h>
 #include <glibtop/uptime.h>
+#include "g15stats.h"
 
 int g15screen_fd;
 int cycle = 0;
-#define MAX_NET_HIST 107
 
 unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
@@ -156,24 +156,24 @@ void draw_mem_screen(g15canvas *canvas) {
     glibtop_get_mem(&mem);
 
     sprintf(tmpstr,"Usr %2.f%%",((float)mem.user/(float)mem.total)*100);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 2);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 2);
     sprintf(tmpstr,"Buf %2.f%%",((float)mem.buffer/(float)mem.total)*100);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 14);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 14);
     sprintf(tmpstr,"Che %2.f%%",((float)mem.cached/(float)mem.total)*100);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 26);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 26);
 
-    g15r_drawBar(canvas,43,1,150,10,1,mem.user,mem.total,4);
-    g15r_drawBar(canvas,43,12,150,21,1,mem.buffer,mem.total,4);
-    g15r_drawBar(canvas,43,23,150,32,1,mem.cached,mem.total,4);
-    drawBar_reversed(canvas,43,1,150,32,1,mem.free,mem.total,5);
+    g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,(mem.user/1024),(mem.total/1024),4);
+    g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,(mem.buffer/1024),(mem.total/1024),4);
+    g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,(mem.cached/1024),(mem.total/1024),4);
+    drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,(mem.free/1024),(mem.total/1024),5);
 
-    g15r_drawLine (canvas, 40, 1, 40, 32, 1);
-    g15r_drawLine (canvas, 41, 1, 41, 32, 1);
+    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
-    g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, TEXT_RIGHT, 4);
 
     sprintf(tmpstr,"Memory Used %dMb | Memory Total %dMb",(unsigned int)((mem.buffer+mem.cached+mem.user)/(1024*1024)),(unsigned int)(mem.total/(1024*1024)));
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
@@ -188,21 +188,21 @@ void draw_swap_screen(g15canvas *canvas) {
 
     glibtop_get_swap(&swap);
 
-    g15r_renderString (canvas, (unsigned char*)"Swap", 0, G15_TEXT_MED, 1, 9);
+    g15r_renderString (canvas, (unsigned char*)"Swap", 0, G15_TEXT_MED, TEXT_LEFT, 9);
     sprintf(tmpstr,"Used %i%%",(unsigned int)(((float)swap.used/(float)swap.total)*100));
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 19);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 19);
 
-    g15r_drawBar(canvas,43,1,150,32,1,(swap.used/1024),swap.total/1024,4);
+    g15r_drawBar(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,(swap.used/1024),swap.total/1024,4);
 
-    drawBar_reversed(canvas,43,1,150,32,1,(swap.total/1024)-(swap.used/1024),swap.total/1024,5);
+    drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,(swap.total/1024)-(swap.used/1024),swap.total/1024,5);
 
-    g15r_drawLine (canvas, 40, 1, 40, 32, 1);
-    g15r_drawLine (canvas, 41, 1, 41, 32, 1);
+    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
-    g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, TEXT_RIGHT, 4);
 
     sprintf(tmpstr,"Swap Used %dMb | Swap Avail. %dMb",(unsigned int)(swap.used/(1024*1024)),(unsigned int)(swap.total/(1024*1024)));
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
@@ -255,18 +255,18 @@ void draw_cpu_screen(g15canvas *canvas) {
     sprintf(tmpstr,"Nce %2.f%%",((float)b_nice/(float)b_total)*100);
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 26);
 
-    g15r_drawBar(canvas,43,1,150,10,1,b_user+1,b_total,4);
-    g15r_drawBar(canvas,43,12,150,21,1,b_sys+1,b_total,4);
-    g15r_drawBar(canvas,43,23,150,32,1,b_nice+1,b_total,4);
-    drawBar_reversed(canvas,43,1,150,32,1,b_idle+1,b_total,5);
+    g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,b_user+1,b_total,4);
+    g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,b_sys+1,b_total,4);
+    g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,b_nice+1,b_total,4);
+    drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,b_idle+1,b_total,5);
 
-    g15r_drawLine (canvas, 40, 1, 40, 32, 1);
-    g15r_drawLine (canvas, 41, 1, 41, 32, 1);
+    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
-    g15r_renderString (canvas, (unsigned char*)"I", 0, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"d", 1, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"l", 2, G15_TEXT_MED, 152, 4);
-    g15r_renderString (canvas, (unsigned char*)"e", 3, G15_TEXT_MED, 152, 4);
+    g15r_renderString (canvas, (unsigned char*)"I", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"d", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"l", 2, G15_TEXT_MED, TEXT_RIGHT, 4);
+    g15r_renderString (canvas, (unsigned char*)"e", 3, G15_TEXT_MED, TEXT_RIGHT, 4);
 
 //  sprintf(tmpstr,"IOWait %u, Interrupts/s %u",b_iowait, b_irq);
     float minutes = uptime.uptime/60;
@@ -316,15 +316,15 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
     for(i=net_rr_index+1;i<MAX_NET_HIST;i++) {
       diff = (float) net_max_in / (float) net_hist[i][0];
       height = 16-(16/diff);
-      g15r_setPixel(canvas,x,height,1);
-      g15r_drawLine(canvas,x,height,x-1,last,1);
+      g15r_setPixel(canvas,x,height,G15_COLOR_BLACK);
+      g15r_drawLine(canvas,x,height,x-1,last,G15_COLOR_BLACK);
       last=height;
       x++;
     }
     for(i=0;i<net_rr_index;i++) {
       diff = (float) net_max_in / (float) net_hist[i][0];
       height = 16-(16 / diff);
-      g15r_drawLine(canvas,x,height,x-1,last,1);
+      g15r_drawLine(canvas,x,height,x-1,last,G15_COLOR_BLACK);
       last=height;
       x++;
     }
@@ -333,21 +333,21 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
     for(i=net_rr_index+1;i<MAX_NET_HIST;i++) {
       diff = (float) net_max_out / (float) net_hist[i][1];
       height = 34-(16/diff);
-      g15r_setPixel(canvas,x,height,1);
-      g15r_drawLine(canvas,x,height,x-1,last,1);
+      g15r_setPixel(canvas,x,height,G15_COLOR_BLACK);
+      g15r_drawLine(canvas,x,height,x-1,last,G15_COLOR_BLACK);
       last=height;
       x++;
     }
     for(i=0;i<net_rr_index;i++) {
       diff = (float) net_max_out / (float) net_hist[i][1];
       height = 34-(16 / diff);
-      g15r_drawLine(canvas,x,height,x-1,last,1);
+      g15r_drawLine(canvas,x,height,x-1,last,G15_COLOR_BLACK);
       last=height;
       x++;
     }
-    g15r_drawLine (canvas, 52, 0, 52, 34, 1);
-    g15r_drawLine (canvas, 53, 0, 53, 34, 1);
-    g15r_drawLine (canvas, 54, 0, 54, 34, 1);
+    g15r_drawLine (canvas, 52, 0, 52, 34, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, 53, 0, 53, 34, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, 54, 0, 54, 34, G15_COLOR_BLACK);
 
     sprintf(tmpstr,"IN %s",show_bytes(netload.bytes_in));
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 2);
@@ -365,6 +365,147 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
 
 }
 
+void draw_bat_screen(g15canvas *canvas) {
+
+	g15_stats_bat_info bats[NUM_BATS];
+	long	tot_max_charge = 0;
+	long	tot_cur_charge = 0;
+
+	FILE	*fd_state;
+	FILE	*fd_info;
+	char	line	[MAX_LINES];
+	char	value	[MAX_LINES];
+	char	tmpstr	[MAX_LINES];
+
+	int i = 0;
+	for (i = 0; i < NUM_BATS; i++)
+	{
+		char filename[30];
+
+		// Initialize battery state
+		bats[i].max_charge = 0;
+		bats[i].cur_charge = 0;
+		bats[i].status = -1;
+
+		sprintf(filename, "/proc/acpi/battery/BAT%d/state", i);
+		fd_state=fopen (filename,"r");
+		if (fd_state!=NULL)
+		{
+			while (fgets (line,MAX_LINES,fd_state)!=NULL)
+			{
+				// Parse the state file for battery info
+				if (strcasestr (line,"remaining capacity")!=0)
+				{
+					strncpy ((char *)value,((char *)line)+25,5);
+					bats[i].cur_charge=atoi (value);
+				}
+				if (strcasestr (line,"charging state")!=0)
+				{
+					if (strcasestr (line,"charged")!=0)
+					{
+						bats[i].status=0;
+					}
+					if (strcasestr (line," charging")!=0)
+					{
+						bats[i].status=1;
+					}
+					if (strcasestr (line,"discharging")!=0)
+					{
+						bats[i].status=2;
+					}
+				}
+			}
+			fclose (fd_state);
+			sprintf(filename, "/proc/acpi/battery/bat%d/info", i);
+			fd_info=fopen (filename,"r");
+
+			if (fd_info!=NULL)
+			{
+				while (fgets (line,MAX_LINES,fd_info)!=NULL)
+				{
+					// Parse the info file for battery info
+					if (strcasestr (line,"last full capacity")!=0)
+					{
+						strncpy ((char *)value,((char *)line)+25,5);
+						bats[i].max_charge=atoi (value);
+					}
+				}
+				fclose (fd_info);
+			}
+
+			tot_cur_charge += bats[i].cur_charge;
+			tot_max_charge += bats[i].max_charge;
+
+		}
+	}
+
+	g15r_clearScreen (canvas, G15_COLOR_WHITE);
+
+	g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 155, 4);
+	g15r_renderString (canvas, (unsigned char*)"U", 1, G15_TEXT_MED, 155, 4);
+	g15r_renderString (canvas, (unsigned char*)"L", 2, G15_TEXT_MED, 155, 4);
+	g15r_renderString (canvas, (unsigned char*)"L", 3, G15_TEXT_MED, 155, 4);
+
+	g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+	g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+
+	for (i = 0; i < NUM_BATS; i++)
+	{
+		register float charge = 0;
+		register int bar_top = (i*10) + 1 + i;
+		register int bar_bottom = ((i+1)*10) + i;
+		if (bats[i].max_charge > 0)
+		{
+			charge = ((float)bats[i].cur_charge/(float)bats[i].max_charge)*100;
+		}
+		sprintf(tmpstr,"Bt%d %2.f%%", i, charge);
+		g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, (i*12) + 2);
+		g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, bats[i].cur_charge, bats[i].max_charge, 4);
+	}
+
+	drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,100-(((float)tot_cur_charge/(float)tot_max_charge)*100),100,5);
+
+	float total_charge = 0;
+	if (tot_max_charge > 0)
+	{
+		total_charge = ((float)tot_cur_charge/(float)tot_max_charge)*100;
+	}
+	sprintf (tmpstr,"Total %2.f%% | ", total_charge);
+
+	for (i = 0; i < NUM_BATS; i++)
+	{
+		char extension[11];
+		switch (bats[i].status)
+		{
+			case -1:
+			{
+				sprintf(extension, "Bt%d - | ", i);
+				break;
+			}
+			case 0:
+			{
+				sprintf(extension, "Bt%d F | ", i);
+				break;
+			}
+			case 1:
+			{
+				sprintf(extension, "Bt%d C | ", i);
+				break;
+			}
+			case 2:
+			{
+				sprintf(extension, "Bt%d D | ", i);
+				break;
+			}
+		}
+
+		strcat (tmpstr, extension);
+	}
+
+	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
+
 void keyboard_watch(void) {
     unsigned int keystate;
 
@@ -374,17 +515,27 @@ void keyboard_watch(void) {
         if(keystate & G15_KEY_L1) {
         }
         else if(keystate & G15_KEY_L2) {
-            cycle=0;
+            cycle--;
         }
         else if(keystate & G15_KEY_L3) {
-            cycle=1;
+            cycle++;
         }
         else if(keystate & G15_KEY_L4) {
-            cycle=2;
+		// These can now be passed to the "app" running
         }
         else if(keystate & G15_KEY_L5) {
-            cycle=3;
+		// These can now be passed to the "app" running
         }
+	if (cycle<0)
+	{
+		// Wrap around the apps
+		cycle=MAX_SCREENS;
+	}
+	if (cycle>MAX_SCREENS)
+	{
+		//Wrap around the apps
+		cycle=0;
+	}
         usleep(100*900);
     }
 
@@ -508,6 +659,9 @@ int main(int argc, char *argv[]){
                   cycle=0;
                 }
                 break;
+	    case 4:
+		draw_bat_screen(canvas);
+		break;
             default:
                 printf("cycle reched %i\n",cycle);
         }
