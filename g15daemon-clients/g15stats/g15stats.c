@@ -416,7 +416,7 @@ void draw_bat_screen(g15canvas *canvas) {
 				}
 			}
 			fclose (fd_state);
-			sprintf(filename, "/proc/acpi/battery/bat%d/info", i);
+			sprintf(filename, "/proc/acpi/battery/BAT%d/info", i);
 			fd_info=fopen (filename,"r");
 
 			if (fd_info!=NULL)
