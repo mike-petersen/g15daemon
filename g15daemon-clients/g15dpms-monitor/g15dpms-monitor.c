@@ -52,6 +52,7 @@
 
 
 int leaving = 0;
+int bright = 0;
 
 extern Bool DPMSQueryExtension (Display *, int *event_ret, int *err_ret);
 extern Status DPMSGetVersion (Display *, int *major_ret, int *minor_ret);
@@ -71,16 +72,27 @@ int toggle_g15lights(int g15screen_fd, int lightstatus, int fg_check)
     g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
 
   if(lightstatus) {
-     usleep(500);
-     g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
-     usleep(500);
-     g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+     if (bright) {
+       // Fade up to bright
+       usleep(500);
+       g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+       usleep(500);
+       g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
+       usleep(500);
+       g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+       usleep(500);
+       g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
+     } else {
+       usleep(500);
+       g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+       usleep(500);
+       g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+     }
   } else {
      usleep(500);
      g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
      usleep(500);
      g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_DARK);
-     
   }   
   return 0;
 }
@@ -156,7 +168,10 @@ int main(int argc, char **argv) {
     if (!strncmp(argument, "-v",2) || !strncmp(argument, "--version",9)) {
       printf("%s version %s\n",argv[0],VERSION);
       exit(0);     
-    }    
+    }
+    if (!strncmp(argument, "-b",2) || !strncmp(argument, "--bright",13)) {
+      bright=1;
+    }
     if (!strncmp(argument, "-h",2) || !strncmp(argument, "--help",6)) {
       printf("  %s version %s\n  (c)2007 Mike Lampard\n\n",argv[0],VERSION);
       printf(" -a or --activate <minutes>        - cause DPMS to be activated in <minutes> if no activity.\n");
@@ -167,6 +182,7 @@ int main(int argc, char **argv) {
       printf("                                     with no keyboard or mouse activity.\n");
       printf(" -e or --cmd-enable <cmd to run>   - Run program <cmd> when DPMS is activated.\n\n");
       printf(" -d or --cmd-disable <cmd to run>  - Run program <cmd> when DPMS is de-activated.\n\n");
+      printf(" -b or --bright                    - When the keyboard is woken up, set the LEDs to bright.\n\n");
       printf(" -v or --version                   - Show program version\n\n");
       printf(" -h or --help                      - This page\n\n");
       exit(0);
