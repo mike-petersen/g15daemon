@@ -64,31 +64,21 @@ int toggle_g15lights(int g15screen_fd, int lightstatus, int fg_check)
 {
   int dummy=0;
 
-  if(fg_check!=0 && lightstatus == False) {
-     g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
-  }
-
-  if(fg_check==0 && lightstatus == False)
-    g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
-
   if(lightstatus) {
+     usleep(500);
+     g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+     usleep(500);
+     g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
+
      if (bright) {
        // Fade up to bright
        usleep(500);
-       g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
-       usleep(500);
        g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
        usleep(500);
-       g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
-       usleep(500);
        g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_BRIGHT);
-     } else {
-       usleep(500);
-       g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
-       usleep(500);
-       g15_send_cmd (g15screen_fd, G15DAEMON_KB_BACKLIGHT, G15_BRIGHTNESS_MEDIUM);
      }
   } else {
+     g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
      usleep(500);
      g15_send_cmd (g15screen_fd, G15DAEMON_BACKLIGHT, G15_BRIGHTNESS_DARK);
      usleep(500);
