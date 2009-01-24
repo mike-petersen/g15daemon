@@ -15,7 +15,7 @@
         along with g15daemon; if not, write to the Free Software
         Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-        (c) 2006-2007 Mike Lampard 
+        (c) 2006-2007 Mike Lampard
 
         $Revision$ -  $Date$ $Author$
 
@@ -41,7 +41,8 @@
 #include <sys/time.h>
 #include <config.h>
 #include <X11/Xlib.h>
-#include <stdarg.h> 
+#include <stdarg.h>
+#include <math.h>
 #ifdef HAVE_X11_EXTENSIONS_XTEST_H
 #include <X11/extensions/XTest.h>
 #endif
@@ -51,12 +52,13 @@
 #include <libg15.h>
 #include <libg15render.h>
 #include "config.h"
+#include "g15macro_small.xbm"
 
-#define  XK_MISCELLANY 
+#define  XK_MISCELLANY
 #define XK_LATIN1
 #define XK_LATIN2
 #include <X11/keysymdef.h>
-        
+
 int g15screen_fd;
 int config_fd = 0;
 g15canvas *canvas;
@@ -66,6 +68,7 @@ static Window root_win;
 
 pthread_mutex_t x11mutex;
 pthread_mutex_t config_mutex;
+pthread_mutex_t gui_select;
 
 int leaving = 0;
 int display_timeout=500;
@@ -73,6 +76,19 @@ int have_xtest = False;
 int debug = 0;
 
 char configpath[1024];
+
+char configDir[1024];
+
+#define MAX_CONFIGS 32
+unsigned int numConfigs = 0;
+unsigned int currConfig = 0;
+unsigned int gui_selectConfig = 0;
+
+// this is for keeping track of when to redraw
+unsigned int gui_redraw = MAX_CONFIGS+1; // To make sure it will be redrawn at first
+unsigned char was_recording = 1;
+
+char *configs[MAX_CONFIGS]; // Max possible configs are 32. Too lazy to create a struct for storing dynamically.
 
 unsigned char recstring[1024];
 
@@ -105,7 +121,7 @@ typedef struct gkeys_s{
 
 typedef struct mstates_s {
     gkeys_t gkeys[18];
-}mstates_t; 
+}mstates_t;
 
 mstates_t *mstates[3];
 
@@ -139,16 +155,16 @@ const long gkeydefaults[] = {
     XF86XK_Launch8,
     XF86XK_Launch9,
     XF86XK_LaunchA,
-    XF86XK_LaunchB, 
-    XF86XK_LaunchC,  
-    XF86XK_LaunchD, 
-    XF86XK_LaunchE, 
-    XF86XK_LaunchF, 
-    XF86XK_iTouch, 
-    XF86XK_Calculater, 
-    XF86XK_Support, 
-    XF86XK_Word, 
-    XF86XK_Messenger, 
+    XF86XK_LaunchB,
+    XF86XK_LaunchC,
+    XF86XK_LaunchD,
+    XF86XK_LaunchE,
+    XF86XK_LaunchF,
+    XF86XK_iTouch,
+    XF86XK_Calculater,
+    XF86XK_Support,
+    XF86XK_Word,
+    XF86XK_Messenger,
     XF86XK_WebCam,
     /* M2 palette */
     XK_F13,
@@ -229,15 +245,175 @@ static int g15macro_log (const char *fmt, ...) {
     return 0;
 }
 
+//TODO: Put into libg15render instead
+void drawXBM(g15canvas* canvas, unsigned char* data, int width, int height ,int pos_x, int pos_y)
+{
+	int y = 0;
+	int z = 0;
+	unsigned char byte;
+	int bytes_per_row = ceil((double) width / 8);
+
+	int bits_left = width;
+	int current_bit = 0;
+
+	for(y = 0; y < height; y ++)
+	{
+		bits_left = width;
+		for(z=0;z < bytes_per_row; z++)
+		{
+			byte = data[(y * bytes_per_row) + z];
+			current_bit = 0;
+			while(current_bit < 8)
+			{
+				if(bits_left > 0)
+				{
+					if((byte >> current_bit) & 1) g15r_setPixel(canvas, (current_bit + (z*8) + pos_x),y + pos_y,G15_COLOR_BLACK);
+					bits_left--;
+				}
+				current_bit++;
+			}
+		}
+	}
+}
+
+unsigned char* getConfigName(unsigned int id)
+{
+	if (id < 0 || id > numConfigs)
+		return NULL;
+
+	if (id != 0)
+		return (unsigned char*)configs[id];
+	else
+		return (unsigned char*)"Default\0";
+}
+void renderHelp()
+{
+	g15r_drawLine(canvas, G15_LCD_WIDTH-37, 16, G15_LCD_WIDTH, 16, G15_COLOR_BLACK);
+	g15r_drawLine(canvas, G15_LCD_WIDTH-37, 16, G15_LCD_WIDTH-37, G15_LCD_HEIGHT, G15_COLOR_BLACK);
+	g15r_renderString (canvas, (unsigned char *)"1:Default\0", 3, G15_TEXT_SMALL, G15_LCD_WIDTH-35, 0);
+	g15r_renderString (canvas, (unsigned char *)"2:     Up\0", 4, G15_TEXT_SMALL, G15_LCD_WIDTH-35, 0);
+	g15r_renderString (canvas, (unsigned char *)"3:   Down\0", 5, G15_TEXT_SMALL, G15_LCD_WIDTH-35, 0);
+	g15r_renderString (canvas, (unsigned char *)"4:     OK\0", 6, G15_TEXT_SMALL, G15_LCD_WIDTH-35, 0);
+}
+
+// Trims a string to a specific length
+// Caller needs to free the data.
+char* stringTrim(const char* source, const unsigned int len)
+{
+	char* dest = malloc(len);
+	memset(dest,0,len);
+	strncpy(dest,source,len-1);
+
+	return dest;
+}
+
+void gui_selectChange(int change)
+{
+	pthread_mutex_lock(&gui_select);
+
+	if (change == 0)
+	{
+		gui_selectConfig = 0;
+		pthread_mutex_unlock(&gui_select);
+		return;
+	}
+
+	if (gui_selectConfig == 0 && change < 0)
+		gui_selectConfig = numConfigs;
+	else
+	{
+		gui_selectConfig += change;
+		if (gui_selectConfig > numConfigs)
+			gui_selectConfig = 0;
+
+	}
+
+	pthread_mutex_unlock(&gui_select);
+}
+
+//TODO: Make it so that if logitech ever makes fewer or more m states that it could iterate.
+void cleanMstates()
+{
+	pthread_mutex_lock(&config_mutex);
+	//TODO: Reduce memory usage
+	//printf("Cleaning mstates. Size of mstates[0]->gkeys = %i\n",sizeof(mstates[0]->gkeys));
+	//Cleaning mstates. Size of mstates[0]->gkeys = 516240
+	//That's alot of memory for an empty set of gkeys. And about 1.5 megabyte of memory for all 3.
+	memset(mstates[0]->gkeys,0,sizeof(mstates[0]->gkeys));
+	memset(mstates[1]->gkeys,0,sizeof(mstates[1]->gkeys));
+	memset(mstates[2]->gkeys,0,sizeof(mstates[2]->gkeys));
+	pthread_mutex_unlock(&config_mutex);
+}
+
+int calc_mkey_offset() {
+	int mkey_offset=0;
+	switch(mkey_state){
+		case 0:
+			mkey_offset = 0;
+			break;
+		case 1:
+			mkey_offset = 18;
+			break;
+		case 2:
+			mkey_offset = 36;
+			break;
+		default:
+			mkey_offset=0;
+	}
+	return mkey_offset;
+}
+
+/* WARNING:  uses global mkey state */
+void dump_config(FILE *configfile)
+{
+	int i=0,gkey=0;
+	KeySym key;
+	pthread_mutex_lock(&config_mutex);
+	int orig_mkeystate=mkey_state;
+	for(mkey_state=0;mkey_state<3;mkey_state++){
+		if (mkey_state > 0)
+			fprintf(configfile,"\n\n");
+		fprintf(configfile,"Codes for MKey %i\n",mkey_state+1);
+		for(gkey=0;gkey<18;gkey++){
+			fprintf(configfile,"Key %s:",gkeystring[gkey]);
+			/* if no macro has been recorded for this key, dump the g15daemon default keycode */
+			if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+				int mkey_offset=0;
+				mkey_offset = calc_mkey_offset();
+				fprintf(configfile,"\t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
+			}else{
+				fprintf(configfile,"\n");
+				for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
+					key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
+					fprintf(configfile,"\t%s %s %u\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up",(unsigned int)mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].modifiers);
+				}
+			}
+		}
+	}
+	mkey_state=orig_mkeystate;
+	pthread_mutex_unlock(&config_mutex);
+}
+
+void save_macros(char *filename)
+{
+	printf("Saving macros to %s\n",filename);
+	FILE *configfile;
+	configfile=fopen(filename,"w");
+
+	dump_config(configfile);
+
+	fclose(configfile);
+}
+
 void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
-  if(have_xtest && !recording) { 
-    #ifdef HAVE_X11_EXTENSIONS_XTEST_H        
+  if(have_xtest && !recording) {
+    #ifdef HAVE_X11_EXTENSIONS_XTEST_H
     pthread_mutex_lock(&x11mutex);
        XTestFakeKeyEvent(dpy, keycode,keydown, CurrentTime);
        XSync(dpy,False);
     pthread_mutex_unlock(&x11mutex);
     usleep(1500);
-     #endif        
+     #endif
   } else {
     XKeyEvent event;
     Window current_focus;
@@ -270,7 +446,8 @@ void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
 }
 
 void record_cleanup(){
-    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
+    //Do not send double mled status changes, will disrupt the LCD for some reason
+	//(shifts 10-20 pixels to the right each time) Bug in g15daemon/libg15 i suspect.
     memset(recstring,0,strlen((char*)recstring));
     rec_index = 0;
     recording = 0;
@@ -281,12 +458,12 @@ void record_cleanup(){
 }
 
 void record_cancel(){
-    memset(canvas->buffer,0,G15_BUFFER_LEN);
+	g15r_clearScreen(canvas,G15_COLOR_WHITE);
     g15r_renderString (canvas, (unsigned char *)"Recording", 0, G15_TEXT_LARGE, 80-((strlen("Recording")/2)*8), 4);
     g15r_renderString (canvas, (unsigned char *)"Canceled", 0, G15_TEXT_LARGE, 80-((strlen("Canceled")/2)*8), 18);
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
     record_cleanup();
-} 
+}
 
 void record_complete(unsigned long keystate)
 {
@@ -294,7 +471,7 @@ void record_complete(unsigned long keystate)
     int gkey = map_gkey(keystate);
 
     pthread_mutex_lock(&config_mutex);
-    
+
     if(!rec_index) // nothing recorded - delete prior recording
         memset(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress,0,sizeof(keysequence_t));
     else
@@ -302,7 +479,7 @@ void record_complete(unsigned long keystate)
 
     mstates[mkey_state]->gkeys[gkey].keysequence.record_steps=rec_index;
     pthread_mutex_unlock(&config_mutex);
-    
+
     memset(canvas->buffer,0,G15_BUFFER_LEN);
     if(rec_index){
         strcpy(tmpstr,"For key ");
@@ -319,30 +496,13 @@ void record_complete(unsigned long keystate)
         g15r_renderString (canvas, (unsigned char *)"Deleted", 0, G15_TEXT_LARGE, 80-((strlen("Deleted")/2)*8), 18);
     }
     g15r_renderString (canvas, (unsigned char *)tmpstr, 0, G15_TEXT_LARGE, 80-((strlen(tmpstr)/2)*8), 32);
-    
+
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
 
     record_cleanup();
     save_macros(configpath);
 }
 
-int calc_mkey_offset() {
-        int mkey_offset=0;
-        switch(mkey_state){
-          case 0:
-            mkey_offset = 0;
-            break;
-          case 1:
-            mkey_offset = 18;
-            break;
-          case 2:
-            mkey_offset = 36;
-            break;
-          default:
-            mkey_offset=0;
-        }
-      return mkey_offset;
-}
 
 void macro_playback(unsigned long keystate)
 {
@@ -352,7 +512,7 @@ void macro_playback(unsigned long keystate)
     int gkey = map_gkey(keystate);
     if(gkey<0)
       return;
-    
+
     /* if no macro has been recorded for this key, send the g15daemon default keycode */
     if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
         int mkey_offset=0;
@@ -380,7 +540,7 @@ void macro_playback(unsigned long keystate)
         key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
         pthread_mutex_unlock(&x11mutex);
         g15macro_log("\t%s %s\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up");
-        
+
         switch (key) {
             case XK_Control_L:
             case XK_Control_R:
@@ -392,7 +552,7 @@ void macro_playback(unsigned long keystate)
             case XK_Super_R:
             case XK_Hyper_L:
             case XK_Hyper_R:
-             usleep(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].time_ms*1000); 
+             usleep(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].time_ms*1000);
               break;
             default:
              usleep(1000);
@@ -402,82 +562,139 @@ void macro_playback(unsigned long keystate)
     g15macro_log("Macro Playback Complete\n");
 }
 
-/* WARNING:  uses global mkey state */
-void dump_config(FILE *configfile)
+
+void restore_config(char *filename)
 {
-    int i=0,gkey=0;
-    KeySym key;
-    pthread_mutex_lock(&config_mutex);
-    int orig_mkeystate=mkey_state;
-    for(mkey_state=0;mkey_state<3;mkey_state++){
-      fprintf(configfile,"\n\nCodes for MKey %i\n",mkey_state+1);
-      for(gkey=0;gkey<18;gkey++){
-        fprintf(configfile,"Key %s:",gkeystring[gkey]);
-        /* if no macro has been recorded for this key, dump the g15daemon default keycode */
-        if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
-          int mkey_offset=0;
-          mkey_offset = calc_mkey_offset();
-          fprintf(configfile,"\t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
-        }else{
-          fprintf(configfile,"\n");
-          for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
-            key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
-            fprintf(configfile,"\t%s %s %u\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up",(unsigned int)mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].modifiers);
-        }
-      }
-     }
-    }
-    mkey_state=orig_mkeystate;
-    pthread_mutex_unlock(&config_mutex);
+	pthread_mutex_lock(&config_mutex);
+	FILE *f;
+	char tmpstring[1024];
+	unsigned int key=0;
+	unsigned int mkey=0;
+	unsigned int i=0;
+	unsigned int keycode;
+	f=fopen(filename,"r");
+	printf("Restoring macros from %s\n",filename);
+	do
+	{
+		memset(tmpstring,0,1024);
+		fgets(tmpstring,1024,f);
+
+		if(tmpstring[0]=='C'){
+			sscanf(tmpstring,"Codes for MKey %i\n",&mkey);
+			mkey--;
+			i=0;
+		}
+		if(tmpstring[0]=='K'){
+			sscanf(tmpstring,"Key G%i:",&key);
+			key--;
+			i=0;
+		}
+		if(tmpstring[0]=='\t'){
+			char codestr[64];
+			char pressed[20];
+			unsigned int modifiers = 0;
+			sscanf(tmpstring,"\t%s %s %i\n",(char*)&codestr,(char*)&pressed,&modifiers);
+			keycode = XKeysymToKeycode(dpy,XStringToKeysym(codestr));
+			mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].keycode = keycode;
+			mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].pressed = strncmp(pressed,"Up",2)?1:0;
+			mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].modifiers = modifiers;
+			mstates[mkey]->gkeys[key].keysequence.record_steps=++i;
+		}
+	}while(!feof(f));
+
+	fclose(f);
+	pthread_mutex_unlock(&config_mutex);
 }
 
-void save_macros(char *filename){
-  FILE *configfile;
-  configfile=fopen(filename,"w");
-  
-  dump_config(configfile);
-  
-  fclose(configfile);
-}
+void loadMultiConfig()
+{
+	FILE *f;
+	FILE *fCheck;
+	char configPath[1024];
+	char buf[1024]; // Max name length = 256
+	char cfgName[256]; // Basically buf with \n stripped.
+// 	unsigned int numConfigs = 0;
+	int i = 0;
 
-void restore_config(char *filename) {
-  FILE *f;
-  char tmpstring[1024];
-  unsigned int key=0;
-  unsigned int mkey=0;
-  unsigned int i=0;
-  unsigned int keycode;
-  f=fopen(filename,"r");
-  printf("restoring codes\n");
-  pthread_mutex_lock(&config_mutex);
-  do{
-    memset(tmpstring,0,1024);
-    fgets(tmpstring,1024,f);
+	// Initialize configs array
+	for (i = 0; i < MAX_CONFIGS; ++i)
+	{
+		configs[i] = NULL;
+	}
+	configs[0] = malloc(256);
+	memset(configs[0],0,sizeof(configs[0]));
+	strcpy(configs[0], "g15macro.conf");
+	currConfig = 0;
 
-    if(tmpstring[0]=='C'){
-      sscanf(tmpstring,"Codes for MKey %i\n",&mkey);
-      mkey--;
-      i=0;
-    }
-    if(tmpstring[0]=='K'){
-      sscanf(tmpstring,"Key G%i:",&key);
-      key--;
-      i=0;
-    }
-    if(tmpstring[0]=='\t'){
-      char codestr[64];
-      char pressed[20];
-      unsigned int modifiers = 0;
-      sscanf(tmpstring,"\t%s %s %i\n",(char*)&codestr,(char*)&pressed,&modifiers);
-      keycode = XKeysymToKeycode(dpy,XStringToKeysym(codestr));
-      mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].keycode = keycode;
-      mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].pressed = strncmp(pressed,"Up",2)?1:0;
-      mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].modifiers = modifiers;
-      mstates[mkey]->gkeys[key].keysequence.record_steps=++i;     
-    }
-  }  while(!feof(f));
-  pthread_mutex_unlock(&config_mutex);
-  fclose(f);
+	strncpy(configPath,configDir,1024);
+	strncat(configPath,"multipleConfigs.cfg",1024-strlen(configPath));
+
+	f = fopen(configPath,"r");
+	// File not created yet
+	if (!f)
+	{
+		f = fopen(configPath,"w");
+		fprintf(f,"#Place the name of the different configs here, 1 on each line.\n");
+		fprintf(f,"#They will be represented by the filename inside g15macro. Max length = 255 characters.\n");
+		fprintf(f,"#Comments need to be on their own line, and prepended by #, like these rows..\n");
+		fprintf(f,"#At most you can have 32 different files. Ask on the forums if you absolutely need more.\n");
+		fprintf(f,"#You do not need to include the default g15macro.cfg file, it will always be included, and referenced as Default on the lcd.\n");
+		fprintf(f,"#Entries over roughly 15 characters will be cutoff in the Current: field. Entries over 25 will be cutoff in the selection display.\n");
+		fclose(f);
+
+		return;
+	}
+// 	pthread_mutex_lock(&config_mutex);
+
+	while (!feof(f))
+	{
+		memset(buf,0,sizeof(buf));
+		fgets(buf,sizeof(buf),f);
+
+		// Ignore comments and blanklines
+		if (buf[0] == '#' || strlen(buf) == 0)
+			continue;
+
+
+		// +1 cause this is going to be numConfigs+1 config number :) Must check if it will fit or not.
+		// Can not increase numConfigs here, incase we break-out and don't have it in place - segfault.
+		if(numConfigs+1 >= MAX_CONFIGS)
+		{
+			printf("Max of %i config files exceeded. Ignoring rest.\n",MAX_CONFIGS);
+			break;
+		}
+
+		if (strlen(buf) > 255)
+		{
+			printf("Too long line found when reading in configs. Offending config name is %s\n",buf);
+			continue;
+		}
+		i = strcspn(buf,"\n"); // i returns "the length of the initial segment of buf which consists entirely of characters not in reject."
+		memset(cfgName,0,sizeof(cfgName));
+		strncpy(cfgName,buf,i);
+
+		// Check if file exists
+		strncpy(configPath,configDir,sizeof(configPath));
+		strncat(configPath,cfgName,sizeof(configPath)-strlen(configPath));
+		fCheck = fopen(configPath,"r");
+		if (!fCheck)
+		{
+			printf("*** Unable to open %s - no such file or directory. Use\ntouch %s\n to create it.\n",configPath,configPath);
+			continue;
+		}
+		fclose(fCheck);
+
+		++numConfigs;
+
+		// Add it to list of availible configurations
+		printf("Adding Config %i with length %i - name %s\n",numConfigs,strlen(cfgName),cfgName);
+		configs[numConfigs] = malloc(strlen(cfgName)+1); //+1 for null termination
+		memset(configs[numConfigs],0,sizeof(configs[numConfigs]));
+		strcpy(configs[numConfigs],cfgName);
+
+	}
+	fclose(f);
+// 	pthread_mutex_unlock(&config_mutex);
 }
 
 void change_keymap(int offset){
@@ -506,22 +723,22 @@ void configure_mmediakeys(){
    }
    XFlush(dpy);
    pthread_mutex_unlock(&x11mutex);
-   
+
 }
 
 void handle_mkey_switch(unsigned int mkey) {
-    int mkey_offset = 0;  
+    int mkey_offset = 0;
     switch(mkey) {
       case G15_KEY_M1:
         mled_state=G15_LED_M1;
-        mkey_state=0;  
+        mkey_state=0;
         break;
       case G15_KEY_M2:
-        mled_state=G15_LED_M2;  
+        mled_state=G15_LED_M2;
         mkey_state=1;
         break;
       case G15_KEY_M3:
-        mled_state=G15_LED_M3;  
+        mled_state=G15_LED_M3;
         mkey_state=2;
         break;
     }
@@ -554,22 +771,77 @@ void *Lkeys_thread() {
             fds.revents=0;
             keystate=0;
             if ((poll(&fds, 1, 1000)) > 0) {
-                read (g15screen_fd, &keystate, sizeof (keystate));    
+                read (g15screen_fd, &keystate, sizeof (keystate));
             }
         }
 
         if (keystate!=0)
         {
             g15macro_log("Received Keystate == %lu\n",keystate);
-                      
+
             switch (keystate)
             {
-                case G15_KEY_L5:{
-                    int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
-                    if(fg_check)
-                      leaving = 1;
-                    break;
-                }
+				case G15_KEY_L2:
+				{
+					int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
+					if(!fg_check)
+						break;
+
+					// Go to default/g15macro.conf = id =0
+					gui_selectChange(0);
+					break;
+				}
+				case G15_KEY_L3:
+				{
+					int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
+					if(!fg_check)
+						break;
+
+					// Scroll up
+					gui_selectChange(-1);
+					break;
+				}
+				case G15_KEY_L4:
+				{
+					int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
+					if(!fg_check)
+						break;
+
+					// Scroll down
+					gui_selectChange(+1);
+					break;
+				}
+				case G15_KEY_L5:
+				{
+					int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo);
+					if(!fg_check)
+						break;
+
+					// Change to selected
+					char newConfig[1024];
+					memset(newConfig,0,sizeof(newConfig));
+					strcpy(newConfig,configDir);
+					strncat(newConfig,configs[currConfig],sizeof(newConfig)-strlen(newConfig));
+					// Actually not the newConfig, it's the old, but didn't come up with a good name.
+					save_macros(newConfig);
+
+					// Purge all old data
+					cleanMstates();
+
+					// Now load the new config
+					currConfig = gui_selectConfig;
+					memset(newConfig,0,sizeof(newConfig));
+					strcpy(newConfig,configDir);
+					strncat(newConfig,configs[currConfig],sizeof(newConfig)-strlen(newConfig));
+					restore_config(newConfig);
+
+					// Set the configpath to reflect the change
+					memset(configpath,0,sizeof(configpath));
+					strcpy(configpath,configDir);
+					strncat(configpath,configs[currConfig],sizeof(configpath)-strlen(configpath));
+
+					break;
+				}
                 case G15_KEY_MR: {
                     if(!recording) {
                       if(0==g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo)){
@@ -587,9 +859,10 @@ void *Lkeys_thread() {
                       pthread_mutex_lock(&x11mutex);
                       XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
                       pthread_mutex_unlock(&x11mutex);
-                      memset(&current_recording,0,sizeof(current_recording)); 
+                      memset(&current_recording,0,sizeof(current_recording));
                     } else {
                       record_cancel();
+					  g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
                     }
                     break;
                   }
@@ -625,81 +898,84 @@ unsigned int g15daemon_gettime_ms(){
 }
 
 void xkey_handler(XEvent *event) {
+	static unsigned long lasttime;
+	unsigned char keytext[256];
+	unsigned int keycode = event->xkey.keycode;
+	int press = True;
 
-    static unsigned long lasttime;
-    unsigned char keytext[256];
-    unsigned int keycode = event->xkey.keycode;
-    int press = True;
+	if(event->type==KeyRelease){ // we only do keyreleases for some keys
+	pthread_mutex_lock(&x11mutex);
+		KeySym key = XKeycodeToKeysym(dpy, keycode, 0);
+	pthread_mutex_unlock(&x11mutex);
+		switch (key) {
+			case XK_Shift_L:
+			case XK_Shift_R:
+			case XK_Control_L:
+			case XK_Control_R:
+			case XK_Caps_Lock:
+			case XK_Shift_Lock:
+			case XK_Meta_L:
+			case XK_Meta_R:
+			case XK_Alt_L:
+			case XK_Alt_R:
+			case XK_Super_L:
+			case XK_Super_R:
+			case XK_Hyper_L:
+			case XK_Hyper_R:
+			default:
+				press = False;
+		}
+	}
+	if(recording){
+		current_recording.recorded_keypress[rec_index].keycode = keycode;
+		current_recording.recorded_keypress[rec_index].pressed = press;
+		current_recording.recorded_keypress[rec_index].modifiers = event->xkey.state;
+		if(rec_index==0)
+			current_recording.recorded_keypress[rec_index].time_ms=0;
+		else
+			current_recording.recorded_keypress[rec_index].time_ms=g15daemon_gettime_ms() - lasttime;
+		if(rec_index < MAX_KEYSTEPS)
+		{
+			rec_index++;
+			/* now the default stuff */
+			pthread_mutex_lock(&x11mutex);
+			XUngrabKeyboard(dpy,CurrentTime);
+			pthread_mutex_unlock(&x11mutex);
 
-    if(event->type==KeyRelease){ // we only do keyreleases for some keys
-      pthread_mutex_lock(&x11mutex);
-        KeySym key = XKeycodeToKeysym(dpy, keycode, 0);
-      pthread_mutex_unlock(&x11mutex);
-        switch (key) {
-            case XK_Shift_L:
-            case XK_Shift_R:
-            case XK_Control_L:
-            case XK_Control_R:
-            case XK_Caps_Lock:
-            case XK_Shift_Lock:
-            case XK_Meta_L:
-            case XK_Meta_R:
-            case XK_Alt_L:
-            case XK_Alt_R:
-            case XK_Super_L:
-            case XK_Super_R:
-            case XK_Hyper_L:
-            case XK_Hyper_R:
-            default: 
-                press = False;
-        }
+			fake_keyevent(keycode,press,event->xkey.state);
+
+			pthread_mutex_lock(&x11mutex);
+			XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+			XFlush(dpy);
+			strcpy((char*)keytext,XKeysymToString(XKeycodeToKeysym(dpy, keycode, 0)));
+			pthread_mutex_unlock(&x11mutex);
+			if(0==strcmp((char*)keytext,"space"))
+				strcpy((char*)keytext," ");
+			if(0==strcmp((char*)keytext,"period"))
+				strcpy((char*)keytext,".");
+			if(press==True){
+			strcat((char*)recstring,(char*)keytext);
+			g15macro_log("Adding %s to Macro\n",keytext);
+			g15r_renderString (canvas, (unsigned char *)recstring, 0, G15_TEXT_MED, 80-((strlen((char*)recstring)/2)*5), 22);
+			g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+			}
+		}
+		else
+		{
+			pthread_mutex_lock(&x11mutex);
+			XUngrabKeyboard(dpy,CurrentTime);
+			pthread_mutex_unlock(&x11mutex);
+			recording = 0;
+			rec_index = 0;
+			printf("saving macro\n");
+			save_macros(configpath);
+		}
+
     }
-    if(recording){
-        current_recording.recorded_keypress[rec_index].keycode = keycode;
-        current_recording.recorded_keypress[rec_index].pressed = press;
-        current_recording.recorded_keypress[rec_index].modifiers = event->xkey.state;
-        if(rec_index==0)
-            current_recording.recorded_keypress[rec_index].time_ms=0;
-        else
-            current_recording.recorded_keypress[rec_index].time_ms=g15daemon_gettime_ms() - lasttime;
-        if(rec_index < MAX_KEYSTEPS) {
-          rec_index++;
-        /* now the default stuff */
-        pthread_mutex_lock(&x11mutex);        
-          XUngrabKeyboard(dpy,CurrentTime);
-        pthread_mutex_unlock(&x11mutex);
+	else
+		rec_index=0;
 
-        fake_keyevent(keycode,press,event->xkey.state);
-       
-        pthread_mutex_lock(&x11mutex);
-        XGrabKeyboard(dpy, root_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
-        XFlush(dpy);
-        strcpy((char*)keytext,XKeysymToString(XKeycodeToKeysym(dpy, keycode, 0)));
-        pthread_mutex_unlock(&x11mutex);        
-        if(0==strcmp((char*)keytext,"space"))
-            strcpy((char*)keytext," ");
-        if(0==strcmp((char*)keytext,"period"))
-            strcpy((char*)keytext,".");
-        if(press==True){
-          strcat((char*)recstring,(char*)keytext);
-          g15macro_log("Adding %s to Macro\n",keytext);
-          g15r_renderString (canvas, (unsigned char *)recstring, 0, G15_TEXT_MED, 80-((strlen((char*)recstring)/2)*5), 22);
-          g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-        }
-      } else {
-          pthread_mutex_lock(&x11mutex);        
-            XUngrabKeyboard(dpy,CurrentTime);
-          pthread_mutex_unlock(&x11mutex);
-          recording = 0;
-          rec_index = 0;
-          printf("saving macro\n");
-          save_macros(configpath);
-        }
-
-    }else
-        rec_index=0;
-
-        lasttime = g15daemon_gettime_ms();
+	lasttime = g15daemon_gettime_ms();
 }
 
 static void* xevent_thread()
@@ -720,10 +996,10 @@ static void* xevent_thread()
                 case KeyPress:
                     xkey_handler(&event);
                     break;
-                case KeyRelease: 
+                case KeyRelease:
                     xkey_handler(&event);
                     break;
-                case FocusIn: 
+                case FocusIn:
                 case FocusOut:
                 case EnterNotify:
                 case LeaveNotify:
@@ -746,25 +1022,27 @@ static void* xevent_thread()
                 default:
                     g15macro_log("Unhandled event (%i) received\n",event.type);
             }
-        }else 
+        }else
         usleep(25000);
     }
     return NULL;
 }
 
+// TODO: handle errors
 int myx_error_handler(Display *dpy, XErrorEvent *err){
     return 0;
 }
 
 void g15macro_sighandler(int sig) {
-    switch(sig){
-         case SIGINT:
-         case SIGTERM:
-         case SIGQUIT:
-         case SIGPIPE:
-              leaving = 1;
-               break;
-    }
+	switch(sig){
+		case SIGINT:
+		case SIGTERM:
+		case SIGQUIT:
+		case SIGPIPE:
+		case SIGHUP:
+			leaving = 1;
+			break;
+	}
 }
 
 void helptext() {
@@ -784,7 +1062,7 @@ int main(int argc, char **argv)
 #ifdef USE_XTEST
     int xtest_major_version = 0;
     int xtest_minor_version = 0;
-#endif    
+#endif
     struct sigaction new_action;
     int dummy=0,i=0;
     unsigned char user[256];
@@ -794,6 +1072,11 @@ int main(int argc, char **argv)
     unsigned int keysonly = 0;
     FILE *config;
     unsigned int convert = 0;
+
+	memset(configDir,0,sizeof(configDir));
+	strncpy(configDir,getenv("HOME"),1024);
+	strncat(configDir,"/.g15macro/",1024-strlen(configpath));
+
     strncpy(configpath,getenv("HOME"),1024);
 
     memset(user,0,256);
@@ -840,6 +1123,7 @@ int main(int argc, char **argv)
            if(0==setuid(username->pw_uid)) {
              setgid(username->pw_gid);
              strncpy(configpath,username->pw_dir,1024);
+			 strncpy(configDir,username->pw_dir,1024);
              printf("running as user %s\n",username->pw_name);
            }
            else
@@ -869,19 +1153,19 @@ int main(int argc, char **argv)
     configure_mmediakeys();
     change_keymap(0);
     XFlush(dpy);
-    
-    if(keysonly>0) 
+
+    if(keysonly>0)
       goto close_and_exit;
 
     /* old binary config format */
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
     strncat(configpath,"/g15macro-data",1024-strlen(configpath));
     config_fd = open(configpath,O_RDONLY|O_SYNC);
-     
+
     mstates[0] = malloc(sizeof(mstates_t));
     mstates[1] = (mstates_t*)malloc(sizeof(mstates_t));
     mstates[2] = (mstates_t*)malloc(sizeof(mstates_t));
-                   
+
     if(config_fd>0) {
         printf("Converting old data\n");
         read(config_fd,mstates[0],sizeof(mstates_t));
@@ -896,11 +1180,10 @@ int main(int argc, char **argv)
         strncat(configbak,"/g15macro-data.old",1024-strlen(configpath));
         rename(configpath,configbak);
         convert = 1;
-    }else {
-      memset(mstates[0],0,sizeof(mstates));
-      memset(mstates[1],0,sizeof(mstates));
-      memset(mstates[2],0,sizeof(mstates));
     }
+	else
+		cleanMstates();
+
     /* new format */
     strncpy(configpath,getenv("HOME"),1024);
     strncat(configpath,"/.g15macro",1024-strlen(configpath));
@@ -908,7 +1191,7 @@ int main(int argc, char **argv)
     strncat(configpath,"/g15macro.conf",1024-strlen(configpath));
     config=fopen(configpath,"a");
     fclose(config);
-   
+
     do {
       if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         printf("Sorry, cant connect to the G15daemon - retrying\n");
@@ -916,15 +1199,29 @@ int main(int argc, char **argv)
       }
     }while(g15screen_fd<0);
 
-    if(!convert)
-      restore_config(configpath);
+	loadMultiConfig();
+	printf("I've now got the following macro files:\n");
+	for(i=0; i < MAX_CONFIGS;++i)
+	{
+		if(!configs[i])
+			continue;
+		printf("%i:%s%s\n",i,configDir,configs[i]);
+	}
+
+	if(!convert)
+	{
+		memset(configpath,0,sizeof(configpath));
+		strcpy(configpath,configDir);
+		strncat(configpath,configs[currConfig],1024-strlen(configpath));
+		restore_config(configpath);
+	}
 
     if(dump){
         printf("G15Macro Dumping Codes...");
         dump_config(stderr);
         exit(0);
     }
-      
+
     g15_send_cmd (g15screen_fd,G15DAEMON_KEY_HANDLER, dummy);
     usleep(1000);
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
@@ -945,58 +1242,122 @@ int main(int argc, char **argv)
     {
         printf("Warning: XTEST extension not supported by Xserver.  This is not fatal.\nReverting to XSendEvent for keypress emulation\n");
     }
-#else
+#else //USE_XTEST
   printf("XTest disabled by configure option.  Using XSendEvent instead.\n");
-#endif
-#else
+#endif //USE_XTEST
+#else //HAVE_XTEST
   printf("XTest disabled by configure: no devel package was found.  Using XSendEvent instead.\n");
-#endif
+#endif //HAVE_XTEST
 
-      
-    new_action.sa_handler = g15macro_sighandler;
-    new_action.sa_flags = 0;
-    sigaction(SIGINT, &new_action, NULL);
-    sigaction(SIGQUIT, &new_action, NULL);
-    sigaction(SIGTERM, &new_action, NULL);
-    sigaction(SIGPIPE, &new_action, NULL);
-    
+	printf("XTest enabled. Using XTest.\n");
+
+
+	new_action.sa_handler = g15macro_sighandler;
+	new_action.sa_flags = 0;
+	sigaction(SIGINT, &new_action, NULL);
+	sigaction(SIGQUIT, &new_action, NULL);
+	sigaction(SIGTERM, &new_action, NULL);
+	sigaction(SIGPIPE, &new_action, NULL);
+	sigaction(SIGHUP, &new_action, NULL);
+
     snprintf((char*)splashpath,1024,"%s/%s",DATADIR,"g15macro/splash/g15macro.wbmp");
     g15r_loadWbmpSplash(canvas, splashpath);
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-    #ifdef G15DAEMON_NEVER_SELECT
-        g15_send_cmd (g15screen_fd, G15DAEMON_NEVER_SELECT, dummy);
-    #endif
-    
+	// Following piece of code is not documented (what i could find anyway)
+	// But makes so that the user can never bring this screen to front.
+	// TODO: Document it
+//     #ifdef G15DAEMON_NEVER_SELECT
+//         g15_send_cmd (g15screen_fd, G15DAEMON_NEVER_SELECT, dummy);
+//     #endif
+
     usleep(1000);
     pthread_mutex_init(&x11mutex,NULL);
     pthread_mutex_init(&config_mutex,NULL);
+	pthread_mutex_init(&gui_select,NULL);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     int thread_policy=SCHED_FIFO;
-    pthread_attr_setschedpolicy(&attr,thread_policy);       
+    pthread_attr_setschedpolicy(&attr,thread_policy);
     pthread_attr_setstacksize(&attr,32*1024); /* set stack to 32k - dont need 8Mb !! */
 
     pthread_create(&Xkeys, &attr, xevent_thread, NULL);
     pthread_create(&Lkeys, &attr, Lkeys_thread, NULL);
-    do{
-        if(display_timeout<-1)
-          display_timeout=-1;
-        else
-          display_timeout--;
+	do
+	{
+		if(display_timeout<-1)
+			display_timeout=-1;
+		else
+			display_timeout--;
 
-        if(recording)
-            display_timeout=500;
+		if(recording)
+		{
+			was_recording = 1;
+			display_timeout=500;
+		}
 
-        if(display_timeout<=0){
-            int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
-            if (fg_check==1) { // foreground 
-                    do {
-                      g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
-                    } while(g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy)==1);
-            }
+		if(display_timeout<=0 && (was_recording || gui_redraw != gui_selectConfig))
+		{
+			was_recording = 0;
+			pthread_mutex_lock(&gui_select);
+			gui_redraw = gui_selectConfig;
+			pthread_mutex_unlock(&gui_select);
 
-           usleep(500*1000);
-        }
+			g15r_clearScreen(canvas,G15_COLOR_WHITE);
+			drawXBM(canvas, (unsigned char*)g15macro_small_bits, g15macro_small_width, g15macro_small_height, 0, 0);
+
+			char currPreset[1024];
+			memset(currPreset,0,sizeof(currPreset));
+			snprintf(currPreset,1024,"Current:%s",getConfigName(currConfig));
+			g15r_drawLine(canvas, 50, 2, 50, 11, G15_COLOR_BLACK);
+			g15r_renderString (canvas, (unsigned char *)currPreset, 0, G15_TEXT_MED, 53, 4);
+
+			// Find what config to render
+			pthread_mutex_lock(&gui_select);
+			int tmpRenderConfID = 0;
+			if (gui_selectConfig > 0)
+				tmpRenderConfID = gui_selectConfig-1;
+			else
+				tmpRenderConfID = numConfigs;
+
+			char* renderLine = stringTrim((char*)getConfigName(tmpRenderConfID),25);
+			g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 17);
+			free(renderLine);
+			renderLine = NULL;
+
+			renderLine = stringTrim((char*)getConfigName(gui_selectConfig),25);
+
+			g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 26);
+			free(renderLine);
+			renderLine = NULL;
+
+			if (gui_selectConfig < numConfigs)
+				tmpRenderConfID = gui_selectConfig+1;
+			else
+				tmpRenderConfID = 0;
+			pthread_mutex_unlock(&gui_select);
+
+			renderLine = stringTrim((char*)getConfigName(tmpRenderConfID),25);
+			g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 35);
+			free(renderLine);
+			renderLine = NULL;
+
+			// Make middle look selected by inverting colours
+			g15r_pixelReverseFill(canvas, 0, 24, 121, 33, 0,G15_COLOR_BLACK);
+
+			renderHelp();
+
+			g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+// 			printf("NumConfigs is %i\n",numConfigs);
+
+//             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
+//             if (fg_check==1) { // foreground
+//                     do {
+//                       g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
+//                     } while(g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy)==1);
+//             }
+
+			usleep(500*1000);
+		}
     }while(!usleep(1000) &&  !leaving);
 
     if(recording){
@@ -1004,13 +1365,25 @@ int main(int argc, char **argv)
         XUngrabKeyboard(dpy,CurrentTime);
     }
 
-    save_macros(configpath);
+	memset(configpath,0,sizeof(configpath));
+	strcpy(configpath,configDir);
+	strncat(configpath,configs[currConfig],sizeof(configpath)-strlen(configpath));
+	save_macros(configpath);
+
+	for (i = 0; i < MAX_CONFIGS; ++i)
+	{
+		if(configs[i])
+			free(configs[i]);
+		configs[i] = NULL;
+	}
+
     g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,0);
 
     pthread_join(Xkeys,NULL);
     pthread_join(Lkeys,NULL);
     pthread_mutex_destroy(&x11mutex);
     pthread_mutex_destroy(&config_mutex);
+	pthread_mutex_destroy(&gui_select);
     /* revert the keymap to g15daemon default on exit */
     change_keymap(0);
     close(g15screen_fd);
