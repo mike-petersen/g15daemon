@@ -5,7 +5,7 @@ Summary: Daemon to control logitech G15 keyboards
 Name: g15daemon
 Version: 1.9.5.3
 Release: 1
-Copyright: GPL
+License: GPL
 Group: Applications/System
 Source: ftp://prdownloads.sf.net/g15daemon-1.9.5.3.tar.bz2
 URL: http://g15daemon.sf.net
@@ -60,9 +60,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %doc AUTHORS COPYING LICENSE NEWS README README.usage contrib lang-bindings 
 %doc %{_mandir}/man*/*.*
-%{prefix}/lib/*.so
-%{prefix}/lib/*.so.*
+%{prefix}/lib/g15daemon/%{version}/plugins/*.so
+%{prefix}/lib/g15daemon/%{version}/plugins/*.la
+%{prefix}/lib/g15daemon/%{version}/plugins/*.a
 %{prefix}/sbin/*
+%{prefix}/share/g15daemon/splash/g15logo2.wbmp
 
 %files devel
 %defattr(-, root, root)
