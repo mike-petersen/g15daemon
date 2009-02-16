@@ -604,7 +604,7 @@ int main(int argc, char **argv)
     for(eventdev=0;eventdev<127;eventdev++) {
         snprintf(evdev_name,127,"/dev/input/event%i",eventdev);
         if ((mmedia_fd = open(evdev_name, O_NONBLOCK|O_RDONLY)) < 0) {
-            printf("error opening interface %i",eventdev);
+            printf("error opening interface %i\n",eventdev);
         }
         ioctl(mmedia_fd, EVIOCGNAME(sizeof(devname)), devname);
         if(0==strncmp(devname,"Logitech Logitech Gaming Keyboard",256)){
