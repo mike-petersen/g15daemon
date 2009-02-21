@@ -1288,10 +1288,8 @@ int main(int argc, char **argv)
     pthread_create(&Lkeys, &attr, Lkeys_thread, NULL);
 	do
 	{
-		if(display_timeout<-1)
-			display_timeout=-1;
-		else
-			display_timeout--;
+		if(display_timeout >= 0)
+			--display_timeout;
 
 		if(recording)
 		{
@@ -1368,7 +1366,9 @@ int main(int argc, char **argv)
 
 			usleep(500*1000);
 		}
-	}while(!usleep(1000) &&  !leaving);
+	usleep(1000);
+	}while( !leaving);
+	g15macro_log("Leaving mainloop\n");
 
     if(recording){
         recording = 0;
