@@ -1,5 +1,5 @@
 
-AM_CFLAGS = -O3 -Wall @CFLAGS@ -I$(top_builddir) -I$(top_srcdir) 
+AM_CFLAGS = -O2 -Wall @CFLAGS@ -I$(top_builddir) -I$(top_srcdir) 
 METASOURCES = AUTO
 bin_PROGRAMS = g15macro
 EXTRA_DIST = g15macro.wbmp

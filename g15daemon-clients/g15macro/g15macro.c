@@ -480,7 +480,7 @@ void record_complete(unsigned long keystate)
     mstates[mkey_state]->gkeys[gkey].keysequence.record_steps=rec_index;
     pthread_mutex_unlock(&config_mutex);
 
-    memset(canvas->buffer,0,G15_BUFFER_LEN);
+	g15r_clearScreen(canvas,G15_COLOR_WHITE);
     if(rec_index){
         strcpy(tmpstr,"For key ");
         strcat(tmpstr,gkeystring[map_gkey(keystate)]);
@@ -500,6 +500,7 @@ void record_complete(unsigned long keystate)
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
 
     record_cleanup();
+	g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,mled_state);
     save_macros(configpath);
 }
 
@@ -968,7 +969,7 @@ void xkey_handler(XEvent *event) {
 			pthread_mutex_unlock(&x11mutex);
 			recording = 0;
 			rec_index = 0;
-			printf("saving macro\n");
+			printf("Saving macro\n");
 			save_macros(configpath);
 		}
 
@@ -1041,6 +1042,7 @@ void g15macro_sighandler(int sig) {
 		case SIGQUIT:
 		case SIGPIPE:
 		case SIGHUP:
+			printf("Received signal %i\n",sig);
 			leaving = 1;
 			break;
 	}
@@ -1366,7 +1368,7 @@ int main(int argc, char **argv)
 
 			usleep(500*1000);
 		}
-    }while(!usleep(1000) &&  !leaving);
+	}while(!usleep(1000) &&  !leaving);
 
     if(recording){
         recording = 0;
