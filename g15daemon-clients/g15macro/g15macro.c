@@ -1446,6 +1446,11 @@ int main(int argc, char **argv)
     /* revert the keymap to g15daemon default on exit */
     change_keymap(0);
     close(g15screen_fd);
+
+	free(mstates[0]);
+	free(mstates[1]);
+	free(mstates[2]);
+
 close_and_exit:
     /*    XCloseDisplay(dpy);  */
     return 0;
