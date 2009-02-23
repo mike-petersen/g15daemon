@@ -43,6 +43,7 @@
 #include <X11/Xlib.h>
 #include <stdarg.h>
 #include <math.h>
+#include <ctype.h>
 #ifdef HAVE_X11_EXTENSIONS_XTEST_H
 #include <X11/extensions/XTest.h>
 #endif
@@ -243,6 +244,51 @@ static int g15macro_log (const char *fmt, ...) {
     }
 
     return 0;
+}
+
+//Stolen from http://stackoverflow.com/questions/122616/painless-way-to-trim-leading-trailing-whitespace-in-c/122974#122974
+char *trim(char *str)
+{
+	size_t len = 0;
+	char *frontp = str - 1;
+	char *endp = NULL;
+
+	if( str == NULL )
+		return NULL;
+
+	if( str[0] == '\0' )
+		return str;
+
+	len = strlen(str);
+	endp = str + len;
+
+    /* Move the front and back pointers to address
+	* the first non-whitespace characters from
+	* each end.
+	*/
+	while( isspace(*(++frontp)) );
+	while( isspace(*(--endp)) && endp != frontp );
+
+	if( str + len - 1 != endp )
+		*(endp + 1) = '\0';
+	else if( frontp != str &&  endp == frontp )
+		*str = '\0';
+
+    /* Shift the string so that it starts at str so
+	* that if it's dynamically allocated, we can
+	* still free it on the returned pointer.  Note
+	* the reuse of endp to mean the front of the
+	* string buffer now.
+	*/
+	endp = str;
+	if( frontp != str )
+	{
+		while( *frontp ) *endp++ = *frontp++;
+		*endp = '\0';
+	}
+
+
+	return str;
 }
 
 //TODO: Put into libg15render instead
@@ -640,7 +686,7 @@ void loadMultiConfig()
 		fprintf(f,"#Comments need to be on their own line, and prepended by #, like these rows..\n");
 		fprintf(f,"#At most you can have 32 different files. Ask on the forums if you absolutely need more.\n");
 		fprintf(f,"#You do not need to include the default g15macro.cfg file, it will always be included, and referenced as Default on the lcd.\n");
-		fprintf(f,"#Entries over roughly 15 characters will be cutoff in the Current: field. Entries over 25 will be cutoff in the selection display.\n");
+		fprintf(f,"#Entries over roughly 15 characters will be cutoff in the Current: field. Entries over 25 characters will be cutoff in the selection display.\n");
 		fclose(f);
 
 		return;
@@ -673,6 +719,7 @@ void loadMultiConfig()
 		i = strcspn(buf,"\n"); // i returns "the length of the initial segment of buf which consists entirely of characters not in reject."
 		memset(cfgName,0,sizeof(cfgName));
 		strncpy(cfgName,buf,i);
+		trim(cfgName);
 
 		// Check if file exists
 		strncpy(configPath,configDir,sizeof(configPath));
@@ -680,7 +727,7 @@ void loadMultiConfig()
 		fCheck = fopen(configPath,"r");
 		if (!fCheck)
 		{
-			printf("*** Unable to open %s - no such file or directory. Use\ntouch %s\n to create it.\n",configPath,configPath);
+			printf("*** Unable to open '%s' - no such file or directory. Use\ntouch '%s'\n to create it.\n",configPath,configPath);
 			continue;
 		}
 		fclose(fCheck);
@@ -755,8 +802,10 @@ void *Lkeys_thread() {
     struct pollfd fds;
     char ver[5];
     int foo = 0;
-    strncpy(ver,G15DAEMON_VERSION,3);
     float g15v;
+
+	memset(ver,0x0,sizeof(ver));
+	strncpy(ver,G15DAEMON_VERSION,3);
     sscanf(ver,"%f",&g15v);
 
     g15macro_log("Using version %.2f as keypress protocol\n",g15v);
