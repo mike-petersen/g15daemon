@@ -75,6 +75,10 @@ int leaving = 0;
 int display_timeout=500;
 int have_xtest = False;
 int debug = 0;
+// This variable = G15 keyboard version -1
+// So G15v1 == (G15Version = 0)
+// G15v2 == (G15Version = 1)
+int G15Version = 0;
 
 char configpath[1024];
 
@@ -136,7 +140,8 @@ const char *gkeystring[] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10",
 
 const int gkeycodes[] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
 
-const int mmedia_codes[] = {164, 162, 144, 153, 174, 176};
+const int mmedia_codes[2][6] = { {164, 162, 144, 153, 174, 176},    // For G15 v1
+								{174, 172, 173, 171, 122, 123} };  // For G15 v2
 
 const long mmedia_defaults[] = {
     XF86XK_AudioStop,
@@ -747,8 +752,10 @@ void loadMultiConfig()
 
 void change_keymap(int offset){
     int i=0,j=0;
+	//TODO: If they ever make a new G15keyboard(or this is reused for G19), change.
+	int keys = G15Version == 0 ? 18 : 6;
     pthread_mutex_lock(&x11mutex);
-    for(i=offset;i<offset+18;i++,j++)
+    for(i=offset;i<offset + keys;i++,j++)
     {
       KeySym newmap[1];
       newmap[0]=gkeydefaults[i];
@@ -767,7 +774,7 @@ void configure_mmediakeys(){
    pthread_mutex_lock(&x11mutex);
    for(i=0;i<6;i++){
      newmap[0]=mmedia_defaults[i];
-     XChangeKeyboardMapping (dpy, mmedia_codes[i], 1, newmap, 1);
+	 XChangeKeyboardMapping (dpy, mmedia_codes[G15Version][i], 1, newmap, 1);
    }
    XFlush(dpy);
    pthread_mutex_unlock(&x11mutex);
@@ -1104,6 +1111,7 @@ void helptext() {
   printf("--debug (-g) print debugging information\n");
   printf("--version (-v) print version and exit\n");
   printf("--keysonly (-k) configure multimedia and extra keys then exit\n");
+  printf("--g15version2 (-2) configure for G15v2 (6 G-Keys)\n");
   printf("--help (-h) this help text\n\n");
 }
 
@@ -1163,6 +1171,11 @@ int main(int argc, char **argv)
           printf("G15Macro version %s\n\n",PACKAGE_VERSION);
           exit(0);
         }
+
+		if (!strncmp(argv[i], "-2",2) || !strncmp(argv[i], "--g15version2",13))
+		{
+			G15Version = 1; // See declaration for info
+		}
 
     }
 
