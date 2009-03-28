@@ -356,7 +356,7 @@ int uf_conf_write(g15daemon_t *list,char *filename)
     config_items_t * item=NULL;
     char line[1024];
     
-    config_fd = open(filename,O_CREAT|O_RDWR|O_TRUNC);
+    config_fd = open(filename,O_CREAT|O_RDWR|O_TRUNC,0644);
     if(config_fd){
     snprintf(line,1024,"# G15Daemon Configuration File\n# any items entered before a [section] header\n# will be in the Global config space\n# comments you wish to keep should start with a semicolon';'\n");
     write(config_fd,line,strlen(line));
@@ -380,6 +380,8 @@ int uf_conf_write(g15daemon_t *list,char *filename)
         }
         foo=foo->next;
     }
+
+    fsync(config_fd);
     close(config_fd);
     return 0;
     }
