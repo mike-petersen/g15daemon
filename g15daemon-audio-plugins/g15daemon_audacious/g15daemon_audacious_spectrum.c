@@ -1,4 +1,3 @@
-
 /*
   This file is part of g15daemon.
   
@@ -286,29 +285,51 @@ VisPlugin *get_vplugin_info(void) {
 void g15spectrum_read_config(void)
 {
   ConfigDb *cfg;
-  
+#if  __AUDACIOUS_PLUGIN_API__ < 7
   cfg = bmp_cfg_db_open();
+#else
+  cfg = aud_cfg_db_open();
+#endif
   pthread_mutex_lock (&g15buf_mutex);
   if (cfg)
     {
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "visualisation_type", (int*)&vis_type);
-      bmp_cfg_db_get_float(cfg, "G15Daemon Spectrum", "linearity", (float*)&linearity);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "amplification", (int*)&amplification);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "bars_limit", (int*)&limit);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "num_bars", (int*)&num_bars);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_peak", (int*)&enable_peak);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "detached_peak", (int*)&detached_peak);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "line_mode", (int*)&line_mode);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_mode", (int*)&analog_mode);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_step", (int*)&analog_step);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_title", (int*)&show_title);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_pbar", (int*)&show_pbar);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_time", (int*)&show_time);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "rownum", (int*)&rownum);
-      bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "title_overlay", (int*)&title_overlay);
-      
-      bmp_cfg_db_close(cfg);
+      #if  __AUDACIOUS_PLUGIN_API__ < 7
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "visualisation_type", (int*)&vis_type);
+	bmp_cfg_db_get_float(cfg, "G15Daemon Spectrum", "linearity", (float*)&linearity);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "amplification", (int*)&amplification);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "bars_limit", (int*)&limit);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "num_bars", (int*)&num_bars);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_peak", (int*)&enable_peak);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "detached_peak", (int*)&detached_peak);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "line_mode", (int*)&line_mode);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_mode", (int*)&analog_mode);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_step", (int*)&analog_step);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_title", (int*)&show_title);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_pbar", (int*)&show_pbar);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_time", (int*)&show_time);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "rownum", (int*)&rownum);
+	bmp_cfg_db_get_int(cfg, "G15Daemon Spectrum", "title_overlay", (int*)&title_overlay);
+      	bmp_cfg_db_close(cfg);
+      #else
+	/* New version of audacious */
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "visualisation_type", (int*)&vis_type);
+	aud_cfg_db_get_float(cfg, "G15Daemon Spectrum", "linearity", (float*)&linearity);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "amplification", (int*)&amplification);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "bars_limit", (int*)&limit);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "num_bars", (int*)&num_bars);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_peak", (int*)&enable_peak);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "detached_peak", (int*)&detached_peak);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "line_mode", (int*)&line_mode);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_mode", (int*)&analog_mode);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "analog_step", (int*)&analog_step);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "enable_keybindings", (int*)&enable_keybindings);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_title", (int*)&show_title);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_pbar", (int*)&show_pbar);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "show_time", (int*)&show_time);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "rownum", (int*)&rownum);
+	aud_cfg_db_get_int(cfg, "G15Daemon Spectrum", "title_overlay", (int*)&title_overlay);
+      #endif
       
     }
   /* check conf integrity */
@@ -350,11 +371,15 @@ void g15spectrum_read_config(void)
 void g15spectrum_write_config(void)
 {
   ConfigDb *cfg;
-  
+#if  __AUDACIOUS_PLUGIN_API__ < 7
   cfg = bmp_cfg_db_open();
-  
+#else
+  cfg = aud_cfg_db_open();
+#endif 
+   
   if (cfg)
     {
+#if  __AUDACIOUS_PLUGIN_API__ < 7
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "visualisation_type", vis_type);
       bmp_cfg_db_set_float(cfg, "G15Daemon Spectrum", "linearity", linearity);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "amplification", amplification);
@@ -372,6 +397,26 @@ void g15spectrum_write_config(void)
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "rownum", rownum);
       bmp_cfg_db_set_int(cfg, "G15Daemon Spectrum", "title_overlay", title_overlay);
       bmp_cfg_db_close(cfg);
+#else
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "visualisation_type", vis_type);
+      aud_cfg_db_set_float(cfg, "G15Daemon Spectrum", "linearity", linearity);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "amplification", amplification);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "bars_limit", limit);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "num_bars", num_bars);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "enable_peak", enable_peak);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "detached_peak", detached_peak);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "analog_mode", analog_mode);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "line_mode", line_mode);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "analog_step", analog_step);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "enable_keybindings", enable_keybindings);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "show_title", show_title);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "show_pbar", show_pbar);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "show_time", show_time);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "rownum", rownum);
+      aud_cfg_db_set_int(cfg, "G15Daemon Spectrum", "title_overlay", title_overlay);
+      aud_cfg_db_close(cfg);
+#endif
+
     }
   
 }
