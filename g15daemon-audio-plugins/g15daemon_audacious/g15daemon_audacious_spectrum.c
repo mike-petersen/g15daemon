@@ -830,13 +830,14 @@ void g15analyser_about(void){
 
 static int poll_g15keys() {
   int keystate = 0;
+  int ret;
   struct pollfd fds;
   
   fds.fd = g15screen_fd;
   fds.events = POLLIN;
   
-  if ((poll(&fds, 1, 5)) > 0);
-  read (g15screen_fd, &keystate, sizeof (keystate));
+  if ((poll(&fds, 1, 5)) > 0)
+    ret = read(g15screen_fd, &keystate, sizeof (keystate));
   
   if (keystate) {
     pthread_mutex_lock (&g15buf_mutex);
