@@ -69,7 +69,7 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.6"
+#define PLUGIN_VERSION "2.5.7"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
 #define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
