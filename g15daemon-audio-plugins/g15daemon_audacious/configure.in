@@ -2,8 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 # $Revision: 157 $ -  $Date: 2006-11-15 23:12:39 -0500 (Wed, 15 Nov 2006) $ $Author: aneurysm9 $
 PACKAGE=g15daemon-audacious
-VERSION=2.5.5
-AC_INIT(g15daemon-audacious,2.5.5, [robynhub@users.sf.net])
+VERSION=2.5.7
+AC_INIT(g15daemon-audacious,2.5.7, [robynhub@users.sf.net])
 
 AC_PREREQ(2.59)
 
