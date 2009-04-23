@@ -69,10 +69,10 @@
 
 /* Some useful costants */
 #define WIDTH 256
-#define PLUGIN_VERSION "2.5.7"
+#define PLUGIN_VERSION "2.5.8"
 #define PLUGIN_NAME    "G15daemon Visualization Plugin"
 #define INFERIOR_SPACE 7 /* space between bars and position bar */
-#define SUPERIOR_SPACE 7 /* space between bars and top of lcd   */
+
 
 /* Time factor of the band dinamics. 3 means that the coefficient of the
    last value is half of the current one's. (see source) */
@@ -81,8 +81,18 @@
    added to the neighbouring bars */
 #define dif 3 
 
-/* length of the row. Default: 32 */
-#define ROWLEN 32
+/* length of the row. */
+#define ROWLEN 34
+
+/* height of a char */
+#define CHAR_HEIGH 8
+
+/* witdh of a char (approx) */
+#define CHAR_WIDTH 5
+
+/* font size for title */
+#define FONT_SIZE 8
+
 /* separator of line */
 #define SEPARATOR "-"
 
@@ -145,7 +155,7 @@ static unsigned int def_vis_type = 0;
 static unsigned int def_num_bars = 32;
 static float def_linearity = 0.37;
 static int def_amplification = 0;
-static unsigned int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - SUPERIOR_SPACE;
+static unsigned int def_limit = G15_LCD_HEIGHT - INFERIOR_SPACE - CHAR_HEIGH;
 static unsigned int def_enable_peak = TRUE;
 static unsigned int def_detached_peak = TRUE;
 static unsigned int def_analog_mode = FALSE;
@@ -453,7 +463,7 @@ void g15analyser_conf_apply(void){
   show_pbar = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_pbar));
   show_time = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_show_time));
   title_overlay = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(g_options_title_overlay));
-  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE * (1 - title_overlay) * show_title * rownum - 1;
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - CHAR_HEIGH * (1 - title_overlay) * show_title * rownum - 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -477,7 +487,7 @@ void g15analyser_conf_reset(void){
   show_time = def_show_time;
   rownum = def_rownum;
   title_overlay = def_title_overlay;
-  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE * (1 - title_overlay) * show_title * rownum- 1;
+  limit = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - CHAR_HEIGH * (1 - title_overlay) * show_title * rownum- 1;
   pthread_mutex_unlock (&g15buf_mutex);
   return;
 }
@@ -1026,7 +1036,7 @@ static int g15send_func() {
 	      
 	      
 	      if (*pRendToken != '\0')
-		g15r_renderString (canvas, (unsigned char *)pRendToken, 0, G15_TEXT_MED, 160 - (TokenLen * 5), NumRow * 8);
+		g15r_renderString (canvas, (unsigned char *)pRendToken, 0, FONT_SIZE, 0, NumRow * CHAR_HEIGH);
 	    }
 	    
 	    pRendStr= &pRendStr[TokenEnd];
@@ -1038,7 +1048,7 @@ static int g15send_func() {
 	  }
 	} else{
 	  /* Only one line */
-	  int title_pixel = strlen(title) * 5;
+	  int title_pixel = strlen(title) * CHAR_WIDTH;
 	  int i;
 	  // Substitution "_" with " "
 	  for (i = 0 ; i < strlen(title); i++){
@@ -1047,7 +1057,7 @@ static int g15send_func() {
 	  }
 	  if (strlen(title) < ROWLEN){
 	    
-	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - title_pixel, 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 0, 0);
 	    
 	  } else {
 	    /* title cycle :D */
@@ -1064,8 +1074,8 @@ static int g15send_func() {
 	      text_start =  text_start2 - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
 	      text_start2 = text_start2 % (title_pixel + G15_LCD_WIDTH);
 	    }
-	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start2, 0);
-	    g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_MED, 160 - text_start, 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 160 - text_start2, 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 160 - text_start, 0);
 	  }
 	}
       }
@@ -1080,8 +1090,8 @@ static int g15send_func() {
 	
 	/* bugfix: Sometimes xmms don't get the output time */
 	if (playlist_time == 0){
-	  playlist_time = 1000;
-	  output_time = 0;
+	  playlist_time = 1;
+	  output_time = 1;
 	  
 	}
 	if (show_time){
@@ -1092,8 +1102,8 @@ static int g15send_func() {
 	  snprintf((char *)endtime,10,"%02d:%02d",playlist_time/60,playlist_time%60);
 	  
 	  g15r_drawBar (canvas, 20, 39, 138, 41, G15_COLOR_BLACK, output_time, playlist_time, 1);
-	  g15r_renderString (canvas, time, 0, G15_TEXT_SMALL, 0, 38);
-	  g15r_renderString (canvas, endtime, 0, G15_TEXT_SMALL, 140, 38);
+	  g15r_renderString (canvas, time, 0, 5, 0, 37);
+	  g15r_renderString (canvas, endtime, 0, 5, 140, 37);
 	} else 
 	  g15r_drawBar (canvas, 0, 39, 159, 41, G15_COLOR_BLACK, output_time, playlist_time, 1); 
       }
@@ -1374,7 +1384,7 @@ static int g15send_func() {
 	/* code from version 0.1 */
 	
 	/* dynamically calculate the scale (maybe changed in config) */
-	drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - SUPERIOR_SPACE*(1-title_overlay)*show_title*rownum + amplification;
+	drawable_space = G15_LCD_HEIGHT - INFERIOR_SPACE*show_pbar - CHAR_HEIGH*(1-title_overlay)*show_title*rownum + amplification;
 	scale = drawable_space / ( log((1 - linearity) / linearity) *2 );  
 	x00 = linearity*linearity*32768.0/(2 * linearity - 1);
 	y00 = -log(-x00) * scale;
