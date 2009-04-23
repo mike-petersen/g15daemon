@@ -1090,8 +1090,8 @@ static int g15send_func() {
 	
 	/* bugfix: Sometimes xmms don't get the output time */
 	if (playlist_time == 0){
-	  playlist_time = 1;
-	  output_time = 1;
+	  playlist_time = 0;
+	  output_time = 0;
 	  
 	}
 	if (show_time){
@@ -1100,8 +1100,10 @@ static int g15send_func() {
 	  
 	  snprintf((char *)time,10,"%02d:%02d",output_time/60,output_time%60);
 	  snprintf((char *)endtime,10,"%02d:%02d",playlist_time/60,playlist_time%60);
-	  
-	  g15r_drawBar (canvas, 20, 39, 138, 41, G15_COLOR_BLACK, output_time, playlist_time, 1);
+	  if (playlist_time != 0)
+	    g15r_drawBar (canvas, 20, 39, 138, 41, G15_COLOR_BLACK, output_time, playlist_time, 1);
+	  else 
+	   g15r_drawBar (canvas, 20, 39, 138, 41, G15_COLOR_BLACK, 0, 1, 1); 
 	  g15r_renderString (canvas, time, 0, 5, 0, 37);
 	  g15r_renderString (canvas, endtime, 0, 5, 140, 37);
 	} else 
@@ -1182,11 +1184,11 @@ static int g15send_func() {
 	    }
 	}
       else 
-	g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, G15_TEXT_LARGE, 16, 16);
+	g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, 13, 21, 16);
       
     }
     else
-      g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, G15_TEXT_LARGE, 24, 16);
+      g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, 13, 34, 16);
     
     if(lastvolume!=get_main_volume() || vol_timeout>=0) {
       if(lastvolume!=get_main_volume())
@@ -1198,7 +1200,7 @@ static int g15send_func() {
       if (lastvolume >= 0)	
 	g15r_drawBar (canvas, 10, 15, 149, 28, G15_COLOR_BLACK, lastvolume, 100, 1);
       canvas->mode_xor=1;
-      g15r_renderString (canvas, (unsigned char *)"Volume", 0, G15_TEXT_LARGE, 59, 18);
+      g15r_renderString (canvas, (unsigned char *)"Volume", 0, 12, 59, 17);
       canvas->mode_xor=0;
     }
     /* do a quicky checksum - only send frame if different */
