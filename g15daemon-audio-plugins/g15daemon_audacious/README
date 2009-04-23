@@ -36,3 +36,5 @@ New in version 2.5.6
 - Improved gui
 New in version 2.5.7
 - Added support for Audacious 1.5
+New in version 2.5.8
+- Added initial TrueType support
