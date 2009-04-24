@@ -136,13 +136,13 @@ static void draw_static_canvas(void)
 
 static int draw_digital(g15canvas *canvas)
 {
-    unsigned int col = 0;
-    unsigned int len=0;
     int narrows=0;
-    int totalwidth=0;
     char buf[10];
     char ampm[3];
+    int off = 0;
+    int top = 7;    
     int height = G15_LCD_HEIGHT - 1;
+    g15font *font = g15r_requestG15DefaultFont (37);
  
     time_t currtime = time(NULL);
     
@@ -151,8 +151,9 @@ static int draw_digital(g15canvas *canvas)
     if(showdate) {
         char buf2[40];
         strftime(buf2,40,"%A %e %B %Y",localtime(&currtime));
-        g15r_renderString (canvas,(unsigned char *)buf2 , 0, G15_TEXT_MED, 80-((strlen(buf2)*5)/2), height-6);
+        g15r_G15FPrint (canvas, buf2, 0, height-10, 10, 1, G15_COLOR_BLACK, 0);
         height-=10;
+        top = 1;;
       }
 
     if(mode) {
@@ -163,32 +164,14 @@ static int draw_digital(g15canvas *canvas)
     }
     if(buf[0]==49) 
     	narrows=1;
-    
-    len = strlen(buf); 
+
     if(buf[0]==' ')
-     len++;
-    
-    if(narrows)
-        totalwidth=(len*20)+(15);
-    else
-        totalwidth=len*20;
+      off++;
 
-    for (col=0;col<len;col++) 
-      {
-      	int num = -1;
-	if ((buf[col] > 47) && (buf[col] < 59))
-	  num = buf[col] - 48;
-	else if (buf[col] == 45)
-	  num = 11;
-	else if (buf[col] == 46)
-	  num = 12;
+    g15r_G15FPrint (canvas, buf+off, 0, top, 37, 1, G15_COLOR_BLACK, 0);
 
-	if (num >= 0)
-	  g15r_drawBigNum (canvas, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, height, G15_COLOR_BLACK, num);
-      }
-    
     if(ampm[0]!=0)
-      g15r_renderString (canvas,(unsigned char *)ampm,0,G15_TEXT_LARGE,totalwidth+15,height-6);
+        g15r_renderString (canvas,(unsigned char *)ampm,0,20,80+(g15r_testG15FontWidth(font,buf+off)/2)+5,(height/2)-8);
 
     return G15_PLUGIN_OK;
 }
@@ -235,26 +218,23 @@ static int draw_analog(g15canvas *c)
   //
   char day[32];		// Tuesday
   char mon[32];		// March
-  char year[32];	// 1234 AD
   char time[32];	// 22:33:44
   char date[32];	// 21.April
 
   strftime(day, sizeof(day), "%A", t);
   strftime(mon, sizeof(mon), "%B", t);
-  sprintf(date, "%d.%s", t->tm_mday, mon);
-  sprintf(year, "%4d AD", t->tm_year+1900);
+  sprintf(date, "%d.%s %4d", t->tm_mday, mon, t->tm_year+1900);
   if(mode)
     strftime(time,sizeof(time),"%H:%M:%S",t);
   else 
     strftime(time,sizeof(time),"%r",t);
   
   if(showdate) {
-  	g15r_renderString(c, (unsigned char*)time,  0, G15_TEXT_LARGE, 60, 4);
-  	g15r_renderString(c, (unsigned char*)day,   1, G15_TEXT_LARGE, 60, 5);
-  	g15r_renderString(c, (unsigned char*)date,  2, G15_TEXT_LARGE, 60, 6);
-  	g15r_renderString(c, (unsigned char*)year,  3, G15_TEXT_LARGE, 60, 7);
+  	g15r_renderString(c, (unsigned char*)time,  0, 10, 60, 4);
+  	g15r_renderString(c, (unsigned char*)day,   1, 10, 60, 4);
+  	g15r_renderString(c, (unsigned char*)date,  2, 10, 60, 4);
   } else 
-	g15r_renderString(c, (unsigned char*)time, 0, G15_TEXT_LARGE, 60, 18);
+	g15r_renderString(c, (unsigned char*)time, 0, 20, 48, 14);
 
   return G15_PLUGIN_OK;
 }
