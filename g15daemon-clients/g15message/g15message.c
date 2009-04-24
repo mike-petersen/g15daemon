@@ -15,7 +15,7 @@
         along with g15daemon; if not, write to the Free Software
         Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-        (c) 2006-2007 Mike Lampard 
+        (c) 2006-2009 Mike Lampard 
 
         $Revision$ -  $Date$ $Author$
 

@@ -1,2 +1,4 @@
 1.0 01/01/2007
 - Initial release
+SVN:
+- Add support for multisize fonts (requires libg15render 1.4+)
