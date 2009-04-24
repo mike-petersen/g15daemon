@@ -25,6 +25,7 @@ Client screens can be cycled through by pressing the 'L1' key.
 
 This is a cpu and memory stats client
 */
+#define _GNU_SOURCE 1
 
 #include <config.h>
 #include <stdio.h>
@@ -51,6 +52,7 @@ This is a cpu and memory stats client
 #include <glibtop/swap.h> 
 #include <glibtop/loadavg.h>
 #include <glibtop/uptime.h>
+#include <glibtop/sysinfo.h>
 #include "g15stats.h"
 
 int g15screen_fd;
@@ -209,12 +211,12 @@ void draw_swap_screen(g15canvas *canvas) {
 
 }
 
-
-void draw_cpu_screen(g15canvas *canvas) {
+/* draw cpu screen.  if drawgraph = 0 then no graph is drawn */
+void draw_cpu_screen_unicore(g15canvas *canvas, int drawgraph) {
     glibtop_cpu cpu;
     glibtop_loadavg loadavg;
     glibtop_uptime uptime;
-
+    
     int total,user,nice,sys,idle;
     int b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
     static int last_total,last_user,last_nice,last_sys,last_idle,last_iowait,last_irq;
@@ -254,12 +256,12 @@ void draw_cpu_screen(g15canvas *canvas) {
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 14);
     sprintf(tmpstr,"Nce %2.f%%",((float)b_nice/(float)b_total)*100);
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 26);
-
-    g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,b_user+1,b_total,4);
-    g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,b_sys+1,b_total,4);
-    g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,b_nice+1,b_total,4);
-    drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,b_idle+1,b_total,5);
-
+    if(drawgraph) {
+        g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,b_user+1,b_total,4);
+        g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,b_sys+1,b_total,4);
+        g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,b_nice+1,b_total,4);
+        drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,b_idle+1,b_total,5);
+    }
     g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
     g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
@@ -280,6 +282,69 @@ void draw_cpu_screen(g15canvas *canvas) {
 
     sprintf(tmpstr,"LoadAVG %.2f %.2f %.2f | Uptime %.fd%.fh",loadavg.loadavg[0],loadavg.loadavg[1],loadavg.loadavg[2],days,hours);
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+
+}
+
+void draw_cpu_screen_multicore(g15canvas *canvas, int multicore) {
+    glibtop_cpu cpu;
+    glibtop_loadavg loadavg;
+    glibtop_uptime uptime;
+    const glibtop_sysinfo *cpuinfo;
+    int core,ncpu;
+    int divider = 0;
+        
+    int total[16],user[16],nice[16],sys[16],idle[16];
+    int b_total[16],b_user[16],b_nice[16],b_sys[16],b_idle[16],b_irq[16],b_iowait[16];
+    static int last_total[16],last_user[16],last_nice[16],last_sys[16],last_idle[16],last_iowait[16],last_irq[16];
+
+    cpuinfo = glibtop_get_sysinfo();
+
+    if(cpuinfo->ncpu == 0) 
+        ncpu = 1;
+    else
+        ncpu = cpuinfo->ncpu;
+
+    if(ncpu==1 || multicore==0) {
+        draw_cpu_screen_unicore(canvas,1);
+        return;
+    }else
+        draw_cpu_screen_unicore(canvas,0);
+
+    glibtop_get_cpu(&cpu);
+    glibtop_get_loadavg(&loadavg);
+    glibtop_get_uptime(&uptime);
+    for(core=0;core<ncpu;core++) {
+        total[core] = ((unsigned long) cpu.xcpu_total[core]) ? ((double) cpu.xcpu_total[core]) : 1.0;
+        user[core]  = ((unsigned long) cpu.xcpu_user[core])  ? ((double) cpu.xcpu_user[core])  : 1.0;
+        nice[core]  = ((unsigned long) cpu.xcpu_nice[core])  ? ((double) cpu.xcpu_nice[core])  : 1.0;
+        sys[core]   = ((unsigned long) cpu.xcpu_sys[core])   ? ((double) cpu.xcpu_sys[core])   : 1.0;
+        idle[core]  = ((unsigned long) cpu.xcpu_idle[core])  ? ((double) cpu.xcpu_idle[core])  : 1.0;
+
+        b_total[core]	= total[core] - last_total[core];
+        b_user[core] 	= user[core]  - last_user[core];
+        b_nice[core] 	= nice[core]  - last_nice[core];
+        b_sys[core]   	= sys[core]   - last_sys[core];
+        b_idle[core]  	= idle[core]  - last_idle[core];
+        b_irq[core]   	= cpu.xcpu_irq[core] - last_irq[core];
+        b_iowait[core]	= cpu.xcpu_iowait[core] - last_iowait[core];
+
+        last_total[core]	= total[core];
+        last_user[core] 	= user[core];
+        last_nice[core] 	= nice[core];
+        last_sys[core] 		= sys[core];
+        last_idle[core] 	= idle[core];
+        last_irq[core] 		= cpu.xcpu_irq[core];
+        last_iowait[core] 	= cpu.xcpu_iowait[core];
+
+        divider = 9/ncpu;
+        g15r_drawBar(canvas,BAR_START,1+(divider*core),BAR_END,1+(divider+(divider*(core))),G15_COLOR_BLACK,b_user[core]+1,b_total[core],4);
+        g15r_drawBar(canvas,BAR_START,13+(divider*(core)),BAR_END,13+(divider+(divider*(core))),G15_COLOR_BLACK,b_sys[core]+1,b_total[core],4);
+        g15r_drawBar(canvas,BAR_START,24+(divider*(core)),BAR_END,24+(divider+(divider*(core))),G15_COLOR_BLACK,b_nice[core]+1,b_total[core],4);
+        divider = 32/ncpu;
+        drawBar_reversed(canvas,BAR_START,1+(divider*core),BAR_END,1+(divider+(divider*(core))),G15_COLOR_BLACK,b_idle[core]+1,b_total[core],5);
+    }
+    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
 }
 
@@ -592,10 +657,14 @@ int main(int argc, char *argv[]){
     int go_daemon=0;
     int have_nic=0;
     unsigned char interface[128];
+    int multicore = 0;
 
     for (i=0;i<argc;i++) {
         if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
             go_daemon=1;
+        }
+        if(0==strncmp(argv[i],"-m",2)||0==strncmp(argv[i],"--multicore",11)) {
+            multicore=1;
         }
         if(0==strncmp(argv[i],"-nsa",4)||0==strncmp(argv[i],"--net-scale-absolute",20)) {
             net_scale_absolute=1;
@@ -605,6 +674,7 @@ int main(int argc, char *argv[]){
             printf("%s (c) 2008 Mike Lampard\n",PACKAGE_NAME);
             printf("\nOptions:\n");
             printf("--daemon (-d) run in background\n");
+            printf("--multicore (-m) display graphs for each core on the CPU screen\n");
             printf("--help (-h) this help text.\n");
             printf("--interface [interface] (-i) monitor network interface [interface] ie -i eth0\n");
             printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
@@ -643,7 +713,7 @@ int main(int argc, char *argv[]){
 
         switch(cycle) {
             case 0:
-               draw_cpu_screen(canvas);
+               draw_cpu_screen_multicore(canvas,multicore);
                 break;
             case 1:   
                 draw_mem_screen(canvas);
