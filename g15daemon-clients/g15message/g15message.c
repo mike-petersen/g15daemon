@@ -43,7 +43,11 @@
 #include <poll.h>
 #include <pthread.h>
 
-        int g15screen_fd, retval;
+#ifndef G15R_FONT_API_V2
+#error libg15render 1.4 needed
+#endif
+
+int g15screen_fd, retval;
 g15canvas *canvas;
 
 int handle_Lkeys() {
@@ -162,7 +166,6 @@ static void render_text_area(g15canvas *canvas, char* text, int y, int chars_per
     }
 
 }
-
 int main(int argc, char **argv)
 {
     int i=0;
@@ -176,7 +179,9 @@ int main(int argc, char **argv)
     int lines_available=6;
     int leaving = 0;
     int centered = 0;
-    
+    int fontsize = 0;
+    g15font *font = NULL;
+        
     if(argc<2) {
         printf("%s - A simple message displayer for the G15\n",argv[0]);
         printf("Usage: %s <args> \"message\"\n",argv[0]);
@@ -186,6 +191,7 @@ int main(int argc, char **argv)
         printf(" -c Centre align message text\n");
         printf(" -d <secs> show alert for <secs> seconds then exit (default) - overrides the interactive wait options, above.\n");
         printf(" -f force stay in foreground until timeout/confirmation.\n");
+        printf(" -s <size> render message with <size> sized text.\n");
 
         printf("\nMessage text will be wrapped to fit on the display\nWith no timeout or wait options message is displayed for 5seconds\n\n");
         exit(0);
@@ -239,8 +245,20 @@ int main(int argc, char **argv)
                 }
             }
         }
+        if(0==strncasecmp(argv[i],"-s",2)){
+            if(argv[i+1]!=NULL){
+                if(isdigit(argv[i+1][0])){
+                    i++;
+                    fontsize = strtol(argv[i],NULL,10);
+                    font = g15r_requestG15DefaultFont (fontsize);
+                }
+            }
+        }
     }
-
+    if(!fontsize) {
+        fontsize = 10;
+        font = g15r_requestG15DefaultFont (fontsize);
+    }
     if(message==NULL||(g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         if(message==NULL)
             printf("No message - nothing to do. exiting\n");
@@ -270,19 +288,15 @@ int main(int argc, char **argv)
     if(show_title){
         canvas->mode_xor=1;
         g15r_pixelBox (canvas, 0, 0, 159 , 9, G15_COLOR_BLACK, 1, 1);
-        g15r_renderString (canvas, (unsigned char *)title, 0, G15_TEXT_LARGE, 80-((strlen(title)/2)*8), 1);
+        g15r_G15FPrint (canvas,title,0,1,8,G15_JUSTIFY_CENTER,G15_COLOR_BLACK,0);
         canvas->mode_xor=0;
         y_offset = 11;
     }
 
-    if(strlen(message)>32)
+    if(g15r_testG15FontWidth(font,message)>160)
         render_text_area(canvas, message, y_offset, 32, lines_available, G15_TEXT_MED, centered);
     else{
-        if(show_title)
-            y_offset+=10;
-        else
-            y_offset+=18;
-        g15r_renderString (canvas, (unsigned char *)message, 0, G15_TEXT_MED, 80-((strlen(message)/2)*5), y_offset);
+        g15r_G15FPrint (canvas, message, 0, (21-(wait_for_confirmation==1?5:0)+(show_title==1?7:0))-(font->ascender_height/2), fontsize, G15_JUSTIFY_CENTER, G15_COLOR_BLACK, 0);
     }
 
     if(wait_for_confirmation) {
