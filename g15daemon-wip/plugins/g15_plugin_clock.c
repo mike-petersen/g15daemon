@@ -136,7 +136,6 @@ static void draw_static_canvas(void)
 
 static int draw_digital(g15canvas *canvas)
 {
-    int narrows=0;
     char buf[10];
     char ampm[3];
     int off = 0;
@@ -162,8 +161,6 @@ static int draw_digital(g15canvas *canvas)
         strftime(buf,6,"%l:%M",localtime(&currtime));
 	strftime(ampm,3,"%p",localtime(&currtime));
     }
-    if(buf[0]==49) 
-    	narrows=1;
 
     if(buf[0]==' ')
       off++;
