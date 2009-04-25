@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with g15daemon; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-(c) 2008 Mike Lampard 
+(c) 2008-2009 Mike Lampard 
 
 $Revision$ -  $Date$ $Author$
 
@@ -23,7 +23,7 @@ This daemon listens on localhost port 15550 for client connections,
 and arbitrates LCD display.  Allows for multiple simultaneous clients.
 Client screens can be cycled through by pressing the 'L1' key.
 
-This is a cpu and memory stats client
+This is a simple stats client showing graphs for CPU, MEM & Swap usage, Network traffic and Battery life.
 */
 #define _GNU_SOURCE 1
 
@@ -64,6 +64,8 @@ unsigned long net_max_in=0;
 unsigned long net_max_out=0;
 
 _Bool net_scale_absolute=0;
+
+pthread_cond_t wake_now = PTHREAD_COND_INITIALIZER;
 
 unsigned long maxi(unsigned long a, unsigned long b) {
   if(a>b)
@@ -372,12 +374,12 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
     float diff=0;
     float height=0;
     float last=0;
-    
+
+    g15r_clearScreen (canvas, G15_COLOR_WHITE);
     glibtop_netload netload;
     glibtop_get_netload(&netload,interface);    
     // in
     x=53;
-    g15r_clearScreen (canvas, G15_COLOR_WHITE);
     for(i=net_rr_index+1;i<MAX_NET_HIST;i++) {
       diff = (float) net_max_in / (float) net_hist[i][0];
       height = 16-(16/diff);
@@ -581,9 +583,11 @@ void keyboard_watch(void) {
         }
         else if(keystate & G15_KEY_L2) {
             cycle--;
+            pthread_cond_broadcast(&wake_now);
         }
         else if(keystate & G15_KEY_L3) {
             cycle++;
+            pthread_cond_broadcast(&wake_now);
         }
         else if(keystate & G15_KEY_L4) {
 		// These can now be passed to the "app" running
@@ -648,17 +652,35 @@ void network_watch(void *iface) {
     }
 }
 
+/* wait for a max of <seconds> seconds.. if condition &wake_now is received leave immediately */
+void g15stats_wait(int seconds) {
+    pthread_mutex_t dummy_mutex;
+    struct timespec timeout;
+      /* Create a dummy mutex which doesn't unlock for sure while waiting. */
+    pthread_mutex_init(&dummy_mutex, NULL);
+    pthread_mutex_lock(&dummy_mutex);
+
+    time(&timeout.tv_sec);
+    timeout.tv_sec += seconds;
+    timeout.tv_nsec = 0L;
+
+    pthread_cond_timedwait(&wake_now, &dummy_mutex, &timeout);
+    pthread_mutex_unlock(&dummy_mutex);
+    pthread_mutex_destroy(&dummy_mutex);
+}
+
 int main(int argc, char *argv[]){
 
     g15canvas *canvas;
     pthread_t keys_thread;
     pthread_t net_thread;
+    
     int i;
     int go_daemon=0;
     int have_nic=0;
     unsigned char interface[128];
     int multicore = 0;
-
+    
     for (i=0;i<argc;i++) {
         if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
             go_daemon=1;
@@ -687,7 +709,6 @@ int main(int argc, char *argv[]){
             strncpy((char*)interface,argv[i],128);
           }
         }
-        
     }        
     if((g15screen_fd = new_g15_screen(G15_G15RBUF))<0){
         printf("Sorry, cant connect to the G15daemon\n");
@@ -708,39 +729,37 @@ int main(int argc, char *argv[]){
   
     if(have_nic==1)
       pthread_create(&net_thread,NULL,(void*)network_watch,&interface);
-    
+
     while(1) {
 
         switch(cycle) {
             case 0:
                draw_cpu_screen_multicore(canvas,multicore);
-                break;
+               break;
             case 1:   
-                draw_mem_screen(canvas);
-                break;
+               draw_mem_screen(canvas);
+               break;
             case 2:
-                draw_swap_screen(canvas);
-                break;
+               draw_swap_screen(canvas);
+               break;
             case 3:
-                if(have_nic==1)
-                  draw_net_screen(canvas,(char*)interface);
-                else {
-                  printf("Please set the interface on the cmdline\n");
-                  cycle=0;
-                }
-                break;
+              if(have_nic) {
+                 draw_net_screen(canvas,(char*)interface);
+                 break;
+              }else
+                cycle++;
 	    case 4:
-		draw_bat_screen(canvas);
-		break;
+               draw_bat_screen(canvas);
+    	       break;
             default:
-                printf("cycle reched %i\n",cycle);
+                printf("cycle reached %i\n",cycle);
+                cycle=0;
         }
 
         canvas->mode_xor = 0;
 
         g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-
-        sleep(1);
+        g15stats_wait(1);
     }
     glibtop_close();
 
