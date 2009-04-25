@@ -81,14 +81,10 @@
    added to the neighbouring bars */
 #define dif 3 
 
-/* length of the row. */
-#define ROWLEN 34
+#define ROWLEN 35
 
 /* height of a char */
-#define CHAR_HEIGH 8
-
-/* witdh of a char (approx) */
-#define CHAR_WIDTH 5
+#define CHAR_HEIGH 9
 
 /* font size for title */
 #define FONT_SIZE 8
@@ -190,6 +186,7 @@ static void g15analyser_conf_cancel(void);
 static void g15analyser_conf_reset(void);
 
 g15canvas *canvas;
+g15font   *font;
 
 static unsigned int playing=0, paused=0;
 static int g15screen_fd = -1;
@@ -966,7 +963,7 @@ static int g15send_func() {
   char *title;
   char *strtok_ptr;
   /* total length of the string */
-  int rendstrlen = (ROWLEN * rownum);
+  int rendstrlen = (ROWLEN * rownum); 
   static int vol_timeout=0;
   long chksum=0;
   static long last_chksum;
@@ -1036,7 +1033,8 @@ static int g15send_func() {
 	      
 	      
 	      if (*pRendToken != '\0')
-		g15r_renderString (canvas, (unsigned char *)pRendToken, 0, FONT_SIZE, 0, NumRow * CHAR_HEIGH);
+		/* g15r_renderString (canvas, (unsigned char *)pRendToken, 0, FONT_SIZE, 0, NumRow * CHAR_HEIGH); */
+	      g15r_G15FPrint (canvas, pRendToken, 0, NumRow * CHAR_HEIGH, FONT_SIZE, 2,G15_COLOR_BLACK, 0);
 	    }
 	    
 	    pRendStr= &pRendStr[TokenEnd];
@@ -1048,17 +1046,17 @@ static int g15send_func() {
 	  }
 	} else{
 	  /* Only one line */
-	  int title_pixel = strlen(title) * CHAR_WIDTH;
+	  int title_pixel = g15r_testG15FontWidth(font,title);
 	  int i;
 	  // Substitution "_" with " "
 	  for (i = 0 ; i < strlen(title); i++){
 	    if (title[i] == '_')
 	      title[i] = ' ';
 	  }
-	  if (strlen(title) < ROWLEN){
+	  if (title_pixel <= G15_LCD_WIDTH){
 	    
-	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 0, 0);
-	    
+	    /* g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 0, 0); */
+	    g15r_G15FPrint (canvas, title, 0, 0, FONT_SIZE, 2,G15_COLOR_BLACK, 0);
 	  } else {
 	    /* title cycle :D */
 	    /* roll it over my soul... (Oasis) */
@@ -1074,8 +1072,8 @@ static int g15send_func() {
 	      text_start =  text_start2 - title_pixel - 25 % (title_pixel + G15_LCD_WIDTH);
 	      text_start2 = text_start2 % (title_pixel + G15_LCD_WIDTH);
 	    }
-	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 160 - text_start2, 0);
-	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, 160 - text_start, 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, G15_LCD_WIDTH - text_start2, 0);
+	    g15r_renderString (canvas, (unsigned char *)title, 0, FONT_SIZE, G15_LCD_WIDTH - text_start, 0);
 	  }
 	}
       }
@@ -1184,11 +1182,13 @@ static int g15send_func() {
 	    }
 	}
       else 
-	g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, 13, 21, 16);
+	/* g15r_renderString (canvas, (unsigned char *)"Playback Stopped", 0, 13, 21, 16); */
+	g15r_G15FPrint (canvas, "Playback Stopped", 21, 16, 13, 1, G15_COLOR_BLACK, 0);
       
     }
     else
-      g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, 13, 34, 16);
+      /* g15r_renderString (canvas, (unsigned char *)"Playlist Empty", 0, 13, 34, 16); */
+      g15r_G15FPrint (canvas, "Playlist Empty", 34, 16, 13, 1, G15_COLOR_BLACK, 0);
     
     if(lastvolume!=get_main_volume() || vol_timeout>=0) {
       if(lastvolume!=get_main_volume())
@@ -1283,7 +1283,8 @@ static int g15send_func() {
 	canvas->mode_xor = 0;
       }
     
-    
+    /* requesting font size needed */ 
+    font = g15r_requestG15DefaultFont(FONT_SIZE);
     pthread_mutex_unlock(&g15buf_mutex);
     /* increase lcd drive voltage/contrast for this client */
     g15_send_cmd(g15screen_fd, G15DAEMON_CONTRAST,2);
