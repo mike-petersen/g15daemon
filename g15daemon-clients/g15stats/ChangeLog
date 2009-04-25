@@ -2,3 +2,6 @@
 1.0
 - Change net scale from absolute to relative, with option to revert to
   absolute (-nsa --net-scale-absolute).
+SVN:
+- Improve response time when switching screens.
+- Battery status monitoring courtesy of Pieter De Wit
