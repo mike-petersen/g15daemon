@@ -1173,7 +1173,7 @@ static int g15send_func() {
 	    {
 	      /* render scope */
 	      int y1, y2=(25 - scope_data[0]);
-	      for (i = 0; i < 160; i++)
+	      for (i = 0; i < G15_LCD_WIDTH; i++)
 		{
 		  y1 = y2;
 		  y2 = (25 - scope_data[i]);
