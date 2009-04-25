@@ -42,6 +42,7 @@
 #include <libg15render.h>
 #include <poll.h>
 #include <pthread.h>
+#include <math.h>
 
 #ifndef G15R_FONT_API_V2
 #error libg15render 1.4 needed
@@ -78,7 +79,7 @@ int handle_Lkeys() {
 }
 
 /* Prints text to an area, tries to cut lines between words. */
-static void render_text_area(g15canvas *canvas, char* text, int y, int chars_per_line, int max_lines, int fontsize, int centered) {
+static void render_text_area(g15canvas *canvas, char* text, int y, int fontsize, int centered) {
 
     /* The position of the text to be printed. */
     char* cursor = text;
@@ -90,6 +91,15 @@ static void render_text_area(g15canvas *canvas, char* text, int y, int chars_per
     int line_no=0;
     char* bound, *old_bound;
     int x = 0;
+    int pixels_per_line = 160;
+    g15font *font = g15r_requestG15DefaultFont (fontsize);
+    int max_lines =  ceil((43-y) / font->lineheight);
+    /* shrink font if necessary to show whole text */
+
+    while ((g15r_testG15FontWidth(font,text) > (pixels_per_line * max_lines) && fontsize)) {
+        font = g15r_requestG15DefaultFont (--fontsize);
+        max_lines =  ceil((43-y) / font->lineheight);
+    }
 
     while (cursor < text + strlen(text)) {
         bound = cursor;
@@ -112,17 +122,17 @@ static void render_text_area(g15canvas *canvas, char* text, int y, int chars_per
                 bound++;
                 line_cursor++;
             }
-
             text_line[line_cursor++] = ' ';
             text_line[line_cursor] = '\0';
 
             /* Try if the line with a new word still fits to the given area. */
-            line_width=strlen(text_line);
+            line_width = g15r_testG15FontWidth(font,text_line);
 
-            if (line_width > chars_per_line) {
+            if (line_width > pixels_per_line) {
                 /* It didn't fit, restore the old line and stop trying to fit more.*/
+                old_line_length--;
                 text_line[old_line_length] = '\0';
-	
+                
                 /* If no words did fit to the line, fit as many characters as possible in it. */
                 if (old_line_length == 0) {
                     line_width = 0;
@@ -132,7 +142,7 @@ static void render_text_area(g15canvas *canvas, char* text, int y, int chars_per
                         text_line[line_cursor++] = *bound++;
                         text_line[line_cursor] = '\0';
                         /* The last character did not fit. */
-                        if (x + line_width >= chars_per_line) {
+                        if (x + line_width >= pixels_per_line) {
                             text_line[line_cursor - 1] = '\0';
                             bound--;
                             break;
@@ -151,15 +161,8 @@ static void render_text_area(g15canvas *canvas, char* text, int y, int chars_per
         if (line_no>=max_lines) {
             break;
         }
-    	if(centered){
-            if(fontsize==G15_TEXT_SMALL)
-                x = 80-((strlen(text_line)/2)*4);
-            if(fontsize==G15_TEXT_MED)
-            	x = 80-((strlen(text_line)*5)/2);
-            if(fontsize==G15_TEXT_LARGE)
-                x = 80-((strlen(text_line)/2)*8);
-        }
-        g15r_renderString (canvas, (unsigned char *)text_line, line_no, fontsize, x, y);
+        
+        g15r_G15FPrint (canvas, text_line, 0, y, fontsize, centered, G15_COLOR_BLACK, line_no);
         line_no++;
 
         cursor = bound;
@@ -290,14 +293,14 @@ int main(int argc, char **argv)
         g15r_pixelBox (canvas, 0, 0, 159 , 9, G15_COLOR_BLACK, 1, 1);
         g15r_G15FPrint (canvas,title,0,1,8,G15_JUSTIFY_CENTER,G15_COLOR_BLACK,0);
         canvas->mode_xor=0;
-        y_offset = 11;
+        y_offset = 12;
     }
 
     if(g15r_testG15FontWidth(font,message)>160)
-        render_text_area(canvas, message, y_offset, 32, lines_available, G15_TEXT_MED, centered);
-    else{
+        render_text_area(canvas, message, y_offset, fontsize, centered);
+    else
         g15r_G15FPrint (canvas, message, 0, (21-(wait_for_confirmation==1?5:0)+(show_title==1?7:0))-(font->ascender_height/2), fontsize, G15_JUSTIFY_CENTER, G15_COLOR_BLACK, 0);
-    }
+    
 
     if(wait_for_confirmation) {
         g15r_pixelBox (canvas, 0, 34, 159 , 42, G15_COLOR_WHITE, 1, 1);
