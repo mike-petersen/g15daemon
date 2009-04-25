@@ -26,7 +26,7 @@ AC_CHECK_LIB([pthread], [pthread_mutex_init])
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([ fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h libg15render.h g15daemon_audacius_spectrum.h], [], [], [])
+AC_CHECK_HEADERS([ fcntl.h stdlib.h string.h sys/socket.h unistd.h libg15.h libg15render.h], [], [], [])
 
 dnl check for xmms devel headers
 AC_PATH_X
