@@ -173,3 +173,6 @@ allow clients use of all 'L' keys.
 	to set the backlight level for the currently shown screen only.  Default is
 	now to disallow clients changing backlight, and to set backlight globally
 	via the button.
+SVN:
+- Bugfix: Clock plugin can now be disabled.
+ 
