@@ -118,6 +118,7 @@ void g15daemon_lcdnode_cycle(g15daemon_t *masterlist)
 {
     lcdnode_t *current_screen = NULL;
     pthread_mutex_lock(&lcdlist_mutex);
+
 skip:
     current_screen = masterlist->current;
     
@@ -139,8 +140,8 @@ skip:
     } else {
         masterlist->current = masterlist->current->prev;
     }
-
-    if(masterlist->current->lcd->never_select==1) {
+    
+    if(masterlist->current->lcd->never_select==1 || (masterlist->numclients>0 && masterlist->current==masterlist->tail)) {
        goto skip;
     }
 
@@ -157,7 +158,8 @@ void g15daemon_lcdnode_remove (lcdnode_t *oldnode) {
     g15daemon_t **masterlist = NULL;
     lcdnode_t **prev = NULL;
     lcdnode_t **next = NULL;
-    
+    if(oldnode == oldnode->list->tail)
+        return;    
     pthread_mutex_lock(&lcdlist_mutex);
     
     masterlist = &oldnode->list;

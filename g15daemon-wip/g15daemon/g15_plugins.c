@@ -265,13 +265,8 @@ int g15_plugin_load (g15daemon_t *masterlist, char *filename) {
     
         if(plugin_args->type == G15_PLUGIN_LCD_CLIENT) {
             //g15daemon_t *foolist = (g15daemon_t*)*masterlist;
-            /* FIXME we should just sort out the linked list stuff instead of overriding it */
-            if((int)masterlist->numclients>0){
-                clientnode = g15daemon_lcdnode_add(&masterlist);
-            }else {
-                clientnode = masterlist->tail;
-                masterlist->numclients++;
-            }
+            clientnode = g15daemon_lcdnode_add(&masterlist);
+            
             plugin_args->plugin_handle = plugin_handle;
             memcpy(clientnode->lcd->g15plugin,plugin_args,sizeof(plugin_s));
             plugin_args->args = clientnode;

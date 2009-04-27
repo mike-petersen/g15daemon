@@ -62,6 +62,11 @@ static int loaded_plugins = 0;
 /* send event to foreground client's eventlistener */
 int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
 {
+
+    if(caller==NULL) {
+      return -1;
+    }
+  
     switch(event) {
         case G15_EVENT_KEYPRESS: {
             static unsigned long lastkeys;
@@ -70,7 +75,7 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
  
                 if(!lcd->g15plugin->info)
                   break;
- 
+
                 int *(*plugin_listener)(plugin_event_t *newevent) = (void*)lcd->g15plugin->info->event_handler;
                 plugin_event_t *newevent=g15daemon_xmalloc(sizeof(plugin_event_t));
                 newevent->event = event;
@@ -171,6 +176,8 @@ int g15daemon_send_event(void *caller, unsigned int event, unsigned long value)
             g15daemon_send_refresh((lcd_t*)caller);
         default: {
             lcd_t *lcd = (lcd_t*)caller;
+            if(!lcd->g15plugin->info)
+              break;
             int *(*plugin_listener)(plugin_event_t *newevent) = (void*)lcd->g15plugin->info->event_handler;
             plugin_event_t *newevent=g15daemon_xmalloc(sizeof(plugin_event_t));
             newevent->event = event;
