@@ -5,3 +5,4 @@
 SVN:
 - Improve response time when switching screens.
 - Battery status monitoring courtesy of Pieter De Wit
+- Detect if Network interface is incorrect and disable netscreen.  Resolves 100% cpu issue reported by Guy Dierx.

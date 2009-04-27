@@ -57,6 +57,7 @@ This is a simple stats client showing graphs for CPU, MEM & Swap usage, Network 
 
 int g15screen_fd;
 int cycle = 0;
+int have_nic=0;
 
 unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
@@ -617,10 +618,19 @@ void network_watch(void *iface) {
   glibtop_netload netload;
   static unsigned long previous_in;
   static unsigned long previous_out;
+  int mac=0;
+
+  glibtop_get_netload(&netload,interface);
+  for(i=0;i<8;i++)
+    mac+=netload.hwaddress[i];
+  if(!mac) {
+    printf("Interface %s does not appear to exist. Net screen will be disabled.\n",interface);
+    have_nic = 0;
+    return; // interface probably doesn't exist - no mac address
+  }
 
   while(1) {
     int j=0, max_in=0, max_out=0;
-    glibtop_get_netload(&netload,interface);
 
     if(previous_in+previous_out==0)
        goto last;
@@ -644,11 +654,13 @@ void network_watch(void *iface) {
     }
       net_rr_index=i;    
       i++; if(i>MAX_NET_HIST) i=0;
-      
-      sleep (1);
+
       last: 
       previous_in = netload.bytes_in;
       previous_out = netload.bytes_out;
+      sleep (1);
+      glibtop_get_netload(&netload,interface);
+
     }
 }
 
@@ -677,7 +689,6 @@ int main(int argc, char *argv[]){
     
     int i;
     int go_daemon=0;
-    int have_nic=0;
     unsigned char interface[128];
     int multicore = 0;
     
