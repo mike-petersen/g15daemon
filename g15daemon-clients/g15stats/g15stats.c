@@ -15,7 +15,8 @@ You should have received a copy of the GNU General Public License
 along with g15daemon; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-(c) 2008-2009 Mike Lampard 
+(c) 2008-2009 Mike Lampard
+(c) 2009 Piotr Czarnecki
 
 $Revision$ -  $Date$ $Author$
 
@@ -56,13 +57,23 @@ This is a simple stats client showing graphs for CPU, MEM & Swap usage, Network 
 #include "g15stats.h"
 
 int g15screen_fd;
+
 int cycle = 0;
+/** Holds the mode type variable of the application running */
+int mode = 0;
+/** Holds the sub mode type variable of the application running */
+int submode = 0;
+
 int have_nic=0;
 
 unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
+
 unsigned long net_max_in=0;
 unsigned long net_max_out=0;
+
+unsigned long previous_in;
+unsigned long previous_out;
 
 _Bool net_scale_absolute=0;
 
@@ -72,6 +83,22 @@ unsigned long maxi(unsigned long a, unsigned long b) {
   if(a>b)
     return a;
   return b;
+}
+
+char * show_bytes(unsigned long bytes) {
+    static char tmpstr[128];
+    if(bytes>1024*1024) {
+      bytes = bytes / (1024*1024);
+      sprintf(tmpstr,"%liMb",bytes);
+    }
+    else if(bytes<1024*1024 && bytes > 1024) {
+      bytes = bytes / 1024;
+      sprintf(tmpstr,"%likb",bytes);
+    }
+    else if(bytes<1024) {
+      sprintf(tmpstr,"%lib",bytes);
+    }
+    return tmpstr;
 }
 
 void drawBar_reversed (g15canvas * canvas, int x1, int y1, int x2, int y2, int color,
@@ -152,9 +179,66 @@ int daemonise(int nochdir, int noclose) {
     return 0;
 }
 
+void print_sys_load_info(g15canvas *canvas) {
+    char tmpstr[MAX_LINES];
+    glibtop_loadavg loadavg;
+    glibtop_uptime uptime;
+
+    glibtop_get_loadavg(&loadavg);
+    glibtop_get_uptime(&uptime);
+    
+    float minutes = uptime.uptime/60;
+    float hours = minutes/60;
+    float days = 0.0;
+
+    if(hours>24)
+        days=(int)(hours/24);
+    if(days)
+        hours=(int)hours-(days*24);
+
+    sprintf(tmpstr,"LoadAVG %.2f %.2f %.2f | Uptime %.fd%.fh",loadavg.loadavg[0],loadavg.loadavg[1],loadavg.loadavg[2],days,hours);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
+void print_mem_info(g15canvas *canvas) {
+    char tmpstr[MAX_LINES];
+    glibtop_mem mem;
+    glibtop_get_mem(&mem);
+
+    sprintf(tmpstr,"Memory Used %dMb | Memory Total %dMb",(unsigned int)((mem.buffer+mem.cached+mem.user)/(1024*1024)),(unsigned int)(mem.total/(1024*1024)));
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
+void print_swap_info(g15canvas *canvas) {
+    char tmpstr[MAX_LINES];
+    glibtop_swap swap;
+    glibtop_get_swap(&swap);
+
+    sprintf(tmpstr,"Swap Used %dMb | Swap Avail. %dMb",(unsigned int)(swap.used/(1024*1024)),(unsigned int)(swap.total/(1024*1024)));
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
+void print_net_info(g15canvas *canvas) {
+    char tmpstr[MAX_LINES];
+    sprintf(tmpstr,"Peak IN %s/s|",show_bytes(net_max_in));
+    strcat(tmpstr,"Peak OUT ");
+    strcat(tmpstr,show_bytes(net_max_out));
+    strcat(tmpstr,"/s");
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
+void print_time_info(g15canvas *canvas){
+    char tmpstr[MAX_LINES];
+    time_t now;
+    time(&now);
+
+    sprintf(tmpstr,"%s",ctime(&now));
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
 void draw_mem_screen(g15canvas *canvas) {
     glibtop_mem mem;
-    char tmpstr[1024];
+    char tmpstr[MAX_LINES];
 
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
@@ -187,7 +271,7 @@ void draw_mem_screen(g15canvas *canvas) {
 
 void draw_swap_screen(g15canvas *canvas) {
     glibtop_swap swap;
-    char tmpstr[1024];
+    char tmpstr[MAX_LINES];
 
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
@@ -209,27 +293,17 @@ void draw_swap_screen(g15canvas *canvas) {
     g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, TEXT_RIGHT, 4);
     g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, TEXT_RIGHT, 4);
 
-    sprintf(tmpstr,"Swap Used %dMb | Swap Avail. %dMb",(unsigned int)(swap.used/(1024*1024)),(unsigned int)(swap.total/(1024*1024)));
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
-
+    print_swap_info(canvas);
 }
 
 /* draw cpu screen.  if drawgraph = 0 then no graph is drawn */
-void draw_cpu_screen_unicore(g15canvas *canvas, int drawgraph) {
-    glibtop_cpu cpu;
-    glibtop_loadavg loadavg;
-    glibtop_uptime uptime;
-    
+void draw_cpu_screen_unicore_logic(g15canvas *canvas, glibtop_cpu cpu, int drawgraph, int printlabels, int cpuandmemory) {
     int total,user,nice,sys,idle;
     int b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
     static int last_total,last_user,last_nice,last_sys,last_idle,last_iowait,last_irq;
-    char tmpstr[1024];
+    char tmpstr[MAX_LINES];
 
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
-
-    glibtop_get_cpu(&cpu);
-    glibtop_get_loadavg(&loadavg);
-    glibtop_get_uptime(&uptime);
 
     total = ((unsigned long) cpu.total) ? ((double) cpu.total) : 1.0;
     user  = ((unsigned long) cpu.user)  ? ((double) cpu.user)  : 1.0;
@@ -245,60 +319,65 @@ void draw_cpu_screen_unicore(g15canvas *canvas, int drawgraph) {
     b_irq   = cpu.irq - last_irq;
     b_iowait= cpu.iowait - last_iowait;
 
-    last_total = total;
-    last_user = user;
-    last_nice = nice;
-    last_sys = sys;
-    last_idle = idle;
-    last_irq = cpu.irq;
+    last_total  = total;
+    last_user   = user;
+    last_nice   = nice;
+    last_sys    = sys;
+    last_idle   = idle;
+    last_irq    = cpu.irq;
     last_iowait = cpu.iowait;
-    
-    sprintf(tmpstr,"Usr %2.f%%",((float)b_user/(float)b_total)*100);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 2);
-    sprintf(tmpstr,"Sys %2.f%%",((float)b_sys/(float)b_total)*100);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 14);
-    sprintf(tmpstr,"Nce %2.f%%",((float)b_nice/(float)b_total)*100);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 26);
+
+    if(printlabels) {
+        sprintf(tmpstr,"Usr %2.f%%",((float)b_user/(float)b_total)*100);
+        g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 2);
+        sprintf(tmpstr,"Sys %2.f%%",((float)b_sys/(float)b_total)*100);
+        g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 14);
+        sprintf(tmpstr,"Nce %2.f%%",((float)b_nice/(float)b_total)*100);
+        g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, 26);
+    }
     if(drawgraph) {
         g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,b_user+1,b_total,4);
         g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,b_sys+1,b_total,4);
         g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,b_nice+1,b_total,4);
         drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,b_idle+1,b_total,5);
+
+        g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+        g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
     }
-    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+    if (cpuandmemory) {
+        g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, TEXT_RIGHT, 3);
+        g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, TEXT_RIGHT, 3);
+        g15r_renderString (canvas, (unsigned char*)"E", 2, G15_TEXT_MED, TEXT_RIGHT, 3);
+        g15r_renderString (canvas, (unsigned char*)"E", 3, G15_TEXT_MED, TEXT_RIGHT, 3);
 
-    g15r_renderString (canvas, (unsigned char*)"I", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
-    g15r_renderString (canvas, (unsigned char*)"d", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
-    g15r_renderString (canvas, (unsigned char*)"l", 2, G15_TEXT_MED, TEXT_RIGHT, 4);
-    g15r_renderString (canvas, (unsigned char*)"e", 3, G15_TEXT_MED, TEXT_RIGHT, 4);
-
-//  sprintf(tmpstr,"IOWait %u, Interrupts/s %u",b_iowait, b_irq);
-    float minutes = uptime.uptime/60;
-    float hours = minutes/60;
-    float days = 0.0;
-
-    if(hours>24)
-        days=(int)(hours/24);
-    if(days)
-        hours=(int)hours-(days*24);
-
-    sprintf(tmpstr,"LoadAVG %.2f %.2f %.2f | Uptime %.fd%.fh",loadavg.loadavg[0],loadavg.loadavg[1],loadavg.loadavg[2],days,hours);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
-
+        sprintf(tmpstr,"CPU %3.f%%",((float)(b_total-b_idle)/(float)b_total)*100);
+        g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 5);
+    } else {
+        g15r_renderString (canvas, (unsigned char*)"I", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
+        g15r_renderString (canvas, (unsigned char*)"d", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
+        g15r_renderString (canvas, (unsigned char*)"l", 2, G15_TEXT_MED, TEXT_RIGHT, 4);
+        g15r_renderString (canvas, (unsigned char*)"e", 3, G15_TEXT_MED, TEXT_RIGHT, 4);
+    }
 }
 
-void draw_cpu_screen_multicore(g15canvas *canvas, int multicore) {
+void draw_cpu_screen_unicore(g15canvas *canvas, int drawgraph, int printlabels) {
     glibtop_cpu cpu;
-    glibtop_loadavg loadavg;
-    glibtop_uptime uptime;
+    glibtop_get_cpu(&cpu);
+
+    draw_cpu_screen_unicore_logic(canvas, cpu, drawgraph, printlabels, 0);
+}
+
+void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
+    glibtop_cpu cpu;
+    char tmpstr[MAX_LINES];
     const glibtop_sysinfo *cpuinfo;
-    int core,ncpu;
+    int core,ncpu,ncpumax;
     int divider = 0;
         
-    int total[16],user[16],nice[16],sys[16],idle[16];
-    int b_total[16],b_user[16],b_nice[16],b_sys[16],b_idle[16],b_irq[16],b_iowait[16];
-    static int last_total[16],last_user[16],last_nice[16],last_sys[16],last_idle[16],last_iowait[16],last_irq[16];
+    int total,user,nice,sys,idle;
+    int b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
+    static int last_total[GLIBTOP_NCPU],last_user[GLIBTOP_NCPU],last_nice[GLIBTOP_NCPU],
+            last_sys[GLIBTOP_NCPU],last_idle[GLIBTOP_NCPU],last_iowait[GLIBTOP_NCPU],last_irq[GLIBTOP_NCPU];
 
     cpuinfo = glibtop_get_sysinfo();
 
@@ -307,64 +386,160 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int multicore) {
     else
         ncpu = cpuinfo->ncpu;
 
-    if(ncpu==1 || multicore==0) {
-        draw_cpu_screen_unicore(canvas,1);
-        return;
-    }else
-        draw_cpu_screen_unicore(canvas,0);
+    ncpumax = ncpu;
 
     glibtop_get_cpu(&cpu);
-    glibtop_get_loadavg(&loadavg);
-    glibtop_get_uptime(&uptime);
-    for(core=0;core<ncpu;core++) {
-        total[core] = ((unsigned long) cpu.xcpu_total[core]) ? ((double) cpu.xcpu_total[core]) : 1.0;
-        user[core]  = ((unsigned long) cpu.xcpu_user[core])  ? ((double) cpu.xcpu_user[core])  : 1.0;
-        nice[core]  = ((unsigned long) cpu.xcpu_nice[core])  ? ((double) cpu.xcpu_nice[core])  : 1.0;
-        sys[core]   = ((unsigned long) cpu.xcpu_sys[core])   ? ((double) cpu.xcpu_sys[core])   : 1.0;
-        idle[core]  = ((unsigned long) cpu.xcpu_idle[core])  ? ((double) cpu.xcpu_idle[core])  : 1.0;
 
-        b_total[core]	= total[core] - last_total[core];
-        b_user[core] 	= user[core]  - last_user[core];
-        b_nice[core] 	= nice[core]  - last_nice[core];
-        b_sys[core]   	= sys[core]   - last_sys[core];
-        b_idle[core]  	= idle[core]  - last_idle[core];
-        b_irq[core]   	= cpu.xcpu_irq[core] - last_irq[core];
-        b_iowait[core]	= cpu.xcpu_iowait[core] - last_iowait[core];
+    if (ncpu==1 || unicore) {
+        draw_cpu_screen_unicore_logic(canvas, cpu, 1, 1, 0);
+        return;
+    } else if (((ncpu > 5) && (mode != MODE_CPU_SUMARY)) 
+            || (mode == MODE_CPU_USR_SYS_NCE_1)
+            || (mode == MODE_CPU_USR_SYS_NCE_2)) {
+        draw_cpu_screen_unicore_logic(canvas, cpu, 0, 1, 0);
+    } else if (mode != MODE_CPU_SUMARY){
+        draw_cpu_screen_unicore_logic(canvas, cpu, 0, 0, 0);
+    } else {
+        draw_cpu_screen_unicore_logic(canvas, cpu, 0, 0, 1);
+    }
 
-        last_total[core]	= total[core];
-        last_user[core] 	= user[core];
-        last_nice[core] 	= nice[core];
-        last_sys[core] 		= sys[core];
-        last_idle[core] 	= idle[core];
+    int y1=0, y2=32, currentValue, mem_used=1, mem_total=1;
+
+    int spacer = 1;
+    int height = 8;
+    if (mode) {
+        switch (mode) {
+            case    MODE_CPU_TOTAL :
+                if(ncpu > 11){
+                    spacer = 0;
+                }
+                height = 37;
+                break;
+            case    MODE_CPU_USR_SYS_NCE_2 :
+                if(ncpu > 4){
+                    spacer = 0;
+                }
+                height = 12;
+
+                //FIXME : It should be tested
+                ncpumax = height;
+                break;
+            case    MODE_CPU_SUMARY :
+                if(ncpu>6){
+                    spacer = 0;
+                }
+                height = 16;
+
+                //FIXME : It should be tested
+                ncpumax = height;
+                glibtop_mem mem;
+                glibtop_get_mem(&mem);
+                mem_used  = ((mem.total - mem.free) / 1024);
+                mem_total = (mem.total / 1024);
+
+                sprintf(tmpstr,"MEM %3.f%%",((float)(mem_used)/(float)mem_total)*100);
+                g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 24);
+                break;
+        }
+
+        if (ncpumax < ncpu) {
+            height = (height - ((ncpumax - 1) * spacer)) / (ncpumax);
+        } else {
+            height = (height - ((ncpu - 1) * spacer)) / (ncpu);
+        }
+
+        if(height < 1){
+            height = 1;
+        }
+    }
+
+    for(core=0;core<ncpu && core<ncpumax;core++) {
+        total = ((unsigned long) cpu.xcpu_total[core]) ? ((double) cpu.xcpu_total[core]) : 1.0;
+        user  = ((unsigned long) cpu.xcpu_user[core])  ? ((double) cpu.xcpu_user[core])  : 1.0;
+        nice  = ((unsigned long) cpu.xcpu_nice[core])  ? ((double) cpu.xcpu_nice[core])  : 1.0;
+        sys   = ((unsigned long) cpu.xcpu_sys[core])   ? ((double) cpu.xcpu_sys[core])   : 1.0;
+        idle  = ((unsigned long) cpu.xcpu_idle[core])  ? ((double) cpu.xcpu_idle[core])  : 1.0;
+
+        b_total     = total - last_total[core];
+        b_user      = user  - last_user[core];
+        b_nice      = nice  - last_nice[core];
+        b_sys       = sys   - last_sys[core];
+        b_idle      = idle  - last_idle[core];
+        b_irq       = cpu.xcpu_irq[core]    - last_irq[core];
+        b_iowait    = cpu.xcpu_iowait[core] - last_iowait[core];
+
+        last_total[core]	= total;
+        last_user[core] 	= user;
+        last_nice[core] 	= nice;
+        last_sys[core] 		= sys;
+        last_idle[core] 	= idle;
         last_irq[core] 		= cpu.xcpu_irq[core];
         last_iowait[core] 	= cpu.xcpu_iowait[core];
 
-        divider = 9/ncpu;
-        g15r_drawBar(canvas,BAR_START,1+(divider*core),BAR_END,1+(divider+(divider*(core))),G15_COLOR_BLACK,b_user[core]+1,b_total[core],4);
-        g15r_drawBar(canvas,BAR_START,13+(divider*(core)),BAR_END,13+(divider+(divider*(core))),G15_COLOR_BLACK,b_sys[core]+1,b_total[core],4);
-        g15r_drawBar(canvas,BAR_START,24+(divider*(core)),BAR_END,24+(divider+(divider*(core))),G15_COLOR_BLACK,b_nice[core]+1,b_total[core],4);
-        divider = 32/ncpu;
-        drawBar_reversed(canvas,BAR_START,1+(divider*core),BAR_END,1+(divider+(divider*(core))),G15_COLOR_BLACK,b_idle[core]+1,b_total[core],5);
-    }
-    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+        if (mode) {
+            y1 = (core * height) + (core * spacer);
+            y2 = y1 + height-1;
+            currentValue = b_total-b_idle;
+        }
 
-}
+        switch (mode) {
+            case    MODE_CPU_USR_SYS_NCE_1   :
+                divider = 9/ncpu;
+                g15r_drawBar(canvas,BAR_START,(divider*core),BAR_END,(divider+(divider*(core))),G15_COLOR_BLACK,b_user+1,b_total,4);
+                g15r_drawBar(canvas,BAR_START,12+(divider*(core)),BAR_END,12+(divider+(divider*(core))),G15_COLOR_BLACK,b_sys+1,b_total,4);
+                y1  = 0;
+                y2  = 24+(divider+(divider*(core)));
+                g15r_drawBar(canvas,BAR_START,24+(divider*(core)),BAR_END,y2,G15_COLOR_BLACK,b_nice+1,b_total,4);
+                
+                divider = y2/ncpu;
+                drawBar_reversed(canvas,BAR_START,(divider*core),BAR_END,y2,G15_COLOR_BLACK,b_idle+1,b_total,5);
+                break;
+            case    MODE_CPU_TOTAL   :
+                if (ncpu < 6) {
+                    sprintf(tmpstr,"CPU%.f%3.f%%",(float)core,((float)(b_total-b_idle)/(float)b_total)*100);
+                    if (ncpu < 5) {
+                        g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, y1+1);
+                    } else {
+                        g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 1, y1+1);
+                    }
+                }
 
-char * show_bytes(unsigned long bytes) {
-    static char tmpstr[128];
-    if(bytes>1024*1024) {
-      bytes = bytes / (1024*1024);
-      sprintf(tmpstr,"%liMb",bytes);
+                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, currentValue, b_total,4);
+                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-currentValue, b_total,5);
+                y1 = 0;
+                break;
+            case    MODE_CPU_USR_SYS_NCE_2   :
+                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, currentValue, b_total,4);
+                g15r_drawBar(canvas, BAR_START,12+y1,BAR_END,12+y2,G15_COLOR_BLACK,b_sys+1,b_total,4);
+                g15r_drawBar(canvas, BAR_START,24+y1,BAR_END,24+y2,G15_COLOR_BLACK,b_nice+1,b_total,4);
+
+
+                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-currentValue, b_total,5);
+                drawBar_reversed(canvas, BAR_START,12+y1,BAR_END,12+y2,G15_COLOR_BLACK,b_total-b_sys,b_total,5);
+
+                y2 += 24;
+                drawBar_reversed(canvas, BAR_START,24+y1,BAR_END, y2,G15_COLOR_BLACK,b_total-b_nice,b_total,5);
+
+                y1 = 0;
+                break;
+            case    MODE_CPU_SUMARY   :
+                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, currentValue, b_total,4);
+                g15r_drawBar(canvas, BAR_START,19+y1,BAR_END,19+y2,G15_COLOR_BLACK, mem_used+1, mem_total,4);
+
+                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-currentValue, b_total,5);
+                drawBar_reversed(canvas, BAR_START,19+y1,BAR_END,19+y2,G15_COLOR_BLACK, mem_total - mem_used, mem_total,5);
+                y1 = 0;
+                break;
+        }
     }
-    else if(bytes<1024*1024 && bytes > 1024) {
-      bytes = bytes / 1024;
-      sprintf(tmpstr,"%likb",bytes);
+
+    g15r_drawLine (canvas, VL_LEFT, y1, VL_LEFT, y2, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, y1, VL_LEFT+1, y2, G15_COLOR_BLACK);
+
+    if(mode == 3) {
+        g15r_drawLine (canvas, VL_LEFT, 19+y1, VL_LEFT, 19+y2, G15_COLOR_BLACK);
+        g15r_drawLine (canvas, VL_LEFT+1, 19+y1, VL_LEFT+1, 19+y2, G15_COLOR_BLACK);
     }
-    else if(bytes<1024) {
-      sprintf(tmpstr,"%lib",bytes);
-    }
-    return tmpstr;
 }
 
 void draw_net_screen(g15canvas *canvas, char *interface) {
@@ -424,16 +599,9 @@ void draw_net_screen(g15canvas *canvas, char *interface) {
 
     sprintf(tmpstr,"%s",interface);
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_LARGE, 25-(strlen(tmpstr)*9)/2, 14);
-    
-    sprintf(tmpstr,"Peak IN %s/s|",show_bytes(net_max_in));
-    strcat(tmpstr,"Peak OUT ");
-    strcat(tmpstr,show_bytes(net_max_out));
-    strcat(tmpstr,"/s");
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
-
 }
 
-void draw_bat_screen(g15canvas *canvas) {
+void draw_bat_screen(g15canvas *canvas, int all) {
 
 	g15_stats_bat_info bats[NUM_BATS];
 	long	tot_max_charge = 0;
@@ -506,32 +674,33 @@ void draw_bat_screen(g15canvas *canvas) {
 
 		}
 	}
+        if (all) {
+            g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
-	g15r_clearScreen (canvas, G15_COLOR_WHITE);
+            g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 155, 4);
+            g15r_renderString (canvas, (unsigned char*)"U", 1, G15_TEXT_MED, 155, 4);
+            g15r_renderString (canvas, (unsigned char*)"L", 2, G15_TEXT_MED, 155, 4);
+            g15r_renderString (canvas, (unsigned char*)"L", 3, G15_TEXT_MED, 155, 4);
 
-	g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, 155, 4);
-	g15r_renderString (canvas, (unsigned char*)"U", 1, G15_TEXT_MED, 155, 4);
-	g15r_renderString (canvas, (unsigned char*)"L", 2, G15_TEXT_MED, 155, 4);
-	g15r_renderString (canvas, (unsigned char*)"L", 3, G15_TEXT_MED, 155, 4);
+            g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+            g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
-	g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-	g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+            for (i = 0; i < NUM_BATS; i++)
+            {
+                    register float charge = 0;
+                    register int bar_top = (i*10) + 1 + i;
+                    register int bar_bottom = ((i+1)*10) + i;
+                    if (bats[i].max_charge > 0)
+                    {
+                            charge = ((float)bats[i].cur_charge/(float)bats[i].max_charge)*100;
+                    }
+                    sprintf(tmpstr,"Bt%d %2.f%%", i, charge);
+                    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, (i*12) + 2);
+                    g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, bats[i].cur_charge, bats[i].max_charge, 4);
+            }
 
-	for (i = 0; i < NUM_BATS; i++)
-	{
-		register float charge = 0;
-		register int bar_top = (i*10) + 1 + i;
-		register int bar_bottom = ((i+1)*10) + i;
-		if (bats[i].max_charge > 0)
-		{
-			charge = ((float)bats[i].cur_charge/(float)bats[i].max_charge)*100;
-		}
-		sprintf(tmpstr,"Bt%d %2.f%%", i, charge);
-		g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, (i*12) + 2);
-		g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, bats[i].cur_charge, bats[i].max_charge, 4);
-	}
-
-	drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,100-(((float)tot_cur_charge/(float)tot_max_charge)*100),100,5);
+            drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,100-(((float)tot_cur_charge/(float)tot_max_charge)*100),100,5);
+        }
 
 	float total_charge = 0;
 	if (tot_max_charge > 0)
@@ -573,9 +742,58 @@ void draw_bat_screen(g15canvas *canvas) {
 	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
 }
 
+void print_info_label(g15canvas *canvas) {
+    static int timer;
+    int my_cycle = cycle;
+    timer++;
+
+    if (! submode) {
+        my_cycle = -1;
+    }
+
+    switch (my_cycle){
+        case    CYCLE_CPU_SCREEN    :
+            print_sys_load_info(canvas);
+            break;
+        case    CYCLE_MEM_SCREEN    :
+            print_mem_info(canvas);
+            break;
+        case    CYCLE_SWAP_SCREEN   :
+            print_swap_info(canvas);
+            break;
+        case    CYCLE_NET_SCREEN    :
+            print_net_info(canvas);
+            break;
+        case    CYCLE_BAT_SCREEN    :
+            draw_bat_screen(canvas, 0);
+            break;
+        default :
+            if ((timer < PAUSE)) {
+                print_sys_load_info(canvas);
+            } else if (timer < PAUSE_2) {
+                print_mem_info(canvas);
+            } else if (timer < PAUSE_3) {
+                print_swap_info(canvas);
+            } else if (timer < PAUSE_4) {
+                draw_bat_screen(canvas, 0);
+            } else if (timer < PAUSE_5) {
+                print_time_info(canvas);
+            } else if (have_nic) {
+                print_net_info(canvas);
+            } else {
+                print_sys_load_info(canvas);
+                timer = 0;
+            }
+            break;
+    }
+    if (timer > PAUSE_5) {
+        timer=0;
+    }
+}
 
 void keyboard_watch(void) {
     unsigned int keystate;
+    int change   = 0;
 
     while(1) {
         recv(g15screen_fd,&keystate,4,0);
@@ -584,17 +802,19 @@ void keyboard_watch(void) {
         }
         else if(keystate & G15_KEY_L2) {
             cycle--;
-            pthread_cond_broadcast(&wake_now);
+            change++;
         }
         else if(keystate & G15_KEY_L3) {
             cycle++;
-            pthread_cond_broadcast(&wake_now);
+            change++;
         }
         else if(keystate & G15_KEY_L4) {
-		// These can now be passed to the "app" running
+            mode++;
+            change++;
         }
         else if(keystate & G15_KEY_L5) {
-		// These can now be passed to the "app" running
+            submode++;
+            change++;
         }
 	if (cycle<0)
 	{
@@ -606,6 +826,22 @@ void keyboard_watch(void) {
 		//Wrap around the apps
 		cycle=0;
 	}
+
+        if (mode>MAX_MODE)
+        {
+            mode=0;
+        }
+
+        if (submode>MAX_SUB_MODE)
+        {
+            submode=0;
+        }
+
+        if (change) 
+        {
+            pthread_cond_broadcast(&wake_now);
+            change = 0;
+        }
         usleep(100*900);
     }
 
@@ -616,8 +852,6 @@ void network_watch(void *iface) {
   char *interface = (char*)iface;
   int i=0;
   glibtop_netload netload;
-  static unsigned long previous_in;
-  static unsigned long previous_out;
   int mac=0;
 
   glibtop_get_netload(&netload,interface);
@@ -690,14 +924,16 @@ int main(int argc, char *argv[]){
     int i;
     int go_daemon=0;
     unsigned char interface[128];
-    int multicore = 0;
+    int unicore = 0;
+    // Set the default CPU Screen mode to mem plus cpu
+    mode = MODE_CPU_SUMARY;
     
     for (i=0;i<argc;i++) {
         if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
             go_daemon=1;
         }
-        if(0==strncmp(argv[i],"-m",2)||0==strncmp(argv[i],"--multicore",11)) {
-            multicore=1;
+        if(0==strncmp(argv[i],"-u",2)||0==strncmp(argv[i],"--unicore",11)) {
+            unicore=1;
         }
         if(0==strncmp(argv[i],"-nsa",4)||0==strncmp(argv[i],"--net-scale-absolute",20)) {
             net_scale_absolute=1;
@@ -707,7 +943,7 @@ int main(int argc, char *argv[]){
             printf("%s (c) 2008 Mike Lampard\n",PACKAGE_NAME);
             printf("\nOptions:\n");
             printf("--daemon (-d) run in background\n");
-            printf("--multicore (-m) display graphs for each core on the CPU screen\n");
+            printf("--unicore (-u) display unicore graphs only on the CPU screen\n");
             printf("--help (-h) this help text.\n");
             printf("--interface [interface] (-i) monitor network interface [interface] ie -i eth0\n");
             printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
@@ -744,23 +980,27 @@ int main(int argc, char *argv[]){
     while(1) {
 
         switch(cycle) {
-            case 0:
-               draw_cpu_screen_multicore(canvas,multicore);
+            case CYCLE_CPU_SCREEN:
+               draw_cpu_screen_multicore(canvas,unicore);
+               print_info_label(canvas);
                break;
-            case 1:   
+            case CYCLE_MEM_SCREEN:
                draw_mem_screen(canvas);
+               print_info_label(canvas);
                break;
-            case 2:
+            case CYCLE_SWAP_SCREEN:
                draw_swap_screen(canvas);
+               print_info_label(canvas);
                break;
-            case 3:
+            case CYCLE_NET_SCREEN:
               if(have_nic) {
                  draw_net_screen(canvas,(char*)interface);
+                 print_info_label(canvas);
                  break;
               }else
                 cycle++;
-	    case 4:
-               draw_bat_screen(canvas);
+	    case CYCLE_BAT_SCREEN:
+               draw_bat_screen(canvas,1);
     	       break;
             default:
                 printf("cycle reached %i\n",cycle);

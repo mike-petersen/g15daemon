@@ -23,6 +23,7 @@ Options:
 -nsa		Scale network graphs against highest speed recorded.  The
 		default is to scale against the highest peak in the current graph.
 -h		Show help
+-u      Display unicore graphs only on the CPU screen
 
 Usage:
 $> g15stats
@@ -31,6 +32,8 @@ Once running, the separate screens can be switched to as follows:
 
 L2: Previous Screen
 L3: Next Screen
+L4: Alternative Screen (Work at this moment with the CPU Screen only)
+L5: Bottom Info bar mode
 
 BUGS:
 none currently known.
