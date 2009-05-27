@@ -421,7 +421,6 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
                 }
                 height = 12;
 
-                //FIXME : It should be tested
                 ncpumax = height;
                 break;
             case    MODE_CPU_SUMARY :
@@ -430,7 +429,6 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
                 }
                 height = 16;
 
-                //FIXME : It should be tested
                 ncpumax = height;
                 glibtop_mem mem;
                 glibtop_get_mem(&mem);
@@ -932,7 +930,7 @@ int main(int argc, char *argv[]){
         if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
             go_daemon=1;
         }
-        if(0==strncmp(argv[i],"-u",2)||0==strncmp(argv[i],"--unicore",11)) {
+        if(0==strncmp(argv[i],"-u",2)||0==strncmp(argv[i],"--unicore",8)) {
             unicore=1;
         }
         if(0==strncmp(argv[i],"-nsa",4)||0==strncmp(argv[i],"--net-scale-absolute",20)) {
