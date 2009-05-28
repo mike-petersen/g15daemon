@@ -11,3 +11,5 @@ SVN 504:
 - 3 additional CPU graph variants switched with the L4 key (at this moment for multi core processors only)
 - New default CPU Screen (at this moment for multi core processors only)
 - Display unicore graphs only on the CPU screen with the option -u (--unicore)
+SVN 505:
+- Bugfix: Render bottom line on the Memory Screen once
