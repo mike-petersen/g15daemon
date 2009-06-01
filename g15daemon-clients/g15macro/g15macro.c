@@ -83,6 +83,8 @@ int G15Version = 0;
 char configpath[1024];
 
 char configDir[1024];
+char GKeyCodeCfg[1024];
+// Sloopppyyy :(
 
 #define MAX_CONFIGS 32
 unsigned int numConfigs = 0;
@@ -138,10 +140,10 @@ unsigned int rec_index=0;
 
 const char *gkeystring[] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16","G17","G18","Unknown" };
 
-const int gkeycodes[] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
+int gkeycodes[] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
 
-const int mmedia_codes[2][6] = { {164, 162, 144, 153, 174, 176},    // For G15 v1
-								{174, 172, 173, 171, 122, 123} };  // For G15 v2
+int mmedia_codes[6] = {164, 162, 144, 153, 174, 176};    // For G15 v1
+// 								{174, 172, 173, 171, 122, 123} };  // For G15 v2
 
 const long mmedia_defaults[] = {
     XF86XK_AudioStop,
@@ -412,6 +414,73 @@ int calc_mkey_offset() {
 			mkey_offset=0;
 	}
 	return mkey_offset;
+}
+// Various distributions have started giving
+// different keycodes to the special keys
+// Next 2 functions handles this
+// TODO: We got alot of config files for very little info in each now..
+// Also this is most likely systemwide, but get's written for each user.
+int writeKeyDefs(char *filename)
+{
+	FILE *f;
+	unsigned int i=0;
+	f = fopen(filename,"w");
+	if(!f)
+	{
+		printf("ERROR: Unable to open keycode definition file (%s). Aborting.\n",filename);
+		return False;
+	}
+	fprintf(f,"#Use this file to define what keycode each key has.\n");
+	fprintf(f,"#You can use xev for each key to figure it out.\n");
+	fprintf(f,"#TODO: Better guide to finding out keycodes\n");
+// 	fprintf(f,"#Run the command and hit each key, then write the number returned at the right place.\n");
+	fprintf(f,"#Format is Key:Keycode. Example: G1:138\n");
+	for (i = 0;i < 18;++i)
+	{
+		fprintf(f,"G%i:%i\n",i+1,gkeycodes[i]);
+	}
+	fprintf(f,"AudioStop:%i\n",mmedia_codes[0]);
+	fprintf(f,"AudioPlay:%i\n",mmedia_codes[1]);
+	fprintf(f,"AudioPrev:%i\n",mmedia_codes[2]);
+	fprintf(f,"AudioNext:%i\n",mmedia_codes[3]);
+	fprintf(f,"AudioLowerVolume:%i\n",mmedia_codes[4]);
+	fprintf(f,"AudioRaiseVolume:%i\n",mmedia_codes[5]);
+
+	fclose(f);
+	return True;
+}
+void getKeyDefs(char *filename)
+{
+	FILE *f = NULL;
+	char buf[1024];
+	unsigned int key=0;
+	unsigned int i=0;
+	unsigned int keycode=0;
+	int keys[18];
+	while (!f)
+	{
+		f=fopen(filename,"r");
+		if (!f)
+		{
+			if (!writeKeyDefs(filename))
+				return;
+		}
+	}
+
+	printf("Reading keycodes for keys from %s\n",filename);
+	while (!feof(f))
+	{
+		memset(buf,0,sizeof(buf));
+		fgets(buf,sizeof(buf),f);
+
+		// Ignore comments and blanklines
+		if (buf[0] == '#' || strlen(buf) == 0)
+			continue;
+
+		if (sscanf(buf,"G%i:%i", &key,&keycode))
+			printf("%i:%i\n",key,keycode);
+	}
+	fclose(f);
 }
 
 /* WARNING:  uses global mkey state */
@@ -741,7 +810,7 @@ void loadMultiConfig()
 		++numConfigs;
 
 		// Add it to list of availible configurations
-		printf("Adding Config %i with length %i - name %s\n",numConfigs,strlen(cfgName),cfgName);
+		g15macro_log("Adding Config %i with length %i - name %s\n",numConfigs,(int)strlen(cfgName),cfgName);
 		configs[numConfigs] = malloc(strlen(cfgName)+1); //+1 for null termination
 		memset(configs[numConfigs],0,sizeof(configs[numConfigs]));
 		strcpy(configs[numConfigs],cfgName);
@@ -769,17 +838,15 @@ void change_keymap(int offset){
 
 /* ensure that the multimedia keys are configured */
 void configure_mmediakeys(){
-
-   KeySym newmap[1];
-   int i=0;
-   pthread_mutex_lock(&x11mutex);
-   for(i=0;i<6;i++){
-     newmap[0]=mmedia_defaults[i];
-	 XChangeKeyboardMapping (dpy, mmedia_codes[G15Version][i], 1, newmap, 1);
-   }
-   XFlush(dpy);
-   pthread_mutex_unlock(&x11mutex);
-
+	KeySym newmap[1];
+	int i=0;
+	pthread_mutex_lock(&x11mutex);
+	for(i=0;i<6;i++){
+	newmap[0]=mmedia_defaults[i];
+		XChangeKeyboardMapping (dpy, mmedia_codes/*[G15Version]*/[i], 1, newmap, 1);
+	}
+	XFlush(dpy);
+	pthread_mutex_unlock(&x11mutex);
 }
 
 void handle_mkey_switch(unsigned int mkey) {
@@ -1137,7 +1204,7 @@ int main(int argc, char **argv)
 
 	memset(configDir,0,sizeof(configDir));
 	strncpy(configDir,getenv("HOME"),1024);
-	strncat(configDir,"/.g15macro/",1024-strlen(configpath));
+	strncat(configDir,"/.g15macro/",1024-strlen(configDir));
 
     strncpy(configpath,getenv("HOME"),1024);
 
@@ -1282,6 +1349,11 @@ int main(int argc, char **argv)
 		strncat(configpath,configs[currConfig],1024-strlen(configpath));
 		restore_config(configpath);
 	}
+
+	strcpy(GKeyCodeCfg,configDir);
+	strncat(GKeyCodeCfg,"GKeyCodes.cfg",1024-strlen(GKeyCodeCfg));
+	printf("%s\n",GKeyCodeCfg);
+	getKeyDefs(GKeyCodeCfg);
 
     if(dump){
         printf("G15Macro Dumping Codes...");
