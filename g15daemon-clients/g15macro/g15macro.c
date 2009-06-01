@@ -431,9 +431,10 @@ int writeKeyDefs(char *filename)
 		return False;
 	}
 	fprintf(f,"#Use this file to define what keycode each key has.\n");
-	fprintf(f,"#You can use xev for each key to figure it out.\n");
-	fprintf(f,"#TODO: Better guide to finding out keycodes\n");
-// 	fprintf(f,"#Run the command and hit each key, then write the number returned at the right place.\n");
+	fprintf(f,"#You can use the following command to get the keycodes:.\n");
+	fprintf(f,"#xev | grep 'keycode' --line-buffered | grep --line-buffered -o -E 'keycode [0-9]+' | cut -d" " -f 2\n");
+	fprintf(f,"#Run the command and hit each key, remember in what order you pressed the keys,then write the number returned at the right place.\n");
+	fprintf(f,"#Keep in mind; each number will appear twice.\n");
 	fprintf(f,"#Format is Key:Keycode. Example: G1:138\n");
 	for (i = 0;i < 18;++i)
 	{
@@ -456,7 +457,7 @@ void getKeyDefs(char *filename)
 	unsigned int key=0;
 	unsigned int i=0;
 	unsigned int keycode=0;
-	int keys[18];
+
 	while (!f)
 	{
 		f=fopen(filename,"r");
@@ -477,8 +478,18 @@ void getKeyDefs(char *filename)
 		if (buf[0] == '#' || strlen(buf) == 0)
 			continue;
 
-		if (sscanf(buf,"G%i:%i", &key,&keycode))
-			printf("%i:%i\n",key,keycode);
+		if (sscanf(buf,"G%i:%i", &key,&keycode)){
+// 			printf("%i:%i\n",key,keycode);
+// 			printf("Gkeycode%i:%i\n",key,gkeycodes[key-1]);
+			gkeycodes[key-1] = keycode;
+// 			printf("Gkeycode%i:%i\n",key,gkeycodes[key-1]);
+		}
+		sscanf(buf,"AudioStop:%i",&mmedia_codes[0]);
+		sscanf(buf,"AudioPlay:%i",&mmedia_codes[1]);
+		sscanf(buf,"AudioPrev:%i",&mmedia_codes[2]);
+		sscanf(buf,"AudioNext:%i",&mmedia_codes[3]);
+		sscanf(buf,"AudioLowerVolume:%i",&mmedia_codes[4]);
+		sscanf(buf,"AudioRaiseVolume:%i",&mmedia_codes[5]);
 	}
 	fclose(f);
 }
