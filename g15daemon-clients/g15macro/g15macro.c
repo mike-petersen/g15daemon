@@ -432,7 +432,7 @@ int writeKeyDefs(char *filename)
 	}
 	fprintf(f,"#Use this file to define what keycode each key has.\n");
 	fprintf(f,"#You can use the following command to get the keycodes:.\n");
-	fprintf(f,"#xev | grep 'keycode' --line-buffered | grep --line-buffered -o -E 'keycode [0-9]+' | cut -d" " -f 2\n");
+	fprintf(f,"#xev | grep 'keycode' --line-buffered | grep --line-buffered -o -E 'keycode [0-9]+' | cut -d' ' -f 2\n");
 	fprintf(f,"#Run the command and hit each key, remember in what order you pressed the keys,then write the number returned at the right place.\n");
 	fprintf(f,"#Keep in mind; each number will appear twice.\n");
 	fprintf(f,"#Format is Key:Keycode. Example: G1:138\n");
@@ -455,7 +455,7 @@ void getKeyDefs(char *filename)
 	FILE *f = NULL;
 	char buf[1024];
 	unsigned int key=0;
-	unsigned int i=0;
+// 	unsigned int i=0;
 	unsigned int keycode=0;
 
 	while (!f)
@@ -1295,6 +1295,14 @@ int main(int argc, char **argv)
 
     /* completely ignore errors and carry on */
     XSetErrorHandler(myx_error_handler);
+
+	// Get keycodes for all keys
+	strcpy(GKeyCodeCfg,configDir);
+	strncat(GKeyCodeCfg,"GKeyCodes.cfg",1024-strlen(GKeyCodeCfg));
+	printf("%s\n",GKeyCodeCfg);
+	getKeyDefs(GKeyCodeCfg);
+
+
     configure_mmediakeys();
     change_keymap(0);
     XFlush(dpy);
@@ -1361,10 +1369,6 @@ int main(int argc, char **argv)
 		restore_config(configpath);
 	}
 
-	strcpy(GKeyCodeCfg,configDir);
-	strncat(GKeyCodeCfg,"GKeyCodes.cfg",1024-strlen(GKeyCodeCfg));
-	printf("%s\n",GKeyCodeCfg);
-	getKeyDefs(GKeyCodeCfg);
 
     if(dump){
         printf("G15Macro Dumping Codes...");
