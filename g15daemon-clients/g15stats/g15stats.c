@@ -66,6 +66,9 @@ int submode = 0;
 
 int have_nic=0;
 
+int have_sensor=0;
+unsigned char sensor[128];
+
 unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
 
@@ -743,6 +746,100 @@ void draw_bat_screen(g15canvas *canvas, int all) {
 	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
 }
 
+void draw_temp_screen(g15canvas *canvas, char *sensor, int all) {
+
+	g15_stats_temp_info temps[NUM_TEMP];
+	long	tot_max_temp = 1;
+
+	FILE	*fd_input;
+	FILE	*fd_max;
+	char	line	[MAX_LINES];
+	char	tmpstr	[MAX_LINES];
+
+	int i = 0;
+        int j = 0;
+	for (i = 0; i < NUM_TEMP; i++)
+	{
+		char filename[128];
+
+		// Initialize battery state
+		temps[i].max_temp = 1;
+		temps[i].cur_temp = 1;
+                
+                /* /sys/devices/platform/it87.656/temp1_input */
+		sprintf(filename, "/sys/devices/platform/%s/temp%d_input",sensor, i+1);
+		fd_input=fopen (filename,"r");
+		if (fd_input!=NULL)
+		{
+                    if (fgets (line,MAX_LINES,fd_input)!=NULL)
+                    {
+                        temps[i].cur_temp=atoi (line) / 1000;
+                    }
+                    fclose (fd_input);
+                } else {
+                    break;
+                }
+
+                sprintf(filename, "/sys/devices/platform/%s/temp%d_max",sensor, i+1);
+                fd_max=fopen (filename,"r");
+                if (fd_max!=NULL)
+                {
+                    if (fgets (line,MAX_LINES,fd_max)!=NULL)
+                    {
+                      temps[i].max_temp=atoi (line) / 1000;
+                    }
+                    fclose (fd_max);
+                }
+
+                if(tot_max_temp < temps[i].max_temp) {
+                    tot_max_temp = temps[i].max_temp;
+                }
+
+	}
+        if (i == 0) {
+            have_sensor = 0;
+        }
+        if((i+1) >= NUM_TEMP) {
+            i = NUM_TEMP;
+        } else {
+            i++;
+        }
+
+        if (all) {
+            g15r_clearScreen (canvas, G15_COLOR_WHITE);
+
+            g15r_renderString (canvas, (unsigned char*)"M", 0, G15_TEXT_MED, 155, 3);
+            g15r_renderString (canvas, (unsigned char*)"A", 1, G15_TEXT_MED, 155, 7);
+            g15r_renderString (canvas, (unsigned char*)"X", 2, G15_TEXT_MED, 155, 11);
+            
+            g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+            g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+
+            for (j = 0; j < i; j++) {
+                register int bar_top = (j*10) + 1 + j;
+                register int bar_bottom = ((j+1)*10) + j;
+
+                sprintf(tmpstr,"T-%d %3.f\xb0", j+1, temps[j].cur_temp);
+                g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, (j*12) + 2);
+                g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, temps[j].cur_temp + 1, tot_max_temp, 4);
+                drawBar_reversed(canvas, BAR_START, bar_top,BAR_END, bar_bottom, G15_COLOR_BLACK, tot_max_temp - temps[j].cur_temp, tot_max_temp, 5);
+            }
+        }
+
+        char extension[11];
+        sprintf(tmpstr, " ");
+	for (j = 0; j < i; j++)	{
+            if ((j + 1) != i) {
+                sprintf(extension, "Temp%d %3.f\xb0 | ", j+1, temps[j].cur_temp);
+            } else {
+                sprintf(extension, "Temp%d %3.f\xb0 ", j+1, temps[j].cur_temp);
+            }
+            strcat (tmpstr, extension);
+	}
+
+	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+}
+
 void print_info_label(g15canvas *canvas) {
     static int timer;
     int my_cycle = cycle;
@@ -753,20 +850,23 @@ void print_info_label(g15canvas *canvas) {
     }
 
     switch (my_cycle){
-        case    CYCLE_CPU_SCREEN    :
+        case    SCREEN_CPU_SCREEN    :
             print_sys_load_info(canvas);
             break;
-        case    CYCLE_MEM_SCREEN    :
+        case    SCREEN_MEM_SCREEN    :
             print_mem_info(canvas);
             break;
-        case    CYCLE_SWAP_SCREEN   :
+        case    SCREEN_SWAP_SCREEN   :
             print_swap_info(canvas);
             break;
-        case    CYCLE_NET_SCREEN    :
+        case    SCREEN_NET_SCREEN    :
             print_net_info(canvas);
             break;
-        case    CYCLE_BAT_SCREEN    :
+        case    SCREEN_BAT_SCREEN    :
             draw_bat_screen(canvas, 0);
+            break;
+        case    SCREEN_TEMP_SCREEN    :
+            draw_temp_screen(canvas,(char*)sensor,0);
             break;
         default :
             if ((timer < PAUSE)) {
@@ -779,15 +879,22 @@ void print_info_label(g15canvas *canvas) {
                 draw_bat_screen(canvas, 0);
             } else if (timer < PAUSE_5) {
                 print_time_info(canvas);
-            } else if (have_nic) {
-                print_net_info(canvas);
+            } else if (timer < PAUSE_6) {
+                if (have_nic) {
+                    print_net_info(canvas);
+                } else {
+                    timer = PAUSE_6;
+
+                }
+            }else if(have_sensor) {
+                draw_temp_screen(canvas,(char*)sensor,0);
             } else {
                 print_sys_load_info(canvas);
                 timer = 0;
             }
             break;
     }
-    if (timer > PAUSE_5) {
+    if (timer > PAUSE_7) {
         timer=0;
     }
 }
@@ -795,6 +902,7 @@ void print_info_label(g15canvas *canvas) {
 void keyboard_watch(void) {
     unsigned int keystate;
     int change   = 0;
+    int direction = 0;
 
     while(1) {
         recv(g15screen_fd,&keystate,4,0);
@@ -803,10 +911,12 @@ void keyboard_watch(void) {
         }
         else if(keystate & G15_KEY_L2) {
             cycle--;
+            direction = 0;
             change++;
         }
         else if(keystate & G15_KEY_L3) {
             cycle++;
+            direction = 1;
             change++;
         }
         else if(keystate & G15_KEY_L4) {
@@ -819,10 +929,21 @@ void keyboard_watch(void) {
         }
 	if (cycle<0)
 	{
-		// Wrap around the apps
-		cycle=MAX_SCREENS;
+            if(have_sensor) {
+                cycle=MAX_SCREENS;
+            } else {
+                cycle=MAX_SCREENS - 1;
+            }
 	}
-	if (cycle>MAX_SCREENS)
+        if ((!have_nic) && (cycle == SCREEN_NET_SCREEN))
+        {
+            if (direction) {
+                cycle++;
+            } else {
+                cycle--;
+            }
+        }
+	if ((cycle>MAX_SCREENS) || ((cycle>(MAX_SCREENS-1)) && (!have_sensor)))
 	{
 		//Wrap around the apps
 		cycle=0;
@@ -933,7 +1054,7 @@ int main(int argc, char *argv[]){
         if(0==strncmp(argv[i],"-d",2)||0==strncmp(argv[i],"--daemon",8)) {
             go_daemon=1;
         }
-        if(0==strncmp(argv[i],"-u",2)||0==strncmp(argv[i],"--unicore",8)) {
+        if(0==strncmp(argv[i],"-u",2)||0==strncmp(argv[i],"--unicore",9)) {
             unicore=1;
         }
         if(0==strncmp(argv[i],"-nsa",4)||0==strncmp(argv[i],"--net-scale-absolute",20)) {
@@ -941,20 +1062,30 @@ int main(int argc, char *argv[]){
         }
 
         if(0==strncmp(argv[i],"-h",2)||0==strncmp(argv[i],"--help",6)) {
-            printf("%s (c) 2008 Mike Lampard\n",PACKAGE_NAME);
+            printf("%s (c) 2008-2009 Mike Lampard, Piotr Czarnecki\n",PACKAGE_NAME);
             printf("\nOptions:\n");
             printf("--daemon (-d) run in background\n");
             printf("--unicore (-u) display unicore graphs only on the CPU screen\n");
             printf("--help (-h) this help text.\n");
             printf("--interface [interface] (-i) monitor network interface [interface] ie -i eth0\n");
-            printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
+            printf("--sensor [device] (-s) monitor temperature sensors [device] ie -s it87.656\n"
+                    "\t[device] should point to sysfs path /sys/devices/platform/[device]/temp1_input\n");
+            printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n"
+                    "\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
             return 0;
         }
-        if(0==strncmp(argv[i],"-i",2)||0==strncmp(argv[i],"--interface",8)) {
+        if(0==strncmp(argv[i],"-i",2)||0==strncmp(argv[i],"--interface",11)) {
           if(argv[i+1]!=NULL) {
             have_nic=1;
             i++;
             strncpy((char*)interface,argv[i],128);
+          }
+        }
+        if(0==strncmp(argv[i],"-s",2)||0==strncmp(argv[i],"--sensor",8)) {
+          if(argv[i+1]!=NULL) {
+            have_sensor=1;
+            i++;
+            strncpy((char*)sensor,argv[i],128);
           }
         }
     }        
@@ -981,28 +1112,34 @@ int main(int argc, char *argv[]){
     while(1) {
 
         switch(cycle) {
-            case CYCLE_CPU_SCREEN:
+            case SCREEN_CPU_SCREEN:
                draw_cpu_screen_multicore(canvas,unicore);
                print_info_label(canvas);
                break;
-            case CYCLE_MEM_SCREEN:
+            case SCREEN_MEM_SCREEN:
                draw_mem_screen(canvas);
                print_info_label(canvas);
                break;
-            case CYCLE_SWAP_SCREEN:
+            case SCREEN_SWAP_SCREEN:
                draw_swap_screen(canvas);
                print_info_label(canvas);
                break;
-            case CYCLE_NET_SCREEN:
+            case SCREEN_NET_SCREEN:
               if(have_nic) {
                  draw_net_screen(canvas,(char*)interface);
                  print_info_label(canvas);
                  break;
               }else
                 cycle++;
-	    case CYCLE_BAT_SCREEN:
+	    case SCREEN_BAT_SCREEN:
                draw_bat_screen(canvas,1);
     	       break;
+            case SCREEN_TEMP_SCREEN:
+               if(have_sensor) {
+                   draw_temp_screen(canvas,(char*)sensor,1);
+                   break;
+               }else
+                   cycle++;
             default:
                 printf("cycle reached %i\n",cycle);
                 cycle=0;

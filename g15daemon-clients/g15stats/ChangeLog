@@ -13,3 +13,5 @@ SVN 504:
 - Display unicore graphs only on the CPU screen with the option -u (--unicore)
 SVN 505:
 - Bugfix: Render bottom line on the Memory Screen once
+SVN 509:
+- Temperature sensors depends on the lmsensors sysfs filesystem
