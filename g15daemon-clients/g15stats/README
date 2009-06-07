@@ -24,9 +24,9 @@ Options:
 		default is to scale against the highest peak in the current graph.
 -h		Show help
 -u      Display unicore graphs only on the CPU screen
--s device   Monitor temperature sensors device (ie -s it87.656)
-            device should point to sysfs path /sys/devices/platform/[device]/temp1_input
-            depends on the lmsensors
+-s id   Force to monitor temperature sensor id (ie -s 1)
+        The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input
+        Default the sensor id is autoetected.
 
 Usage:
 $> g15stats

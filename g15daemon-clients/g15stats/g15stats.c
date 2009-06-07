@@ -66,8 +66,8 @@ int submode = 0;
 
 int have_nic=0;
 
-int have_sensor=0;
-unsigned char sensor[128];
+int have_sensor=1;
+int sensorId = 0;
 
 unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
@@ -746,7 +746,7 @@ void draw_bat_screen(g15canvas *canvas, int all) {
 	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
 }
 
-void draw_temp_screen(g15canvas *canvas, char *sensor, int all) {
+void draw_temp_screen(g15canvas *canvas, int all) {
 
 	g15_stats_temp_info temps[NUM_TEMP];
 	long	tot_max_temp = 1;
@@ -762,12 +762,13 @@ void draw_temp_screen(g15canvas *canvas, char *sensor, int all) {
 	{
 		char filename[128];
 
-		// Initialize battery state
+		// Initialize temperature state
 		temps[i].max_temp = 1;
 		temps[i].cur_temp = 1;
                 
-                /* /sys/devices/platform/it87.656/temp1_input */
-		sprintf(filename, "/sys/devices/platform/%s/temp%d_input",sensor, i+1);
+                /* /sys/class/hwmon/hwmon0/temp1_input */
+                /* /sys/class/hwmon/hwmon1/device/temp1_input */
+		sprintf(filename, "/sys/class/hwmon/hwmon%d/device/temp%d_input",sensorId, i+1);
 		fd_input=fopen (filename,"r");
 		if (fd_input!=NULL)
 		{
@@ -780,7 +781,7 @@ void draw_temp_screen(g15canvas *canvas, char *sensor, int all) {
                     break;
                 }
 
-                sprintf(filename, "/sys/devices/platform/%s/temp%d_max",sensor, i+1);
+                sprintf(filename, "/sys/class/hwmon/hwmon%d/device/temp%d_max",sensorId, i+1);
                 fd_max=fopen (filename,"r");
                 if (fd_max!=NULL)
                 {
@@ -797,7 +798,11 @@ void draw_temp_screen(g15canvas *canvas, char *sensor, int all) {
 
 	}
         if (i == 0) {
-            have_sensor = 0;
+            if (sensorId < 3) {
+                sensorId++;
+            } else {
+                have_sensor = 0;
+            }
         }
         if((i+1) >= NUM_TEMP) {
             i = NUM_TEMP;
@@ -866,7 +871,7 @@ void print_info_label(g15canvas *canvas) {
             draw_bat_screen(canvas, 0);
             break;
         case    SCREEN_TEMP_SCREEN    :
-            draw_temp_screen(canvas,(char*)sensor,0);
+            draw_temp_screen(canvas, 0);
             break;
         default :
             if ((timer < PAUSE)) {
@@ -887,7 +892,7 @@ void print_info_label(g15canvas *canvas) {
 
                 }
             }else if(have_sensor) {
-                draw_temp_screen(canvas,(char*)sensor,0);
+                draw_temp_screen(canvas, 0);
             } else {
                 print_sys_load_info(canvas);
                 timer = 0;
@@ -1068,8 +1073,8 @@ int main(int argc, char *argv[]){
             printf("--unicore (-u) display unicore graphs only on the CPU screen\n");
             printf("--help (-h) this help text.\n");
             printf("--interface [interface] (-i) monitor network interface [interface] ie -i eth0\n");
-            printf("--sensor [device] (-s) monitor temperature sensors [device] ie -s it87.656\n"
-                    "\t[device] should point to sysfs path /sys/devices/platform/[device]/temp1_input\n");
+            printf("--sensor [id] (-s) monitor temperature sensors [id] ie -s 1\n"
+                    "\t[device] should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input\n");
             printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n"
                     "\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
             return 0;
@@ -1083,9 +1088,8 @@ int main(int argc, char *argv[]){
         }
         if(0==strncmp(argv[i],"-s",2)||0==strncmp(argv[i],"--sensor",8)) {
           if(argv[i+1]!=NULL) {
-            have_sensor=1;
             i++;
-            strncpy((char*)sensor,argv[i],128);
+            sensorId = atoi(argv[i]);
           }
         }
     }        
@@ -1136,7 +1140,7 @@ int main(int argc, char *argv[]){
     	       break;
             case SCREEN_TEMP_SCREEN:
                if(have_sensor) {
-                   draw_temp_screen(canvas,(char*)sensor,1);
+                   draw_temp_screen(canvas,1);
                    break;
                }else
                    cycle++;

@@ -15,3 +15,6 @@ SVN 505:
 - Bugfix: Render bottom line on the Memory Screen once
 SVN 509:
 - Temperature sensors depends on the lmsensors sysfs filesystem
+SVN 510:
+- Temperature sensor autodetect
+- Force user sensor id with the option -s id (The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input)
