@@ -1,6 +1,7 @@
 #define	TEXT_LEFT	1
 #define NUM_BATS	3
 #define NUM_TEMP	3
+#define MAX_SENSOR      3
 #define	MAX_SCREENS	5
 #define MAX_MODE        3
 #define MAX_SUB_MODE    1

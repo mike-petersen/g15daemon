@@ -16,5 +16,8 @@ SVN 505:
 SVN 509:
 - Temperature sensors depends on the lmsensors sysfs filesystem
 SVN 510:
-- Temperature sensor autodetect
+- Temperature sensor's autodetect
 - Force user sensor id with the option -s id (The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input)
+SVN 511:
+- Improved sensor's autodetect
+- Clean up

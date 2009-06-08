@@ -749,47 +749,43 @@ void draw_bat_screen(g15canvas *canvas, int all) {
 void draw_temp_screen(g15canvas *canvas, int all) {
 
 	g15_stats_temp_info temps[NUM_TEMP];
-	long	tot_max_temp = 1;
+	float	tot_max_temp = 1;
 
-	FILE	*fd_input;
-	FILE	*fd_max;
-	char	line	[MAX_LINES];
+	FILE	*fd_main;
 	char	tmpstr	[MAX_LINES];
 
 	int i = 0;
         int j = 0;
 	for (i = 0; i < NUM_TEMP; i++)
 	{
-		char filename[128];
-
 		// Initialize temperature state
 		temps[i].max_temp = 1;
 		temps[i].cur_temp = 1;
                 
                 /* /sys/class/hwmon/hwmon0/temp1_input */
                 /* /sys/class/hwmon/hwmon1/device/temp1_input */
-		sprintf(filename, "/sys/class/hwmon/hwmon%d/device/temp%d_input",sensorId, i+1);
-		fd_input=fopen (filename,"r");
-		if (fd_input!=NULL)
+		sprintf(tmpstr, "/sys/class/hwmon/hwmon%d/device/temp%d_input",sensorId, i+1);
+		fd_main=fopen (tmpstr,"r");
+		if (fd_main!=NULL)
 		{
-                    if (fgets (line,MAX_LINES,fd_input)!=NULL)
+                    if (fgets (tmpstr,MAX_LINES,fd_main)!=NULL)
                     {
-                        temps[i].cur_temp=atoi (line) / 1000;
+                        temps[i].cur_temp=atoi (tmpstr) / 1000;
                     }
-                    fclose (fd_input);
+                    fclose (fd_main);
                 } else {
                     break;
                 }
 
-                sprintf(filename, "/sys/class/hwmon/hwmon%d/device/temp%d_max",sensorId, i+1);
-                fd_max=fopen (filename,"r");
-                if (fd_max!=NULL)
+                sprintf(tmpstr, "/sys/class/hwmon/hwmon%d/device/temp%d_max",sensorId, i+1);
+                fd_main=fopen (tmpstr,"r");
+                if (fd_main!=NULL)
                 {
-                    if (fgets (line,MAX_LINES,fd_max)!=NULL)
+                    if (fgets (tmpstr,MAX_LINES,fd_main)!=NULL)
                     {
-                      temps[i].max_temp=atoi (line) / 1000;
+                      temps[i].max_temp=atoi (tmpstr) / 1000;
                     }
-                    fclose (fd_max);
+                    fclose (fd_main);
                 }
 
                 if(tot_max_temp < temps[i].max_temp) {
@@ -798,11 +794,16 @@ void draw_temp_screen(g15canvas *canvas, int all) {
 
 	}
         if (i == 0) {
-            if (sensorId < 3) {
+            if (sensorId < MAX_SENSOR) {
+                printf("Temperature sensor doesn't appear to exist with id=%d . ",sensorId);
                 sensorId++;
+                printf("Let's try id=%d.\n",sensorId);
+                draw_temp_screen(canvas, all);
             } else {
+                printf("Temperature sensor doesn't appear to exist. Temperature screen will be disabled.\n");
                 have_sensor = 0;
             }
+            return;
         }
         if((i+1) >= NUM_TEMP) {
             i = NUM_TEMP;
@@ -831,7 +832,7 @@ void draw_temp_screen(g15canvas *canvas, int all) {
             }
         }
 
-        char extension[11];
+        char extension[16];
         sprintf(tmpstr, " ");
 	for (j = 0; j < i; j++)	{
             if ((j + 1) != i) {
