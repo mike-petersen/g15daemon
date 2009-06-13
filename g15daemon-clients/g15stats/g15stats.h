@@ -7,26 +7,29 @@
 #define MAX_SUB_MODE    1
 
 #define PAUSE           6
-#define PAUSE_2         2*PAUSE
-#define PAUSE_3         3*PAUSE
-#define PAUSE_4         4*PAUSE
-#define PAUSE_5         5*PAUSE
-#define PAUSE_6         6*PAUSE
-#define PAUSE_7         7*PAUSE
 
 #define	VL_LEFT		42
 #define	BAR_START	45
 #define MAX_NET_HIST	107
 #define	BAR_END		153
+#define BAR_BOTTOM      32
 #define	TEXT_RIGHT	155
 #define	MAX_LINES	128
+#define BOTTOM_ROW      37
 
-#define SCREEN_CPU_SCREEN       0
-#define SCREEN_MEM_SCREEN       1
-#define SCREEN_SWAP_SCREEN      2
-#define SCREEN_NET_SCREEN       3
-#define SCREEN_BAT_SCREEN       4
-#define SCREEN_TEMP_SCREEN      5
+#define SENSOR_ERROR    -100
+
+#define DIRECTION_DOWN   1
+#define DIRECTION_UP     2
+
+#define SCREEN_CPU       0
+#define SCREEN_MEM       1
+#define SCREEN_SWAP      2
+#define SCREEN_NET       3
+#define SCREEN_BAT       4
+#define SCREEN_TEMP      5
+#define SCREEN_FREQ      6
+#define SCREEN_TIME      7
 
 #define MODE_CPU_USR_SYS_NCE_1 0
 #define MODE_CPU_TOTAL         1

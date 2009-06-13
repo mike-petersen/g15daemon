@@ -4,7 +4,7 @@ This first version of G15Stats requires libgtop development packages to be
 installed before compilation.
 
 Features:
-CPU Screen displays graphs of User/System/Nice and Idle time, along with
+CPU Screen displays graphs of User/System/Nice and Idle time, along with frequency,
 LoadAVG and Uptime.
 
 Memory Screen displays Memory Total & Free, and graph of Used vs
@@ -16,6 +16,8 @@ of pages currently paged in/out.
 Network Screen displays Total bytes In/Out, history graph, Peak speed.
 
 Battery Status Screen displays battery charge data for up to three batteries
+
+Temperature Screen displays temperature current status for up to three sensors
 
 Options:
 -i interface	Gather statistics from named interface (ie -i eth0)

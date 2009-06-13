@@ -64,10 +64,17 @@ int mode = 0;
 /** Holds the sub mode type variable of the application running */
 int submode = 0;
 
-int have_nic=0;
+int timer;
 
-int have_sensor=1;
-int sensorId = 0;
+int have_freq   = 1;
+int have_sensor = 1;
+int have_bat    = 1;
+int have_nic    = 0;
+
+int sensor_id = 0;
+
+/** Holds the number of the cpus */
+int ncpu;
 
 unsigned int net_hist[MAX_NET_HIST][2];
 int net_rr_index=0;
@@ -89,7 +96,7 @@ unsigned long maxi(unsigned long a, unsigned long b) {
 }
 
 char * show_bytes(unsigned long bytes) {
-    static char tmpstr[128];
+    static char tmpstr[32];
     if(bytes>1024*1024) {
       bytes = bytes / (1024*1024);
       sprintf(tmpstr,"%liMb",bytes);
@@ -100,6 +107,18 @@ char * show_bytes(unsigned long bytes) {
     }
     else if(bytes<1024) {
       sprintf(tmpstr,"%lib",bytes);
+    }
+    return tmpstr;
+}
+
+char * show_hertz(int hertz) {
+    static char tmpstr[32];
+    if (hertz > 1000000) {
+        sprintf(tmpstr, " %3.1fGHz", ((float)hertz / 1000000));
+    } else if (hertz > 1000) {
+        sprintf(tmpstr, " %3.fMHz", ((float)hertz / 1000));
+    } else {
+        sprintf(tmpstr, " %3iKHz", hertz);
     }
     return tmpstr;
 }
@@ -182,6 +201,74 @@ int daemonise(int nochdir, int noclose) {
     return 0;
 }
 
+void init_cpu_count(void) {
+    // initialize cpu count once
+    if (!ncpu) {
+        const glibtop_sysinfo *cpuinfo = glibtop_get_sysinfo();
+
+        if(cpuinfo->ncpu == 0) {
+            ncpu = 1;
+        } else {
+            ncpu = cpuinfo->ncpu;
+        }
+    }
+}
+
+int get_sysfs_value(char * filename) {
+    static int ret_val = -1;
+    FILE *fd_main;
+    char tmpstr [MAX_LINES];
+
+    fd_main = fopen(filename, "r");
+    if (fd_main != NULL) {
+        if (fgets(tmpstr, MAX_LINES, fd_main) != NULL) {
+            fclose(fd_main);
+            ret_val = atoi(tmpstr);
+        } else
+            fclose(fd_main);
+    } else {
+        ret_val = SENSOR_ERROR;
+    }
+    return ret_val;
+}
+
+int get_processor_freq(char * which, int core) {
+    char tmpstr [MAX_LINES];
+    sprintf(tmpstr, "/sys/devices/system/cpu/cpu%d/cpufreq/%s", core, which);
+    return get_sysfs_value(tmpstr);
+}
+
+int get_cpu_freq_cur(int core) {
+    int ret_val = get_processor_freq("cpuinfo_cur_freq", core);
+    if ((!core) && (ret_val == SENSOR_ERROR)) {
+        have_freq = 0;
+        printf("Frequency sensor doesn't appear to exist with id=%d . ", sensor_id);
+    }
+    return ret_val;
+}
+
+int get_cpu_freq_max(int core) {
+    return get_processor_freq("cpuinfo_max_freq", core);
+}
+
+int get_cpu_freq_min(int core) {
+    return get_processor_freq("cpuinfo_min_freq", core);
+}
+
+int get_temp(char * which, int id) {
+    char tmpstr [MAX_LINES];
+    sprintf(tmpstr, "/sys/class/hwmon/hwmon%d/device/temp%d_%s", sensor_id, id, which);
+    return get_sysfs_value(tmpstr);
+}
+
+int get_temp_cur(int id) {
+    return get_temp("input", id);
+}
+
+int get_temp_max(int id) {
+    return get_temp("max", id);
+}
+
 void print_sys_load_info(g15canvas *canvas) {
     char tmpstr[MAX_LINES];
     glibtop_loadavg loadavg;
@@ -200,7 +287,7 @@ void print_sys_load_info(g15canvas *canvas) {
         hours=(int)hours-(days*24);
 
     sprintf(tmpstr,"LoadAVG %.2f %.2f %.2f | Uptime %.fd%.fh",loadavg.loadavg[0],loadavg.loadavg[1],loadavg.loadavg[2],days,hours);
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, BOTTOM_ROW);
 }
 
 void print_mem_info(g15canvas *canvas) {
@@ -209,7 +296,7 @@ void print_mem_info(g15canvas *canvas) {
     glibtop_get_mem(&mem);
 
     sprintf(tmpstr,"Memory Used %dMb | Memory Total %dMb",(unsigned int)((mem.buffer+mem.cached+mem.user)/(1024*1024)),(unsigned int)(mem.total/(1024*1024)));
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, BOTTOM_ROW);
 }
 
 void print_swap_info(g15canvas *canvas) {
@@ -218,7 +305,7 @@ void print_swap_info(g15canvas *canvas) {
     glibtop_get_swap(&swap);
 
     sprintf(tmpstr,"Swap Used %dMb | Swap Avail. %dMb",(unsigned int)(swap.used/(1024*1024)),(unsigned int)(swap.total/(1024*1024)));
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, BOTTOM_ROW);
 }
 
 void print_net_info(g15canvas *canvas) {
@@ -227,7 +314,26 @@ void print_net_info(g15canvas *canvas) {
     strcat(tmpstr,"Peak OUT ");
     strcat(tmpstr,show_bytes(net_max_out));
     strcat(tmpstr,"/s");
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, BOTTOM_ROW);
+}
+
+void print_freq_info(g15canvas *canvas) {
+    char tmpstr[MAX_LINES];
+    int core;
+    init_cpu_count();
+    if (ncpu < 4) {
+        sprintf(tmpstr, "%s", "CPU ");
+    } else {
+        sprintf(tmpstr, "%s", "");
+    }
+    for (core = 0; core < ncpu; core++) {
+        strcat(tmpstr, show_hertz(get_cpu_freq_cur(core)));
+        if ((core + 1) < ncpu) {
+            strcat(tmpstr, " |");
+        }
+    }
+
+    g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 80 - (strlen(tmpstr)*4) / 2, BOTTOM_ROW);
 }
 
 void print_time_info(g15canvas *canvas){
@@ -236,7 +342,7 @@ void print_time_info(g15canvas *canvas){
     time(&now);
 
     sprintf(tmpstr,"%s",ctime(&now));
-    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+    g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, BOTTOM_ROW);
 }
 
 void draw_mem_screen(g15canvas *canvas) {
@@ -262,11 +368,11 @@ void draw_mem_screen(g15canvas *canvas) {
 
     g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,mem_user,mem_total,4);
     g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,mem_buffer,mem_total,4);
-    g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,mem_cached,mem_total,4);
-    drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,mem_free,mem_total,5);
+    g15r_drawBar(canvas,BAR_START,23,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,mem_cached,mem_total,4);
+    drawBar_reversed(canvas,BAR_START,1,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,mem_free,mem_total,5);
 
-    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, BAR_BOTTOM, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, BAR_BOTTOM, G15_COLOR_BLACK);
 
     g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
     g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
@@ -289,12 +395,12 @@ void draw_swap_screen(g15canvas *canvas) {
     sprintf(tmpstr,"Used %i%%",(unsigned int)(((float)swap_used/(float)swap_total)*100));
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, 19);
 
-    g15r_drawBar(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,swap_used,swap_total,4);
+    g15r_drawBar(canvas,BAR_START,1,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,swap_used,swap_total,4);
 
-    drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,swap_total-swap_used,swap_total,5);
+    drawBar_reversed(canvas,BAR_START,1,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,swap_total-swap_used,swap_total,5);
 
-    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, BAR_BOTTOM, G15_COLOR_BLACK);
+    g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, BAR_BOTTOM, G15_COLOR_BLACK);
 
     g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, TEXT_RIGHT, 4);
     g15r_renderString (canvas, (unsigned char*)"R", 1, G15_TEXT_MED, TEXT_RIGHT, 4);
@@ -344,11 +450,11 @@ void draw_cpu_screen_unicore_logic(g15canvas *canvas, glibtop_cpu cpu, int drawg
     if(drawgraph) {
         g15r_drawBar(canvas,BAR_START,1,BAR_END,10,G15_COLOR_BLACK,b_user+1,b_total,4);
         g15r_drawBar(canvas,BAR_START,12,BAR_END,21,G15_COLOR_BLACK,b_sys+1,b_total,4);
-        g15r_drawBar(canvas,BAR_START,23,BAR_END,32,G15_COLOR_BLACK,b_nice+1,b_total,4);
-        drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,b_idle+1,b_total,5);
+        g15r_drawBar(canvas,BAR_START,23,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,b_nice+1,b_total,4);
+        drawBar_reversed(canvas,BAR_START,1,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,b_idle+1,b_total,5);
 
-        g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-        g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+        g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, BAR_BOTTOM, G15_COLOR_BLACK);
+        g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, BAR_BOTTOM, G15_COLOR_BLACK);
     }
     if (cpuandmemory) {
         g15r_renderString (canvas, (unsigned char*)"F", 0, G15_TEXT_MED, TEXT_RIGHT, 3);
@@ -376,8 +482,7 @@ void draw_cpu_screen_unicore(g15canvas *canvas, int drawgraph, int printlabels) 
 void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
     glibtop_cpu cpu;
     char tmpstr[MAX_LINES];
-    const glibtop_sysinfo *cpuinfo;
-    int core,ncpu,ncpumax;
+    int core,ncpumax;
     int divider = 0;
         
     int total,user,nice,sys,idle;
@@ -385,18 +490,14 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
     static int last_total[GLIBTOP_NCPU],last_user[GLIBTOP_NCPU],last_nice[GLIBTOP_NCPU],
             last_sys[GLIBTOP_NCPU],last_idle[GLIBTOP_NCPU],last_iowait[GLIBTOP_NCPU],last_irq[GLIBTOP_NCPU];
 
-    cpuinfo = glibtop_get_sysinfo();
-
-    if(cpuinfo->ncpu == 0) 
-        ncpu = 1;
-    else
-        ncpu = cpuinfo->ncpu;
+    init_cpu_count();
 
     ncpumax = ncpu;
 
     glibtop_get_cpu(&cpu);
 
-    if (ncpu==1 || unicore) {
+    if ((ncpu==1 && ((mode == MODE_CPU_USR_SYS_NCE_1) || (mode == MODE_CPU_USR_SYS_NCE_2)))
+            || (unicore)) {
         draw_cpu_screen_unicore_logic(canvas, cpu, 1, 1, 0);
         return;
     } else if (((ncpu > 5) && (mode != MODE_CPU_SUMARY)) 
@@ -409,7 +510,8 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
         draw_cpu_screen_unicore_logic(canvas, cpu, 0, 0, 1);
     }
 
-    int y1=0, y2=32, currentValue, mem_used=1, mem_total=1;
+    int y1=0, y2=BAR_BOTTOM;
+    int current_value=1, mem_used=1, mem_total=1;
 
     int spacer = 1;
     int height = 8;
@@ -419,7 +521,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
                 if(ncpu > 11){
                     spacer = 0;
                 }
-                height = 37;
+                height = 36;
                 break;
             case    MODE_CPU_USR_SYS_NCE_2 :
                 if(ncpu > 4){
@@ -483,7 +585,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
         if (mode) {
             y1 = (core * height) + (core * spacer);
             y2 = y1 + height - 1;
-            currentValue = b_total - b_idle;
+            current_value = b_total - b_idle;
         }
 
         switch (mode) {
@@ -500,7 +602,11 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
                 break;
             case    MODE_CPU_TOTAL   :
                 if (ncpu < 6) {
-                    sprintf(tmpstr,"CPU%.f%3.f%%",(float)core,((float)(b_total-b_idle)/(float)b_total)*100);
+                    if (have_freq) {
+                        sprintf(tmpstr,"%s", show_hertz(get_cpu_freq_cur(core)));
+                    } else {
+                        sprintf(tmpstr,"CPU%.f%3.f%%",(float)core,((float)(b_total-b_idle)/(float)b_total)*100);
+                    }
                     if (ncpu < 5) {
                         g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, y1+1);
                     } else {
@@ -508,17 +614,17 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
                     }
                 }
 
-                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, currentValue, b_total,4);
-                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-currentValue, b_total,5);
+                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, current_value, b_total,4);
+                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-current_value, b_total,5);
                 y1 = 0;
                 break;
             case    MODE_CPU_USR_SYS_NCE_2   :
-                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, currentValue, b_total,4);
+                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, current_value, b_total,4);
                 g15r_drawBar(canvas, BAR_START,12+y1,BAR_END,12+y2,G15_COLOR_BLACK,b_sys+1,b_total,4);
                 g15r_drawBar(canvas, BAR_START,24+y1,BAR_END,24+y2,G15_COLOR_BLACK,b_nice+1,b_total,4);
 
 
-                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-currentValue, b_total,5);
+                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-current_value, b_total,5);
                 drawBar_reversed(canvas, BAR_START,12+y1,BAR_END,12+y2,G15_COLOR_BLACK,b_total-b_sys,b_total,5);
 
                 y2 += 24;
@@ -527,10 +633,10 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
                 y1 = 0;
                 break;
             case    MODE_CPU_SUMARY   :
-                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, currentValue, b_total,4);
+                g15r_drawBar(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, current_value, b_total,4);
                 g15r_drawBar(canvas, BAR_START,19+y1,BAR_END,19+y2,G15_COLOR_BLACK, mem_used+1, mem_total,4);
 
-                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-currentValue, b_total,5);
+                drawBar_reversed(canvas, BAR_START, y1, BAR_END, y2, G15_COLOR_BLACK, b_total-current_value, b_total,5);
                 drawBar_reversed(canvas, BAR_START,19+y1,BAR_END,19+y2,G15_COLOR_BLACK, mem_total - mem_used, mem_total,5);
                 y1 = 0;
                 break;
@@ -540,7 +646,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, int unicore) {
     g15r_drawLine (canvas, VL_LEFT, y1, VL_LEFT, y2, G15_COLOR_BLACK);
     g15r_drawLine (canvas, VL_LEFT+1, y1, VL_LEFT+1, y2, G15_COLOR_BLACK);
 
-    if(mode == 3) {
+    if(mode == MODE_CPU_SUMARY) {
         g15r_drawLine (canvas, VL_LEFT, 19+y1, VL_LEFT, 19+y2, G15_COLOR_BLACK);
         g15r_drawLine (canvas, VL_LEFT+1, 19+y1, VL_LEFT+1, 19+y2, G15_COLOR_BLACK);
     }
@@ -676,8 +782,17 @@ void draw_bat_screen(g15canvas *canvas, int all) {
 			tot_cur_charge += bats[i].cur_charge;
 			tot_max_charge += bats[i].max_charge;
 
-		}
+		} else {
+                    break;
+                }
 	}
+
+        if (i == 0) {
+            printf("Battery sensor doesn't appear to exist. Battery screen will be disabled.\n");
+            have_bat = 0;
+            return;
+        }
+
         if (all) {
             g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
@@ -686,8 +801,8 @@ void draw_bat_screen(g15canvas *canvas, int all) {
             g15r_renderString (canvas, (unsigned char*)"L", 2, G15_TEXT_MED, 155, 4);
             g15r_renderString (canvas, (unsigned char*)"L", 3, G15_TEXT_MED, 155, 4);
 
-            g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-            g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+            g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, BAR_BOTTOM, G15_COLOR_BLACK);
+            g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, BAR_BOTTOM, G15_COLOR_BLACK);
 
             for (i = 0; i < NUM_BATS; i++)
             {
@@ -703,113 +818,93 @@ void draw_bat_screen(g15canvas *canvas, int all) {
                     g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, bats[i].cur_charge, bats[i].max_charge, 4);
             }
 
-            drawBar_reversed(canvas,BAR_START,1,BAR_END,32,G15_COLOR_BLACK,100-(((float)tot_cur_charge/(float)tot_max_charge)*100),100,5);
+            drawBar_reversed(canvas,BAR_START,1,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,100-(((float)tot_cur_charge/(float)tot_max_charge)*100),100,5);
         }
 
-	float total_charge = 0;
-	if (tot_max_charge > 0)
-	{
-		total_charge = ((float)tot_cur_charge/(float)tot_max_charge)*100;
-	}
-	sprintf (tmpstr,"Total %2.f%% | ", total_charge);
+        if ((!all) || (cycle == SCREEN_BAT)) {
+            float total_charge = 0;
+            if (tot_max_charge > 0)
+            {
+                    total_charge = ((float)tot_cur_charge/(float)tot_max_charge)*100;
+            }
+            sprintf (tmpstr,"Total %2.f%% | ", total_charge);
 
-	for (i = 0; i < NUM_BATS; i++)
-	{
-		char extension[11];
-		switch (bats[i].status)
-		{
-			case -1:
-			{
-				sprintf(extension, "Bt%d - | ", i);
-				break;
-			}
-			case 0:
-			{
-				sprintf(extension, "Bt%d F | ", i);
-				break;
-			}
-			case 1:
-			{
-				sprintf(extension, "Bt%d C | ", i);
-				break;
-			}
-			case 2:
-			{
-				sprintf(extension, "Bt%d D | ", i);
-				break;
-			}
-		}
+            for (i = 0; i < NUM_BATS; i++)
+            {
+                    char extension[11];
+                    switch (bats[i].status)
+                    {
+                            case -1:
+                            {
+                                    sprintf(extension, "Bt%d - | ", i);
+                                    break;
+                            }
+                            case 0:
+                            {
+                                    sprintf(extension, "Bt%d F | ", i);
+                                    break;
+                            }
+                            case 1:
+                            {
+                                    sprintf(extension, "Bt%d C | ", i);
+                                    break;
+                            }
+                            case 2:
+                            {
+                                    sprintf(extension, "Bt%d D | ", i);
+                                    break;
+                            }
+                    }
 
-		strcat (tmpstr, extension);
-	}
+                    strcat (tmpstr, extension);
+            }
 
-	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+            g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, BOTTOM_ROW);
+        }
 }
 
 void draw_temp_screen(g15canvas *canvas, int all) {
 
-	g15_stats_temp_info temps[NUM_TEMP];
-	float	tot_max_temp = 1;
+    g15_stats_temp_info temps[NUM_TEMP];
+    float tot_max_temp = 1;
 
-	FILE	*fd_main;
-	char	tmpstr	[MAX_LINES];
+    char tmpstr [MAX_LINES];
 
-	int i = 0;
-        int j = 0;
-	for (i = 0; i < NUM_TEMP; i++)
-	{
-		// Initialize temperature state
-		temps[i].max_temp = 1;
-		temps[i].cur_temp = 1;
-                
-                /* /sys/class/hwmon/hwmon0/temp1_input */
-                /* /sys/class/hwmon/hwmon1/device/temp1_input */
-		sprintf(tmpstr, "/sys/class/hwmon/hwmon%d/device/temp%d_input",sensorId, i+1);
-		fd_main=fopen (tmpstr,"r");
-		if (fd_main!=NULL)
-		{
-                    if (fgets (tmpstr,MAX_LINES,fd_main)!=NULL)
-                    {
-                        temps[i].cur_temp=atoi (tmpstr) / 1000;
-                    }
-                    fclose (fd_main);
-                } else {
-                    break;
-                }
+    int i = 0;
+    int j = 0;
+    for (i = 0; i < NUM_TEMP; i++) {
 
-                sprintf(tmpstr, "/sys/class/hwmon/hwmon%d/device/temp%d_max",sensorId, i+1);
-                fd_main=fopen (tmpstr,"r");
-                if (fd_main!=NULL)
-                {
-                    if (fgets (tmpstr,MAX_LINES,fd_main)!=NULL)
-                    {
-                      temps[i].max_temp=atoi (tmpstr) / 1000;
-                    }
-                    fclose (fd_main);
-                }
+        if ((temps[i].cur_temp = get_temp_cur(i + 1)) == SENSOR_ERROR) {
+            break;
+        }
+        temps[i].cur_temp /= 1000;
+        if (all) {
+            temps[i].max_temp = get_temp_max(i + 1);
+            temps[i].max_temp /= 1000;
 
-                if(tot_max_temp < temps[i].max_temp) {
-                    tot_max_temp = temps[i].max_temp;
-                }
-
-	}
-        if (i == 0) {
-            if (sensorId < MAX_SENSOR) {
-                printf("Temperature sensor doesn't appear to exist with id=%d . ",sensorId);
-                sensorId++;
-                printf("Let's try id=%d.\n",sensorId);
-                draw_temp_screen(canvas, all);
-            } else {
-                printf("Temperature sensor doesn't appear to exist. Temperature screen will be disabled.\n");
-                have_sensor = 0;
+            if (tot_max_temp < temps[i].max_temp) {
+                tot_max_temp = temps[i].max_temp;
             }
-            return;
         }
-        if((i+1) >= NUM_TEMP) {
-            i = NUM_TEMP;
+
+    }
+    if (i == 0) {
+        if (sensor_id < MAX_SENSOR) {
+            printf("Temperature sensor doesn't appear to exist with id=%d . ", sensor_id);
+            sensor_id++;
+            printf("Let's try id=%d.\n", sensor_id);
+            draw_temp_screen(canvas, all);
         } else {
-            i++;
+            printf("Temperature sensor doesn't appear to exist. Temperature screen will be disabled.\n");
+            have_sensor = 0;
         }
+        return;
+    }
+    if ((i + 1) >= NUM_TEMP) {
+        i = NUM_TEMP;
+    } else {
+        i++;
+    }
 
         if (all) {
             g15r_clearScreen (canvas, G15_COLOR_WHITE);
@@ -817,97 +912,117 @@ void draw_temp_screen(g15canvas *canvas, int all) {
             g15r_renderString (canvas, (unsigned char*)"M", 0, G15_TEXT_MED, 155, 3);
             g15r_renderString (canvas, (unsigned char*)"A", 1, G15_TEXT_MED, 155, 7);
             g15r_renderString (canvas, (unsigned char*)"X", 2, G15_TEXT_MED, 155, 11);
-            
+
             g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
             g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
 
-            for (j = 0; j < i; j++) {
+        for (j = 0; j < i; j++) {
                 register int bar_top = (j*10) + 1 + j;
                 register int bar_bottom = ((j+1)*10) + j;
 
                 sprintf(tmpstr,"T-%d %3.f\xb0", j+1, temps[j].cur_temp);
                 g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, (j*12) + 2);
-                g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, temps[j].cur_temp + 1, tot_max_temp, 4);
+            g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, temps[j].cur_temp + 1, tot_max_temp, 4);
                 drawBar_reversed(canvas, BAR_START, bar_top,BAR_END, bar_bottom, G15_COLOR_BLACK, tot_max_temp - temps[j].cur_temp, tot_max_temp, 5);
-            }
         }
+    }
 
+    if ((!all) || ((cycle == SCREEN_TEMP) && ((submode) || (timer/PAUSE) == SCREEN_TEMP))) {
         char extension[16];
         sprintf(tmpstr, " ");
-	for (j = 0; j < i; j++)	{
+        for (j = 0; j < i; j++) {
             if ((j + 1) != i) {
-                sprintf(extension, "Temp%d %3.f\xb0 | ", j+1, temps[j].cur_temp);
+                sprintf(extension, "Temp%d %3.f\xb0 | ", j + 1, temps[j].cur_temp);
             } else {
-                sprintf(extension, "Temp%d %3.f\xb0 ", j+1, temps[j].cur_temp);
+                sprintf(extension, "Temp%d %3.f\xb0 ", j + 1, temps[j].cur_temp);
             }
-            strcat (tmpstr, extension);
-	}
-
-	g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, 36);
+            strcat(tmpstr, extension);
+        }
+        g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 80 - (strlen(tmpstr)*4) / 2, BOTTOM_ROW);
+    }
 }
 
 void print_info_label(g15canvas *canvas) {
-    static int timer;
     int my_cycle = cycle;
     timer++;
 
-    if (! submode) {
+    if (!submode) {
         my_cycle = -1;
     }
 
-    switch (my_cycle){
-        case    SCREEN_CPU_SCREEN    :
+    switch (my_cycle) {
+        case SCREEN_CPU:
             print_sys_load_info(canvas);
             break;
-        case    SCREEN_MEM_SCREEN    :
+        case SCREEN_MEM:
             print_mem_info(canvas);
             break;
-        case    SCREEN_SWAP_SCREEN   :
+        case SCREEN_SWAP:
             print_swap_info(canvas);
             break;
-        case    SCREEN_NET_SCREEN    :
+        case SCREEN_NET:
             print_net_info(canvas);
             break;
-        case    SCREEN_BAT_SCREEN    :
-            draw_bat_screen(canvas, 0);
+        case SCREEN_BAT:
+            //draw_bat_screen(canvas, 0);
             break;
-        case    SCREEN_TEMP_SCREEN    :
-            draw_temp_screen(canvas, 0);
+        case SCREEN_TEMP:
+            //draw_temp_screen(canvas, 0);
             break;
-        default :
-            if ((timer < PAUSE)) {
-                print_sys_load_info(canvas);
-            } else if (timer < PAUSE_2) {
-                print_mem_info(canvas);
-            } else if (timer < PAUSE_3) {
-                print_swap_info(canvas);
-            } else if (timer < PAUSE_4) {
-                draw_bat_screen(canvas, 0);
-            } else if (timer < PAUSE_5) {
-                print_time_info(canvas);
-            } else if (timer < PAUSE_6) {
-                if (have_nic) {
+        default:
+            switch (timer / PAUSE) {
+                case SCREEN_CPU:
+                    print_sys_load_info(canvas);
+                    break;
+                case SCREEN_MEM:
+                    print_mem_info(canvas);
+                    break;
+                case SCREEN_SWAP:
+                    print_swap_info(canvas);
+                    break;
+                case SCREEN_NET:
                     print_net_info(canvas);
-                } else {
-                    timer = PAUSE_6;
+                    break;
+                case SCREEN_BAT:
+                     if (have_bat) {
+                        if (cycle != SCREEN_BAT)
+                            draw_bat_screen(canvas, 0);
+                        break;
+                    } else {
+                        timer += PAUSE;
+                    }
+                case SCREEN_TEMP:
+                    if (have_sensor) {
+                        if (cycle != SCREEN_TEMP)
+                            draw_temp_screen(canvas, 0);
+                        break;
+                    } else {
+                        timer += PAUSE;
+                    }
+                case SCREEN_FREQ:
+                    if (have_freq) {
+                        if (cycle != SCREEN_FREQ)
+                            print_freq_info(canvas);
+                        break;
+                    } else {
+                        timer += PAUSE;
+                    }
+                case SCREEN_TIME:
+                    print_time_info(canvas);
+                    break;
+                default:
+                    timer=0;
+                    print_sys_load_info(canvas);
+                    break;
 
-                }
-            }else if(have_sensor) {
-                draw_temp_screen(canvas, 0);
-            } else {
-                print_sys_load_info(canvas);
-                timer = 0;
             }
             break;
-    }
-    if (timer > PAUSE_7) {
-        timer=0;
     }
 }
 
 void keyboard_watch(void) {
     unsigned int keystate;
-    int change   = 0;
+    int change    = 0;
     int direction = 0;
 
     while(1) {
@@ -917,12 +1032,12 @@ void keyboard_watch(void) {
         }
         else if(keystate & G15_KEY_L2) {
             cycle--;
-            direction = 0;
+            direction = DIRECTION_DOWN;
             change++;
         }
         else if(keystate & G15_KEY_L3) {
             cycle++;
-            direction = 1;
+            direction = DIRECTION_UP;
             change++;
         }
         else if(keystate & G15_KEY_L4) {
@@ -940,37 +1055,63 @@ void keyboard_watch(void) {
             } else {
                 cycle=MAX_SCREENS - 1;
             }
-	}
-        if ((!have_nic) && (cycle == SCREEN_NET_SCREEN))
+        }
+        if (direction == DIRECTION_UP)
         {
-            if (direction) {
-                cycle++;
-            } else {
-                cycle--;
+            switch (cycle) {
+                case SCREEN_NET:
+                    if (have_nic) {
+                        break;
+                    }
+                    cycle++;
+                case SCREEN_BAT:
+                    if (have_bat) {
+                        break;
+                    }
+                    cycle++;
+                case SCREEN_TEMP:
+                    if (have_sensor) {
+                        break;
+                    }
+                    cycle++;
+            }
+        } else if (direction == DIRECTION_DOWN){
+             switch (cycle) {
+                case SCREEN_TEMP:
+                    if (have_sensor) {
+                        break;
+                    }
+                    cycle--;
+                case SCREEN_BAT:
+                    if (have_bat) {
+                        break;
+                    }
+                    cycle--;
+                case SCREEN_NET:
+                    if (have_nic) {
+                        break;
+                    }
+                    cycle--;
             }
         }
-	if ((cycle>MAX_SCREENS) || ((cycle>(MAX_SCREENS-1)) && (!have_sensor)))
-	{
-		//Wrap around the apps
-		cycle=0;
-	}
-
-        if (mode>MAX_MODE)
-        {
-            mode=0;
+        if (cycle > MAX_SCREENS) {
+            //Wrap around the apps
+            cycle = 0;
         }
 
-        if (submode>MAX_SUB_MODE)
-        {
-            submode=0;
+        if (mode > MAX_MODE) {
+            mode = 0;
         }
 
-        if (change) 
-        {
+        if (submode > MAX_SUB_MODE) {
+            submode = 0;
+        }
+
+        if (change) {
             pthread_cond_broadcast(&wake_now);
             change = 0;
         }
-        usleep(100*900);
+        usleep(100 * 900);
     }
 
     return;
@@ -1090,7 +1231,7 @@ int main(int argc, char *argv[]){
         if(0==strncmp(argv[i],"-s",2)||0==strncmp(argv[i],"--sensor",8)) {
           if(argv[i+1]!=NULL) {
             i++;
-            sensorId = atoi(argv[i]);
+            sensor_id = atoi(argv[i]);
           }
         }
     }        
@@ -1116,39 +1257,40 @@ int main(int argc, char *argv[]){
 
     while(1) {
 
-        switch(cycle) {
-            case SCREEN_CPU_SCREEN:
-               draw_cpu_screen_multicore(canvas,unicore);
-               print_info_label(canvas);
-               break;
-            case SCREEN_MEM_SCREEN:
-               draw_mem_screen(canvas);
-               print_info_label(canvas);
-               break;
-            case SCREEN_SWAP_SCREEN:
-               draw_swap_screen(canvas);
-               print_info_label(canvas);
-               break;
-            case SCREEN_NET_SCREEN:
-              if(have_nic) {
-                 draw_net_screen(canvas,(char*)interface);
-                 print_info_label(canvas);
-                 break;
-              }else
-                cycle++;
-	    case SCREEN_BAT_SCREEN:
-               draw_bat_screen(canvas,1);
-    	       break;
-            case SCREEN_TEMP_SCREEN:
-               if(have_sensor) {
-                   draw_temp_screen(canvas,1);
-                   break;
-               }else
-                   cycle++;
+        switch (cycle) {
+            case SCREEN_CPU:
+                draw_cpu_screen_multicore(canvas, unicore);
+                break;
+            case SCREEN_MEM:
+                draw_mem_screen(canvas);
+                break;
+            case SCREEN_SWAP:
+                draw_swap_screen(canvas);
+                break;
+            case SCREEN_NET:
+                if (have_nic) {
+                    draw_net_screen(canvas, (char*) interface);
+                    break;
+                } else
+                    cycle++;
+            case SCREEN_BAT:
+                if (have_bat) {
+                    draw_bat_screen(canvas, 1);
+                    break;
+                } else
+                    cycle++;
+            case SCREEN_TEMP:
+                if (have_sensor) {
+                    draw_temp_screen(canvas, 1);
+                    break;
+                } else
+                    cycle++;
             default:
-                printf("cycle reached %i\n",cycle);
-                cycle=0;
+                draw_cpu_screen_multicore(canvas, unicore);
+                cycle = 0;
+                break;
         }
+        print_info_label(canvas);
 
         canvas->mode_xor = 0;
 

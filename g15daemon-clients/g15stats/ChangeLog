@@ -19,5 +19,11 @@ SVN 510:
 - Temperature sensor's autodetect
 - Force user sensor id with the option -s id (The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input)
 SVN 511:
-- Improved sensor's autodetect
+- Improve sensor's autodetect
 - Clean up
+SVN 512:
+- CPU Screens variants for uni core processors
+- CPU frequency info (if available)
+- Battery Screen is enabled if available
+- Clean up
+
