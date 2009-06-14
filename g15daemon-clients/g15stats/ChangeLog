@@ -26,4 +26,6 @@ SVN 512:
 - CPU frequency info (if available)
 - Battery Screen is enabled if available
 - Clean up
+SVN 513:
+- Improve bottom line and keywatch logic
 

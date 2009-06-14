@@ -59,12 +59,11 @@ This is a simple stats client showing graphs for CPU, MEM & Swap usage, Network 
 int g15screen_fd;
 
 int cycle = 0;
+int info_cycle = 0;
 /** Holds the mode type variable of the application running */
 int mode = 0;
 /** Holds the sub mode type variable of the application running */
 int submode = 0;
-
-int timer;
 
 int have_freq   = 1;
 int have_sensor = 1;
@@ -111,16 +110,24 @@ char * show_bytes(unsigned long bytes) {
     return tmpstr;
 }
 
-char * show_hertz(int hertz) {
+char * show_hertz_logic(int hertz, char * hz) {
     static char tmpstr[32];
     if (hertz > 1000000) {
-        sprintf(tmpstr, " %3.1fGHz", ((float)hertz / 1000000));
+        sprintf(tmpstr, " %3.1fG%s", ((float)hertz / 1000000), hz);
     } else if (hertz > 1000) {
-        sprintf(tmpstr, " %3.fMHz", ((float)hertz / 1000));
+        sprintf(tmpstr, " %3.fM%s", ((float)hertz / 1000), hz);
     } else {
-        sprintf(tmpstr, " %3iKHz", hertz);
+        sprintf(tmpstr, " %3iK%s", hertz, hz);
     }
     return tmpstr;
+}
+
+char * show_hertz_short(int hertz) {
+    return show_hertz_logic(hertz, "");
+}
+
+char * show_hertz(int hertz) {
+    return show_hertz_logic(hertz, "Hz");
 }
 
 void drawBar_reversed (g15canvas * canvas, int x1, int y1, int x2, int y2, int color,
@@ -319,15 +326,24 @@ void print_net_info(g15canvas *canvas) {
 
 void print_freq_info(g15canvas *canvas) {
     char tmpstr[MAX_LINES];
+    int normal = 1;
     int core;
     init_cpu_count();
-    if (ncpu < 4) {
+    if (ncpu < 5) {
         sprintf(tmpstr, "%s", "CPU ");
+    } else if (ncpu > 5) {
+        normal = 0;
+        sprintf(tmpstr, "%s", "");
     } else {
         sprintf(tmpstr, "%s", "");
     }
+
     for (core = 0; core < ncpu; core++) {
-        strcat(tmpstr, show_hertz(get_cpu_freq_cur(core)));
+        if (normal) {
+            strcat(tmpstr, show_hertz(get_cpu_freq_cur(core)));
+        } else {
+            strcat(tmpstr, show_hertz_short(get_cpu_freq_cur(core)));
+        }
         if ((core + 1) < ncpu) {
             strcat(tmpstr, " |");
         }
@@ -787,7 +803,7 @@ void draw_bat_screen(g15canvas *canvas, int all) {
                 }
 	}
 
-        if (i == 0) {
+        if (!i) {
             printf("Battery sensor doesn't appear to exist. Battery screen will be disabled.\n");
             have_bat = 0;
             return;
@@ -821,7 +837,7 @@ void draw_bat_screen(g15canvas *canvas, int all) {
             drawBar_reversed(canvas,BAR_START,1,BAR_END,BAR_BOTTOM,G15_COLOR_BLACK,100-(((float)tot_cur_charge/(float)tot_max_charge)*100),100,5);
         }
 
-        if ((!all) || (cycle == SCREEN_BAT)) {
+        if ((!all) || (info_cycle == SCREEN_BAT)) {
             float total_charge = 0;
             if (tot_max_charge > 0)
             {
@@ -870,25 +886,25 @@ void draw_temp_screen(g15canvas *canvas, int all) {
 
     char tmpstr [MAX_LINES];
 
-    int i = 0;
+    int count = 0;
     int j = 0;
-    for (i = 0; i < NUM_TEMP; i++) {
+    for (count = 0; count < NUM_TEMP; count++) {
 
-        if ((temps[i].cur_temp = get_temp_cur(i + 1)) == SENSOR_ERROR) {
+        if ((temps[count].cur_temp = get_temp_cur(count + 1)) == SENSOR_ERROR) {
             break;
         }
-        temps[i].cur_temp /= 1000;
+        temps[count].cur_temp /= 1000;
         if (all) {
-            temps[i].max_temp = get_temp_max(i + 1);
-            temps[i].max_temp /= 1000;
+            temps[count].max_temp = get_temp_max(count + 1);
+            temps[count].max_temp /= 1000;
 
-            if (tot_max_temp < temps[i].max_temp) {
-                tot_max_temp = temps[i].max_temp;
+            if (tot_max_temp < temps[count].max_temp) {
+                tot_max_temp = temps[count].max_temp;
             }
         }
 
     }
-    if (i == 0) {
+    if (!count) {
         if (sensor_id < MAX_SENSOR) {
             printf("Temperature sensor doesn't appear to exist with id=%d . ", sensor_id);
             sensor_id++;
@@ -900,38 +916,38 @@ void draw_temp_screen(g15canvas *canvas, int all) {
         }
         return;
     }
-    if ((i + 1) >= NUM_TEMP) {
-        i = NUM_TEMP;
+    if ((count + 1) >= NUM_TEMP) {
+        count = NUM_TEMP;
     } else {
-        i++;
+        count++;
     }
 
-        if (all) {
-            g15r_clearScreen (canvas, G15_COLOR_WHITE);
+    if (all) {
+        g15r_clearScreen(canvas, G15_COLOR_WHITE);
 
-            g15r_renderString (canvas, (unsigned char*)"M", 0, G15_TEXT_MED, 155, 3);
-            g15r_renderString (canvas, (unsigned char*)"A", 1, G15_TEXT_MED, 155, 7);
-            g15r_renderString (canvas, (unsigned char*)"X", 2, G15_TEXT_MED, 155, 11);
+        g15r_renderString(canvas, (unsigned char*) "M", 0, G15_TEXT_MED, 155, 3);
+        g15r_renderString(canvas, (unsigned char*) "A", 1, G15_TEXT_MED, 155, 7);
+        g15r_renderString(canvas, (unsigned char*) "X", 2, G15_TEXT_MED, 155, 11);
 
-            g15r_drawLine (canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
-            g15r_drawLine (canvas, VL_LEFT+1, 1, VL_LEFT+1, 32, G15_COLOR_BLACK);
+        g15r_drawLine(canvas, VL_LEFT, 1, VL_LEFT, 32, G15_COLOR_BLACK);
+        g15r_drawLine(canvas, VL_LEFT + 1, 1, VL_LEFT + 1, 32, G15_COLOR_BLACK);
 
-        for (j = 0; j < i; j++) {
-                register int bar_top = (j*10) + 1 + j;
-                register int bar_bottom = ((j+1)*10) + j;
+        for (j = 0; j < count; j++) {
+            register int bar_top = (j * 10) + 1 + j;
+            register int bar_bottom = ((j + 1)*10) + j;
 
-                sprintf(tmpstr,"T-%d %3.f\xb0", j+1, temps[j].cur_temp);
-                g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_MED, 1, (j*12) + 2);
+            sprintf(tmpstr, "T-%d %3.f\xb0", j + 1, temps[j].cur_temp);
+            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, (j * 12) + 2);
             g15r_drawBar(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, temps[j].cur_temp + 1, tot_max_temp, 4);
-                drawBar_reversed(canvas, BAR_START, bar_top,BAR_END, bar_bottom, G15_COLOR_BLACK, tot_max_temp - temps[j].cur_temp, tot_max_temp, 5);
+            drawBar_reversed(canvas, BAR_START, bar_top, BAR_END, bar_bottom, G15_COLOR_BLACK, tot_max_temp - temps[j].cur_temp, tot_max_temp, 5);
         }
     }
 
-    if ((!all) || ((cycle == SCREEN_TEMP) && ((submode) || (timer/PAUSE) == SCREEN_TEMP))) {
+    if ((!all) || (info_cycle == SCREEN_TEMP)) {
         char extension[16];
         sprintf(tmpstr, " ");
-        for (j = 0; j < i; j++) {
-            if ((j + 1) != i) {
+        for (j = 0; j < count; j++) {
+            if ((j + 1) != count) {
                 sprintf(extension, "Temp%d %3.f\xb0 | ", j + 1, temps[j].cur_temp);
             } else {
                 sprintf(extension, "Temp%d %3.f\xb0 ", j + 1, temps[j].cur_temp);
@@ -942,15 +958,59 @@ void draw_temp_screen(g15canvas *canvas, int all) {
     }
 }
 
-void print_info_label(g15canvas *canvas) {
-    int my_cycle = cycle;
+void calc_info_cycle(void) {
+    static int timer = -1;
+    info_cycle = cycle;
     timer++;
 
     if (!submode) {
-        my_cycle = -1;
+        switch ((int) (timer / PAUSE)) {
+            case SCREEN_CPU:
+                info_cycle = SCREEN_CPU;
+                break;
+            case SCREEN_MEM:
+                info_cycle = SCREEN_MEM;
+                break;
+            case SCREEN_SWAP:
+                info_cycle = SCREEN_SWAP;
+                break;
+            case SCREEN_NET:
+                if (have_nic) {
+                    info_cycle = SCREEN_NET;
+                    break;
+                }
+                timer += PAUSE;
+            case SCREEN_BAT:
+                if (have_bat) {
+                    info_cycle = SCREEN_BAT;
+                    break;
+                }
+                timer += PAUSE;
+            case SCREEN_TEMP:
+                if (have_sensor) {
+                    info_cycle = SCREEN_TEMP;
+                    break;
+                }
+                timer += PAUSE;
+            case SCREEN_FREQ:
+                if (have_freq) {
+                    info_cycle = SCREEN_FREQ;
+                    break;
+                }
+                timer += PAUSE;
+            case SCREEN_TIME:
+                info_cycle = SCREEN_TIME;
+                break;
+            default:
+                timer = 0;
+                info_cycle = SCREEN_CPU;
+                break;
+        }
     }
+}
 
-    switch (my_cycle) {
+void print_info_label(g15canvas *canvas) {
+    switch (info_cycle) {
         case SCREEN_CPU:
             print_sys_load_info(canvas);
             break;
@@ -964,58 +1024,20 @@ void print_info_label(g15canvas *canvas) {
             print_net_info(canvas);
             break;
         case SCREEN_BAT:
-            //draw_bat_screen(canvas, 0);
+            if (cycle != SCREEN_BAT) {
+                draw_bat_screen(canvas, 0);
+            }
             break;
         case SCREEN_TEMP:
-            //draw_temp_screen(canvas, 0);
-            break;
-        default:
-            switch (timer / PAUSE) {
-                case SCREEN_CPU:
-                    print_sys_load_info(canvas);
-                    break;
-                case SCREEN_MEM:
-                    print_mem_info(canvas);
-                    break;
-                case SCREEN_SWAP:
-                    print_swap_info(canvas);
-                    break;
-                case SCREEN_NET:
-                    print_net_info(canvas);
-                    break;
-                case SCREEN_BAT:
-                     if (have_bat) {
-                        if (cycle != SCREEN_BAT)
-                            draw_bat_screen(canvas, 0);
-                        break;
-                    } else {
-                        timer += PAUSE;
-                    }
-                case SCREEN_TEMP:
-                    if (have_sensor) {
-                        if (cycle != SCREEN_TEMP)
-                            draw_temp_screen(canvas, 0);
-                        break;
-                    } else {
-                        timer += PAUSE;
-                    }
-                case SCREEN_FREQ:
-                    if (have_freq) {
-                        if (cycle != SCREEN_FREQ)
-                            print_freq_info(canvas);
-                        break;
-                    } else {
-                        timer += PAUSE;
-                    }
-                case SCREEN_TIME:
-                    print_time_info(canvas);
-                    break;
-                default:
-                    timer=0;
-                    print_sys_load_info(canvas);
-                    break;
-
+            if (cycle != SCREEN_TEMP) {
+                draw_temp_screen(canvas, 0);
             }
+            break;
+        case SCREEN_FREQ:
+            print_freq_info(canvas);
+            break;
+        case SCREEN_TIME:
+            print_time_info(canvas);
             break;
     }
 }
@@ -1048,68 +1070,71 @@ void keyboard_watch(void) {
             submode++;
             change++;
         }
-	if (cycle<0)
-	{
-            if(have_sensor) {
-                cycle=MAX_SCREENS;
-            } else {
-                cycle=MAX_SCREENS - 1;
-            }
-        }
-        if (direction == DIRECTION_UP)
-        {
-            switch (cycle) {
-                case SCREEN_NET:
-                    if (have_nic) {
-                        break;
-                    }
-                    cycle++;
-                case SCREEN_BAT:
-                    if (have_bat) {
-                        break;
-                    }
-                    cycle++;
-                case SCREEN_TEMP:
-                    if (have_sensor) {
-                        break;
-                    }
-                    cycle++;
-            }
-        } else if (direction == DIRECTION_DOWN){
-             switch (cycle) {
-                case SCREEN_TEMP:
-                    if (have_sensor) {
-                        break;
-                    }
-                    cycle--;
-                case SCREEN_BAT:
-                    if (have_bat) {
-                        break;
-                    }
-                    cycle--;
-                case SCREEN_NET:
-                    if (have_nic) {
-                        break;
-                    }
-                    cycle--;
-            }
-        }
-        if (cycle > MAX_SCREENS) {
-            //Wrap around the apps
-            cycle = 0;
-        }
-
-        if (mode > MAX_MODE) {
-            mode = 0;
-        }
-
-        if (submode > MAX_SUB_MODE) {
-            submode = 0;
-        }
 
         if (change) {
-            pthread_cond_broadcast(&wake_now);
             change = 0;
+            if (cycle < 0) {
+                if (have_sensor) {
+                    cycle = MAX_SCREENS;
+                } else if (have_bat) {
+                    cycle = SCREEN_BAT;
+                } else if (have_nic) {
+                    cycle = SCREEN_NET;
+                } else {
+                    cycle = SCREEN_SWAP;
+                }
+            }
+            if (direction == DIRECTION_UP) {
+                switch (cycle) {
+                    case SCREEN_NET:
+                        if (have_nic) {
+                            break;
+                        }
+                        cycle++;
+                    case SCREEN_BAT:
+                        if (have_bat) {
+                            break;
+                        }
+                        cycle++;
+                    case SCREEN_TEMP:
+                        if (have_sensor) {
+                            break;
+                        }
+                        cycle++;
+                }
+            } else if (direction == DIRECTION_DOWN) {
+                switch (cycle) {
+                    case SCREEN_TEMP:
+                        if (have_sensor) {
+                            break;
+                        }
+                        cycle--;
+                    case SCREEN_BAT:
+                        if (have_bat) {
+                            break;
+                        }
+                        cycle--;
+                    case SCREEN_NET:
+                        if (have_nic) {
+                            break;
+                        }
+                        cycle--;
+                }
+            }
+            if (cycle > MAX_SCREENS) {
+                //Wrap around the apps
+                cycle = 0;
+            }
+
+            if (mode > MAX_MODE) {
+                mode = 0;
+            }
+
+            if (submode > MAX_SUB_MODE) {
+                submode = 0;
+            }
+
+            pthread_cond_broadcast(&wake_now);
         }
         usleep(100 * 900);
     }
@@ -1256,7 +1281,7 @@ int main(int argc, char *argv[]){
       pthread_create(&net_thread,NULL,(void*)network_watch,&interface);
 
     while(1) {
-
+        calc_info_cycle();
         switch (cycle) {
             case SCREEN_CPU:
                 draw_cpu_screen_multicore(canvas, unicore);
@@ -1271,20 +1296,24 @@ int main(int argc, char *argv[]){
                 if (have_nic) {
                     draw_net_screen(canvas, (char*) interface);
                     break;
-                } else
-                    cycle++;
+                }
+                cycle++;
             case SCREEN_BAT:
                 if (have_bat) {
                     draw_bat_screen(canvas, 1);
-                    break;
-                } else
-                    cycle++;
+                    if (have_bat) {
+                        break;
+                    }
+                }
+                cycle++;
             case SCREEN_TEMP:
                 if (have_sensor) {
                     draw_temp_screen(canvas, 1);
-                    break;
-                } else
-                    cycle++;
+                    if (have_sensor) {
+                        break;
+                    }
+                }
+                cycle++;
             default:
                 draw_cpu_screen_multicore(canvas, unicore);
                 cycle = 0;
