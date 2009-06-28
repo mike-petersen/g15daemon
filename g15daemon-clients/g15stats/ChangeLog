@@ -28,4 +28,19 @@ SVN 512:
 - Clean up
 SVN 513:
 - Improve bottom line and keywatch logic
-
+SVN 514:
+- Many fixes, clean up
+- Changed version to 1.90
+- CPU Frequency use proper sysfs variable
+- New Summary Screen indicators
+- Network current traffic info in the bottom line
+- Refactor CPU variants into separates additional screens: Summary, CPU and CPU Freq.
+- New Fan Speed Screen
+- After change screen cycle the info bar content is set to the screen default one.
+- Net Screen scaling is now controlled with the L4 key
+- Force start temperature sensor id with the option -t id (The id should point to sysfs path /sys/class/hwmon/hwmon[id]/...)
+- Force start fan speed sensor id with the option -f id (The id should point to sysfs path /sys/class/hwmon/hwmon[id]/...)
+- Force to show temperature [id] in place of the maximal one on the Summary Screen with the option ie -gt 1
+                    (the id should point to sysfs path /sys/class/hwmon/hwmon../device/temp[id]_input)
+- On the Fan / Temp Screen  Current sensor is controlled with the L4 key (on systems with more then one sensor only).
+- Every Screen has his own mode now (except Swap, Memory and Battery Screen)

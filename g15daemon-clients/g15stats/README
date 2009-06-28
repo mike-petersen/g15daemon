@@ -1,11 +1,14 @@
-G15Stats - a CPU/Memory/Swap/Network/Battery usage meter for G15Daemon.
+G15Stats - a CPU/Memory/Swap/Network/Battery/Temperature/Fan Speed/CPU Frequencies usage meter for G15Daemon.
 
-This first version of G15Stats requires libgtop development packages to be
-installed before compilation.
+The G15Stats requires libgtop development packages to be installed before compilation.
 
 Features:
-CPU Screen displays graphs of User/System/Nice and Idle time, along with frequency,
-LoadAVG and Uptime.
+Summary Screen displays 4 or 5 indicators from CPU/Frequency/Memory/NET/Temperature/Fan Speed/Swap,
+ along with current time.
+
+CPU Screen displays graphs of User/System/Nice and Idle time, along with LoadAVG and Uptime.
+
+Frequency Screen displays all CPU cores frequency with the total
 
 Memory Screen displays Memory Total & Free, and graph of Used vs
 Buffered+Cached Memory.
@@ -17,7 +20,9 @@ Network Screen displays Total bytes In/Out, history graph, Peak speed.
 
 Battery Status Screen displays battery charge data for up to three batteries
 
-Temperature Screen displays temperature current status for up to three sensors
+Temperature Screen displays temperature status for available sensors
+
+Fan Speed Screen displays fan current speed for the available sensors
 
 Options:
 -i interface	Gather statistics from named interface (ie -i eth0)
@@ -26,9 +31,14 @@ Options:
 		default is to scale against the highest peak in the current graph.
 -h		Show help
 -u      Display unicore graphs only on the CPU screen
--s id   Force to monitor temperature sensor id (ie -s 1)
+-t id   Force to monitor temperature sensor id on start (ie -t 1)
         The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input
-        Default the sensor id is autoetected.
+        Default the sensor id is auto-detected.
+-f id   Force to monitor fan speed sensor id on start  (ie -f 1)
+        The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/fan1_input
+        Default the sensor id is auto-detected.
+-gt id  Show temperature [id] in place of the maximal one on the Summary Screen with the option -gt id ie -gt 1
+        The id should point to sysfs path /sys/class/hwmon/hwmon../device/temp[id]_input
 
 Usage:
 $> g15stats
@@ -37,7 +47,7 @@ Once running, the separate screens can be switched to as follows:
 
 L2: Previous Screen
 L3: Next Screen
-L4: Alternative Screen (Work at this moment with the CPU Screen only)
+L4: Alternative Screen (Doesn't work on Swap, Memory and Battery Screen)
 L5: Bottom Info bar mode
 
 BUGS:
