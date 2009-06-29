@@ -44,3 +44,6 @@ SVN 514:
                     (the id should point to sysfs path /sys/class/hwmon/hwmon../device/temp[id]_input)
 - On the Fan / Temp Screen  Current sensor is controlled with the L4 key (on systems with more then one sensor only).
 - Every Screen has his own mode now (except Swap, Memory and Battery Screen)
+SVN 515:
+- Fixed temperature / fan sensor lost
+- Fixed screen cycle

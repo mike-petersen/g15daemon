@@ -79,8 +79,8 @@ _Bool have_nic  = 0;
 _Bool sensor_type_temp[MAX_SENSOR];
 _Bool sensor_type_fan[MAX_SENSOR];
 
-_Bool sensor_lost_temp[MAX_SENSOR];
-_Bool sensor_lost_fan[MAX_SENSOR];
+int sensor_lost_temp[MAX_SENSOR];
+int sensor_lost_fan[MAX_SENSOR];
 
 int sensor_temp_id      = 0;
 int sensor_temp_main    = 0;
@@ -144,7 +144,7 @@ char * show_bytes(unsigned long bytes) {
       format_float(tmpstr, "%2.1fMB","%liMB", (float)bytes / (1024*1024));
     }
     else if(bytes >= 1024) {
-      format_float(tmpstr, "%2.1fMB","%likB", (float)bytes / 1024);
+      format_float(tmpstr, "%2.1fkB","%likB", (float)bytes / 1024);
     }
     else {
         sprintf(tmpstr,"%liB",bytes);
@@ -403,7 +403,7 @@ int get_temp_max(int id) {
     return get_temp("max", id);
 }
 
-int get_next(int sensor_id, _Bool *sensor_lost){
+int get_next(int sensor_id, int *sensor_lost){
     int new_sensor_id;
     new_sensor_id = sensor_id;
     do {
@@ -411,7 +411,7 @@ int get_next(int sensor_id, _Bool *sensor_lost){
         if (new_sensor_id >= MAX_SENSOR) {
             new_sensor_id = 0;
         }
-        if (!sensor_lost[new_sensor_id]){
+        if (sensor_lost[new_sensor_id]){
             return new_sensor_id;
         }
     } while(sensor_id != new_sensor_id);
@@ -440,7 +440,10 @@ int get_temperature(g15_stats_info *temps) {
     }
     if ((!count) && (temps[0].cur == SENSOR_ERROR)) {
         if (sensor_type_temp[sensor_temp_id]) {
-            sensor_lost_temp[sensor_temp_id] = 1;
+            sensor_lost_temp[sensor_temp_id]--;
+            if(sensor_lost_temp[sensor_temp_id] < 0) {
+                sensor_lost_temp[sensor_temp_id] = 0;
+            }
             printf("Temperature sensor doesn't appear to exist with id=%d .\n", sensor_temp_id);
             sensor_temp_id = get_next(sensor_temp_id, sensor_lost_temp);
             if (sensor_temp_id != SENSOR_ERROR) {
@@ -470,7 +473,6 @@ int get_fans(g15_stats_info *fans) {
     int count = 0;
     fan_tot_cur = 0;
     for (count = 0; count < NUM_FAN; count++) {
-
         if ((fans[count].cur = get_fan_cur(count + 1)) == SENSOR_ERROR) {
             break;
         }
@@ -488,9 +490,13 @@ int get_fans(g15_stats_info *fans) {
             fan_tot_max = (fan_tot_cur * 1.2);
         }
     }
-    if ((!count) && (fans[count].cur == SENSOR_ERROR)) {
+    if ((!count) && (fans[0].cur == SENSOR_ERROR)) {
         if (sensor_type_fan[sensor_fan_id]) {
-            sensor_lost_fan[sensor_fan_id] = 1;
+            sensor_lost_fan[sensor_fan_id]--;
+            if(sensor_lost_fan[sensor_fan_id] < 0) {
+                sensor_lost_fan[sensor_fan_id] = 0;
+            }
+
             printf("Fan sensor doesn't appear to exist with id=%d .\n", sensor_fan_id);
             sensor_fan_id = get_next(sensor_fan_id, sensor_lost_fan);
             if (sensor_fan_id != SENSOR_ERROR) {
@@ -1271,6 +1277,8 @@ void draw_temp_screen(g15canvas *canvas, char *tmpstr, int all) {
 
     if ((!count) || (temps[0].cur == SENSOR_ERROR)) {
         return;
+    } else {
+        sensor_lost_temp[sensor_temp_id] = 10;
     }
 
     int j = 0;
@@ -1314,6 +1322,8 @@ void draw_fan_screen(g15canvas *canvas, char *tmpstr, int all) {
     
     if ((!count) || (fans[0].cur == SENSOR_ERROR)) {
         return;
+    } else {
+        sensor_lost_fan[sensor_fan_id] = 10;
     }
 
     int j = 0;
@@ -1325,8 +1335,6 @@ void draw_fan_screen(g15canvas *canvas, char *tmpstr, int all) {
         if (all) {
             g15r_clearScreen(canvas, G15_COLOR_WHITE);
             print_vert_label(canvas, "RPM");
-
-
 
             for (j = 0; j < count; j++) {
                 register int bar_top = (j * shift) + 1 + j;
@@ -1508,7 +1516,7 @@ void keyboard_watch(void) {
                             if (have_fan) {
                                 break;
                             }
-                            cycle++;
+                            cycle = 0;
                             break;
                     }
                     info_cycle_timer = cycle * PAUSE;
@@ -1759,6 +1767,11 @@ int main(int argc, char *argv[]){
   
     if(have_nic==1)
       pthread_create(&net_thread,NULL,(void*)network_watch,&interface);
+
+    for (i=0;i<MAX_SENSOR;i++) {
+        sensor_lost_fan[i] = 1;
+        sensor_lost_temp[i] = 1;
+    }
 
     int cycle_old   = cycle;
     while(1) {
