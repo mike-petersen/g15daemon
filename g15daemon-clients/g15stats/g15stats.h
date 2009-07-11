@@ -1,7 +1,6 @@
 #define	TEXT_LEFT	1
 #define NUM_BATS	3
-#define NUM_TEMP	4
-#define NUM_FAN         4
+#define NUM_PROBES	4
 
 #define MAX_NET_HIST	107
 

@@ -47,3 +47,5 @@ SVN 514:
 SVN 515:
 - Fixed temperature / fan sensor lost
 - Fixed screen cycle
+SVN 516:
+- Refactored temperature and fan speed - share the logic

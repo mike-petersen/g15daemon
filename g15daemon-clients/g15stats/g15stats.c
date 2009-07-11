@@ -16,7 +16,6 @@ along with g15daemon; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 (c) 2008-2009 Mike Lampard
-(c) 2009 Piotr Czarnecki
 
 $Revision$ -  $Date$ $Author$
 
@@ -348,7 +347,7 @@ int get_cpu_freq_cur(int core) {
             ret_val = get_processor_freq("scaling_cur_freq", core);
             break;
         default:
-            ret_val = get_processor_freq("cpuinfo_%s_freq", core);
+            ret_val = get_processor_freq("cpuinfo_%d_freq", core);
             break;
     }
     if ((!core) && (ret_val == SENSOR_ERROR)) {
@@ -379,28 +378,20 @@ int get_hwmon(int sensor_id, char *sensor, char *which, int id, _Bool sensor_typ
     return get_sysfs_value(tmpstr);
 }
 
-int get_fan(char *which, int id) {
-    return get_hwmon(sensor_fan_id, "fan", which, id, sensor_type_fan[sensor_fan_id]);
+int get_sensor_cur(int id, int screen_id) {
+    if (screen_id == SCREEN_TEMP) {
+        return get_hwmon(sensor_temp_id, "temp", "input", id, sensor_type_temp[sensor_temp_id]);
+    } else {
+        return get_hwmon(sensor_fan_id, "fan", "input", id, sensor_type_fan[sensor_fan_id]);
+    }
 }
 
-int get_fan_cur(int id) {
-    return get_fan("input", id);
-}
-
-int get_fan_max(int id) {
-    return get_fan("alarm", id);
-}
-
-int get_temp(char *which, int id) {
-    return get_hwmon(sensor_temp_id, "temp", which, id, sensor_type_temp[sensor_temp_id]);
-}
-
-int get_temp_cur(int id) {
-    return get_temp("input", id);
-}
-
-int get_temp_max(int id) {
-    return get_temp("max", id);
+int get_sensor_max(int id, int screen_id) {
+    if (screen_id == SCREEN_TEMP) {
+        return get_hwmon(sensor_temp_id, "temp", "max", id, sensor_type_temp[sensor_temp_id]);
+    } else {
+        return get_hwmon(sensor_fan_id, "fan", "alarm", id, sensor_type_fan[sensor_fan_id]);
+    }
 }
 
 int get_next(int sensor_id, int *sensor_lost){
@@ -418,105 +409,78 @@ int get_next(int sensor_id, int *sensor_lost){
     return SENSOR_ERROR;
 }
 
-int get_temperature(g15_stats_info *temps) {
+int get_sensors(g15_stats_info *sensors, int screen_id, _Bool *sensor_type, int *sensor_lost, int sensor_id) {
+    char label[16];
     int count       = 0;
-    temp_tot_cur    = 0;
-    
-    for (count = 0; count < NUM_TEMP; count++) {
-        if ((temps[count].cur = get_temp_cur(count + 1)) == SENSOR_ERROR) {
+
+    if (screen_id == SCREEN_TEMP) {
+        temp_tot_cur    = 0;
+        sprintf(label, "Temperature");
+    } else { //SCREEN_FAN
+        fan_tot_cur     = 0;
+        sprintf(label, "Fan");
+    }
+
+    for (count = 0; count < NUM_PROBES; count++) {
+        if ((sensors[count].cur = get_sensor_cur(count + 1, screen_id)) == SENSOR_ERROR) {
             break;
         }
-        temps[count].cur /= 1000;
-        temps[count].max = get_temp_max(count + 1);
-        temps[count].max /= 1000;
+        sensors[count].max = get_sensor_max(count + 1, screen_id);
 
-        if (temp_tot_max < temps[count].max) {
-            temp_tot_max = temps[count].max;
-        }
+        if (screen_id == SCREEN_TEMP) {
+            sensors[count].cur /= 1000;
+            sensors[count].max /= 1000;
+            if (temp_tot_max < sensors[count].max) {
+                temp_tot_max = sensors[count].max;
+            }
+            if ((sensor_temp_main == (count +1)) || ((!sensor_temp_main) && (temp_tot_cur < sensors[count].cur))) {
+                temp_tot_cur = sensors[count].cur;
+            }
+        } else { //SCREEN_FAN
+            if (fan_tot_cur <sensors[count].cur) {
+                fan_tot_cur = sensors[count].cur;
+            }
 
-        if ((sensor_temp_main == (count +1)) || ((!sensor_temp_main) && (temp_tot_cur <temps[count].cur))) {
-            temp_tot_cur = temps[count].cur;
+            if (fan_tot_max < fan_tot_cur) {
+                fan_tot_max = (fan_tot_cur * 1.2);
+            }
         }
     }
-    if ((!count) && (temps[0].cur == SENSOR_ERROR)) {
-        if (sensor_type_temp[sensor_temp_id]) {
-            sensor_lost_temp[sensor_temp_id]--;
-            if(sensor_lost_temp[sensor_temp_id] < 0) {
-                sensor_lost_temp[sensor_temp_id] = 0;
+    if ((!count) && (sensors[0].cur == SENSOR_ERROR)) {
+        if (sensor_type[sensor_id]) {
+            sensor_lost[sensor_id]--;
+            if(sensor_lost[sensor_id] < 0) {
+                sensor_lost[sensor_id] = 0;
             }
-            printf("Temperature sensor doesn't appear to exist with id=%d .\n", sensor_temp_id);
-            sensor_temp_id = get_next(sensor_temp_id, sensor_lost_temp);
-            if (sensor_temp_id != SENSOR_ERROR) {
-                return get_temperature(temps);
+            printf("%s sensor doesn't appear to exist with id=%d .\n", label, sensor_id);
+            sensor_id = get_next(sensor_id, sensor_lost);
+            if (screen_id == SCREEN_TEMP) {
+                sensor_temp_id = sensor_id;
+            } else { //SCREEN_FAN
+                sensor_fan_id = sensor_id;
+            }
+            if (sensor_id != SENSOR_ERROR) {
+                return get_sensors(sensors, screen_id, sensor_type, sensor_lost, sensor_id);
             }
         } else {
-            sensor_type_temp[sensor_temp_id] = 1;
-            return get_temperature(temps);
+            sensor_type[sensor_id] = 1;
+            return get_sensors(sensors, screen_id, sensor_type, sensor_lost, sensor_id);
         }
-            
-        if (sensor_temp_id == SENSOR_ERROR) {
-            have_temp = 0;
-            printf("Temperature sensor doesn't appear to exist. Temperature screen will be disabled.\n");
+
+        if (sensor_id == SENSOR_ERROR) {
+            if (screen_id == SCREEN_TEMP) {
+                have_temp = 0;
+            } else { //SCREEN_FAN
+                have_fan = 0;
+            }
+            printf("%s sensor doesn't appear to exist. %s screen will be disabled.\n", label, label);
             return 0;
         }
     }
 
-    if (count >= NUM_TEMP) {
-        count = NUM_TEMP;
-    } else if(temps[count].cur != SENSOR_ERROR) {
-        count++;
-    }
-    return count;
-}
-
-int get_fans(g15_stats_info *fans) {
-    int count = 0;
-    fan_tot_cur = 0;
-    for (count = 0; count < NUM_FAN; count++) {
-        if ((fans[count].cur = get_fan_cur(count + 1)) == SENSOR_ERROR) {
-            break;
-        }
-        fans[count].max = get_fan_max(count + 1);
-
-        if (fan_tot_max < fans[count].max) {
-            fan_tot_max = fans[count].max;
-        }
-
-        if (fan_tot_cur <fans[count].cur) {
-            fan_tot_cur = fans[count].cur;
-        }
-
-        if (fan_tot_max < fan_tot_cur) {
-            fan_tot_max = (fan_tot_cur * 1.2);
-        }
-    }
-    if ((!count) && (fans[0].cur == SENSOR_ERROR)) {
-        if (sensor_type_fan[sensor_fan_id]) {
-            sensor_lost_fan[sensor_fan_id]--;
-            if(sensor_lost_fan[sensor_fan_id] < 0) {
-                sensor_lost_fan[sensor_fan_id] = 0;
-            }
-
-            printf("Fan sensor doesn't appear to exist with id=%d .\n", sensor_fan_id);
-            sensor_fan_id = get_next(sensor_fan_id, sensor_lost_fan);
-            if (sensor_fan_id != SENSOR_ERROR) {
-                return get_fans(fans);
-            }
-        } else {
-            sensor_type_fan[sensor_fan_id] = 1;
-            return get_fans(fans);
-        }
-        if (sensor_fan_id == SENSOR_ERROR) {
-            have_fan = 0;
-            printf("Fan sensor doesn't appear to exist. Fan screen will be disabled.\n");
-            return 0;
-        }
-
-    }
-
-    if (count >= NUM_FAN) {
-        count = NUM_FAN;
-    } else if(fans[count].cur != SENSOR_ERROR) {
+    if (count >= NUM_PROBES) {
+        count = NUM_PROBES;
+    } else if(sensors[count].cur != SENSOR_ERROR) {
         count++;
     }
     return count;
@@ -657,19 +621,37 @@ void print_label(g15canvas *canvas, char *tmpstr, int cur_shift) {
     g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, cur_shift + 1);
 }
 
+void draw_summary_sensors_logic(g15canvas *canvas, char *tmpstr, g15_stats_info *sensors, char *label, int y1, int y2, int cur_shift, int shift, int count, float tot_cur, float tot_max) {
+    if (count) {
+        int j = 0;
+        int step = (int) (y2 / count);
+        int y = cur_shift + y1;
+        int last_y;
+        for (j = 0; j < count; j++) {
+            last_y = y;
+            y += step;
+            drawBar_both(canvas, last_y, y, sensors[j].cur + 1, tot_max, tot_max - sensors[j].cur, tot_max);
+        }
+        drawLine_both(canvas, cur_shift + y1, y);
+
+        sprintf(tmpstr, label, tot_cur);
+        print_label(canvas, tmpstr, cur_shift);
+
+        cur_shift += shift;
+    }
+}
+
 void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int shift, int id) {
     // Memory section
     glibtop_mem mem;
     glibtop_get_mem(&mem);
+
     int mem_total = (mem.total / 1024);
     int mem_used = mem_total - (mem.free / 1024);
 
     int cur_shift = shift * id;
 
     int y;
-    int last_y;
-    int j;
-    int step;
     int count;
 
     // Memory section
@@ -704,49 +686,26 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int sh
         id++;
         cur_shift += shift;
     }
-    // Temperature section
-    if ((have_temp) && (id < summary_rows)) {
-        g15_stats_info sensors[NUM_FAN];
-        count = get_temperature(sensors);
-        if ((count) && (have_temp)) {
-            j = 0;
-            step = (int) (y2 / count);
-            y = cur_shift + y1;
-            for (j = 0; j < count; j++) {
-                last_y  = y;
-                y      += step;
-                drawBar_both(canvas, last_y, y, sensors[j].cur + 1, temp_tot_max, temp_tot_max - sensors[j].cur, temp_tot_max);
+    if ((have_temp) || (have_fan)) {
+        g15_stats_info sensors[NUM_PROBES];
+        // Temperature section
+        if ((have_temp) && (id < summary_rows)) {
+            count = get_sensors(sensors, SCREEN_TEMP, sensor_type_temp, sensor_lost_temp, sensor_temp_id);
+            if ((count) && (have_temp)) {
+                draw_summary_sensors_logic(canvas, tmpstr, sensors, "TEM %3.f\xb0", y1, y2, cur_shift, shift, count, temp_tot_cur, temp_tot_max);
+                id++;
+                cur_shift += shift;
             }
-            drawLine_both(canvas, cur_shift + y1, y);
-
-            sprintf(tmpstr, "TEM %3.f\xb0", temp_tot_cur);
-            print_label(canvas, tmpstr, cur_shift);
-
-            id++;
-            cur_shift += shift;
         }
-    }
 
-    // Fan section
-    if ((have_fan) && (id < summary_rows)) {
-        g15_stats_info sensors[NUM_FAN];
-        count = get_fans(sensors);
-        if ((count) && (have_fan)) {
-            j = 0;
-            step = (int) (y2 / count);
-            y = cur_shift + y1;
-            for (j = 0; j < count; j++) {
-                last_y  = y;
-                y      += step;
-                drawBar_both(canvas, last_y, y, sensors[j].cur + 1, fan_tot_max, fan_tot_max - sensors[j].cur, fan_tot_max);
+        // Fan section
+        if ((have_fan) && (id < summary_rows)) {
+            count = get_sensors(sensors, SCREEN_FAN, sensor_type_fan, sensor_lost_fan, sensor_fan_id);
+            if ((count) && (have_fan)) {
+                draw_summary_sensors_logic(canvas, tmpstr, sensors, "RPM%5.f", y1, y2, cur_shift, shift, count, fan_tot_cur, fan_tot_max);
+                id++;
+                cur_shift += shift;
             }
-            drawLine_both(canvas, cur_shift + y1, y);
-
-            sprintf(tmpstr, "RPM%5.f", fan_tot_cur);
-            print_label(canvas, tmpstr, cur_shift);
-
-            id++;
-            cur_shift += shift;
         }
     }
 
@@ -840,6 +799,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
         
     int total,user,nice,sys,idle;
     int b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
+    int sub_val;
     static int last_total[GLIBTOP_NCPU],last_user[GLIBTOP_NCPU],last_nice[GLIBTOP_NCPU],
             last_sys[GLIBTOP_NCPU],last_idle[GLIBTOP_NCPU],last_iowait[GLIBTOP_NCPU],last_irq[GLIBTOP_NCPU];
 
@@ -1008,14 +968,15 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
             case SCREEN_CPU:
                 if (mode[SCREEN_CPU]) {
                     divider = 9 / ncpu;
-                    g15r_drawBar(canvas, BAR_START, (divider * core), BAR_END, (divider + (divider * (core))), G15_COLOR_BLACK, b_user + 1, b_total, 4);
-                    g15r_drawBar(canvas, BAR_START, shift + (divider * (core)), BAR_END, shift + (divider + (divider * (core))), G15_COLOR_BLACK, b_sys + 1, b_total, 4);
+                    sub_val = divider * core;
+                    g15r_drawBar(canvas, BAR_START, sub_val, BAR_END, divider + sub_val, G15_COLOR_BLACK, b_user + 1, b_total, 4);
+                    g15r_drawBar(canvas, BAR_START, shift + sub_val, BAR_END, shift + divider + sub_val, G15_COLOR_BLACK, b_sys + 1, b_total, 4);
                     y1 = 0;
-                    y2 = shift2 + (divider + (divider * (core)));
-                    g15r_drawBar(canvas, BAR_START, shift2 + (divider * (core)), BAR_END, y2, G15_COLOR_BLACK, b_nice + 1, b_total, 4);
+                    y2 = shift2 + divider + sub_val;
+                    g15r_drawBar(canvas, BAR_START, shift2 + sub_val, BAR_END, y2, G15_COLOR_BLACK, b_nice + 1, b_total, 4);
 
                     divider = y2 / ncpu;
-                    drawBar_reversed(canvas, BAR_START, (divider * core), BAR_END, y2, G15_COLOR_BLACK, b_idle + 1, b_total, 5);
+                    drawBar_reversed(canvas, BAR_START, sub_val, BAR_END, y2, G15_COLOR_BLACK, b_idle + 1, b_total, 5);
                 } else {
                     current_value = b_total - b_idle;
                     drawBar_both(canvas, y1, y2, current_value, b_total, b_total - current_value, b_total);
@@ -1271,14 +1232,14 @@ void draw_bat_screen(g15canvas *canvas, char *tmpstr, int all) {
         }
 }
 
-void draw_temp_screen(g15canvas *canvas, char *tmpstr, int all) {
-    static g15_stats_info temps[NUM_TEMP];
-    int count = get_temperature(temps);
-
-    if ((!count) || (temps[0].cur == SENSOR_ERROR)) {
+void  draw_g15_stats_info_screen_logic(g15canvas *canvas, char *tmpstr, int all, int screen_type,
+        g15_stats_info *probes, int count, float tot_max, int *sensor_lost, int sensor_id,
+        char *vert_label, char *format_main, char *format_bottom) {
+    
+    if ((!count) || (probes[0].cur == SENSOR_ERROR)) {
         return;
     } else {
-        sensor_lost_temp[sensor_temp_id] = 10;
+        sensor_lost[sensor_id] = 10;
     }
 
     int j = 0;
@@ -1289,23 +1250,23 @@ void draw_temp_screen(g15canvas *canvas, char *tmpstr, int all) {
     if (count) {
         if (all) {
             g15r_clearScreen(canvas, G15_COLOR_WHITE);
-            print_vert_label(canvas, "TEMP");
+            print_vert_label(canvas, vert_label);
 
             for (j = 0; j < count; j++) {
                 register int bar_top = (j * shift) + 1 + j;
                 register int bar_bottom = ((j + 1)*shift) + j;
-                sprintf(tmpstr, "t-%d %3.f\xb0", j + 1, temps[j].cur);
+                sprintf(tmpstr, format_main, j + 1, probes[j].cur);
                 g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, bar_top + 1);
-                drawBar_both(canvas, bar_top, bar_bottom, temps[j].cur + 1, temp_tot_max, temp_tot_max - temps[j].cur, temp_tot_max);
+                drawBar_both(canvas, bar_top, bar_bottom, probes[j].cur + 1, tot_max, tot_max - probes[j].cur, tot_max);
             }
             drawLine_both(canvas, 1, ((j*shift) + j-1));
         }
 
-        if ((!all) || (info_cycle == SCREEN_TEMP)) {
+        if ((!all) || (info_cycle == screen_type)) {
             char extension[16];
-            sprintf(tmpstr, " ");
+            tmpstr[0] = '\0';
             for (j = 0; j < count; j++) {
-                sprintf(extension, "temp%d %1.f\xb0 ", j + 1, temps[j].cur);
+                sprintf(extension, format_bottom, j + 1, probes[j].cur);
                 if (j) {
                     strcat(tmpstr, "| ");
                 }
@@ -1316,48 +1277,22 @@ void draw_temp_screen(g15canvas *canvas, char *tmpstr, int all) {
     }
 }
 
-void draw_fan_screen(g15canvas *canvas, char *tmpstr, int all) {
-    static g15_stats_info fans[NUM_FAN];
-    int count = get_fans(fans);
-    
-    if ((!count) || (fans[0].cur == SENSOR_ERROR)) {
-        return;
-    } else {
-        sensor_lost_fan[sensor_fan_id] = 10;
-    }
-
-    int j = 0;
-
-    int shift;
-    shift = 32 / count;
-
-    if (count) {
-        if (all) {
-            g15r_clearScreen(canvas, G15_COLOR_WHITE);
-            print_vert_label(canvas, "RPM");
-
-            for (j = 0; j < count; j++) {
-                register int bar_top = (j * shift) + 1 + j;
-                register int bar_bottom = ((j + 1)*shift) + j;
-                sprintf(tmpstr, "F-%d%5.f", j + 1, fans[j].cur);
-                g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, bar_top + 1);
-                drawBar_both(canvas, bar_top, bar_bottom, fans[j].cur + 1, fan_tot_max, fan_tot_max - fans[j].cur, fan_tot_max);
-            }
-            drawLine_both(canvas, 1, ((j*shift) + j-1));
-        }
-
-        if ((!all) || (info_cycle == SCREEN_FAN)) {
-            char extension[16];
-            sprintf(tmpstr, " ");
-            for (j = 0; j < count; j++) {
-                sprintf(extension, "Fan%d %1.f ", j + 1, fans[j].cur);
-                if (j) {
-                    strcat(tmpstr, "| ");
-                }
-                strcat(tmpstr, extension);
-            }
-            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 80 - (strlen(tmpstr)*4) / 2, INFO_ROW);
-        }
+void draw_g15_stats_info_screen(g15canvas *canvas, char *tmpstr, int all, int screen_type) {
+    static g15_stats_info probes[NUM_PROBES];
+    int count;
+    switch (screen_type) {
+        case SCREEN_TEMP:
+            count = get_sensors(probes, SCREEN_TEMP, sensor_type_temp, sensor_lost_temp, sensor_temp_id);
+            draw_g15_stats_info_screen_logic(canvas, tmpstr, all, screen_type, probes, 
+                    count, temp_tot_max, sensor_lost_temp, sensor_temp_id, "TEMP", "t-%d %3.f\xb0", "temp%d %1.f\xb0 ");
+            break;
+        case SCREEN_FAN:
+            count = get_sensors(probes, SCREEN_FAN, sensor_type_fan, sensor_lost_fan, sensor_fan_id);
+            draw_g15_stats_info_screen_logic(canvas, tmpstr, all, screen_type, probes, 
+                    count, fan_tot_max, sensor_lost_fan, sensor_fan_id, "RPM", "F-%d%5.f", "Fan%d %1.f ");
+            break;
+        default:
+            break;
     }
 }
 
@@ -1450,12 +1385,12 @@ void print_info_label(g15canvas *canvas, char *tmpstr) {
             break;
         case SCREEN_TEMP    :
             if (cycle != SCREEN_TEMP) {
-                draw_temp_screen(canvas, tmpstr, 0);
+                draw_g15_stats_info_screen(canvas, tmpstr, 0, SCREEN_TEMP);
             }
             break;
         case SCREEN_FAN    :
             if (cycle != SCREEN_FAN) {
-                draw_fan_screen(canvas, tmpstr, 0);
+                draw_g15_stats_info_screen(canvas, tmpstr, 0, SCREEN_FAN);
             }
             break;
         case SCREEN_NET2    :
@@ -1796,7 +1731,7 @@ int main(int argc, char *argv[]){
                     switch (cycle) {
                         case SCREEN_FAN:
                             if (have_fan) {
-                                draw_fan_screen(canvas, tmpstr, 1);
+                                draw_g15_stats_info_screen(canvas, tmpstr, 1, SCREEN_FAN);
                                 if (have_fan) {
                                     break;
                                 }
@@ -1805,7 +1740,7 @@ int main(int argc, char *argv[]){
                             info_cycle  = cycle;
                         case SCREEN_TEMP:
                             if (have_temp) {
-                                draw_temp_screen(canvas, tmpstr, 1);
+                                draw_g15_stats_info_screen(canvas, tmpstr, 1, SCREEN_TEMP);
                                 if (have_temp) {
                                     break;
                                 }
@@ -1854,7 +1789,7 @@ int main(int argc, char *argv[]){
                             info_cycle  = cycle;
                         case SCREEN_TEMP:
                             if (have_temp) {
-                                draw_temp_screen(canvas, tmpstr, 1);
+                                draw_g15_stats_info_screen(canvas, tmpstr, 1, SCREEN_TEMP);
                                 if (have_temp) {
                                     break;
                                 }
@@ -1863,7 +1798,7 @@ int main(int argc, char *argv[]){
                             info_cycle  = cycle;
                         case SCREEN_FAN:
                             if (have_fan) {
-                                draw_fan_screen(canvas, tmpstr, 1);
+                                draw_g15_stats_info_screen(canvas, tmpstr, 1, SCREEN_FAN);
                                 if (have_fan) {
                                     break;
                                 }
@@ -1895,4 +1830,3 @@ int main(int argc, char *argv[]){
     free(canvas);
     return 0;  
 }
-
