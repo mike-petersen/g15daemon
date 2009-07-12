@@ -80,6 +80,7 @@ _Bool sensor_type_fan[MAX_SENSOR];
 
 int sensor_lost_temp[MAX_SENSOR];
 int sensor_lost_fan[MAX_SENSOR];
+int sensor_lost_bat     = 1;
 
 int sensor_temp_id      = 0;
 int sensor_temp_main    = 0;
@@ -1160,10 +1161,15 @@ void draw_bat_screen(g15canvas *canvas, char *tmpstr, int all) {
                 }
 	}
 
-        if (!i) {
-            printf("Battery sensor doesn't appear to exist. Battery screen will be disabled.\n");
-            have_bat = 0;
-            return;
+        if (i) {
+            sensor_lost_bat = RETRY_COUNT;
+        } else {
+            sensor_lost_bat--;
+            if (sensor_lost_bat <= 0) {
+                printf("Battery sensor doesn't appear to exist. Battery screen will be disabled.\n");
+                have_bat = 0;
+                return;
+            }
         }
 
         if (all) {
@@ -1239,7 +1245,7 @@ void  draw_g15_stats_info_screen_logic(g15canvas *canvas, char *tmpstr, int all,
     if ((!count) || (probes[0].cur == SENSOR_ERROR)) {
         return;
     } else {
-        sensor_lost[sensor_id] = 10;
+        sensor_lost[sensor_id] = RETRY_COUNT;
     }
 
     int j = 0;

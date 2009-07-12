@@ -49,3 +49,5 @@ SVN 515:
 - Fixed screen cycle
 SVN 516:
 - Refactored temperature and fan speed - share the logic
+SVN 517:
+- Improve Bat Screen deactivation logic (now is it similar to SVN 515: Fixed temperature / fan sensor lost)

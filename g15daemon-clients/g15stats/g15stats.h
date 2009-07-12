@@ -10,6 +10,7 @@
 #define MAX_SUB_MODE    1
 
 #define PAUSE           6
+#define RETRY_COUNT     10
 
 #define	VL_LEFT		42
 #define	BAR_START	45
