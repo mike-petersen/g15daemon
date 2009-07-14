@@ -51,3 +51,6 @@ SVN 516:
 - Refactored temperature and fan speed - share the logic
 SVN 517:
 - Improve Bat Screen deactivation logic (now is it similar to SVN 515: Fixed temperature / fan sensor lost)
+SVN 518:
+- Fix Summary, Freq and CPU Screens for some variants of the cpu cores number
+- Improve Summary Screen

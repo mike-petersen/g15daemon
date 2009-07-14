@@ -622,27 +622,33 @@ void print_label(g15canvas *canvas, char *tmpstr, int cur_shift) {
     g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, TEXT_LEFT, cur_shift + 1);
 }
 
-void draw_summary_sensors_logic(g15canvas *canvas, char *tmpstr, g15_stats_info *sensors, char *label, int y1, int y2, int cur_shift, int shift, int count, float tot_cur, float tot_max) {
+void draw_summary_sensors_logic(g15canvas *canvas, char *tmpstr, g15_stats_info *sensors, 
+        char *label, int text_shift, int y1, int y2, int move, int cur_shift, int shift, int count, float tot_cur, float tot_max) {
+
     if (count) {
         int j = 0;
+        int rest;
         int step = (int) (y2 / count);
+        rest = y2 - (step * count);
         int y = cur_shift + y1;
         int last_y;
         for (j = 0; j < count; j++) {
             last_y = y;
             y += step;
-            drawBar_both(canvas, last_y, y, sensors[j].cur + 1, tot_max, tot_max - sensors[j].cur, tot_max);
+            if (rest > 0) {
+                rest--;
+                y++;
+            }
+            drawBar_both(canvas, last_y + move, y + move, sensors[j].cur + 1, tot_max, tot_max - sensors[j].cur, tot_max);
         }
-        drawLine_both(canvas, cur_shift + y1, y);
+        drawLine_both(canvas, cur_shift + y1 + move, y + move);
 
         sprintf(tmpstr, label, tot_cur);
-        print_label(canvas, tmpstr, cur_shift);
-
-        cur_shift += shift;
+        print_label(canvas, tmpstr, text_shift);
     }
 }
 
-void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int shift, int id) {
+void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int move, int shift, int text_shift, int id) {
     // Memory section
     glibtop_mem mem;
     glibtop_get_mem(&mem);
@@ -652,14 +658,21 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int sh
 
     int cur_shift = shift * id;
 
+    if (mode[SCREEN_SUMMARY]){
+        if (shift > 7) {
+            y2=4;
+            shift=6;
+        }
+    }
+
     int y;
     int count;
 
     // Memory section
     sprintf(tmpstr, "MEM %3.f%%", ((float) (mem_used) / (float) mem_total)*100);
-    print_label(canvas, tmpstr, cur_shift);
+    print_label(canvas, tmpstr, text_shift * id);
 
-    drawAll_both(canvas, cur_shift + y1, cur_shift + y2, mem_used + 1, mem_total, mem_total - mem_used, mem_total);
+    drawAll_both(canvas, cur_shift + y1 + move, cur_shift + y2 + move, mem_used + 1, mem_total, mem_total - mem_used, mem_total);
 
     id++;
     cur_shift += shift;
@@ -668,21 +681,18 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int sh
     if (have_nic) {
         y = y2 / 2;
 
-        drawLine_both(canvas, cur_shift + y1, cur_shift + y2);
-        drawBar_both(canvas, cur_shift + y1, cur_shift + y, net_cur_in + 1, net_max_in, net_max_in - net_cur_in, net_max_in);
+        drawLine_both(canvas, cur_shift + y1 + move, cur_shift + y2 + move);
+        drawBar_both(canvas, cur_shift + y1 + move, cur_shift + y + move, net_cur_in + 1, net_max_in, net_max_in - net_cur_in, net_max_in);
 
-        if ((y * 2) < y2) {
-            y++;
-        }
-
-        drawBar_both(canvas, cur_shift + y, cur_shift + y2, net_cur_out + 1, net_max_out, net_max_out - net_cur_out, net_max_out);
+        
+        drawBar_both(canvas, cur_shift + y + move, cur_shift + y2 + move, net_cur_out + 1, net_max_out, net_max_out - net_cur_out, net_max_out);
 
         if (net_cur_in > net_cur_out) {
             sprintf(tmpstr, "IN %s", show_bytes_short((int) net_cur_in));
         } else {
             sprintf(tmpstr, "OUT%s", show_bytes_short((int) net_cur_out));
         }
-        print_label(canvas, tmpstr, cur_shift);
+        print_label(canvas, tmpstr, text_shift * id);
 
         id++;
         cur_shift += shift;
@@ -693,7 +703,7 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int sh
         if ((have_temp) && (id < summary_rows)) {
             count = get_sensors(sensors, SCREEN_TEMP, sensor_type_temp, sensor_lost_temp, sensor_temp_id);
             if ((count) && (have_temp)) {
-                draw_summary_sensors_logic(canvas, tmpstr, sensors, "TEM %3.f\xb0", y1, y2, cur_shift, shift, count, temp_tot_cur, temp_tot_max);
+                draw_summary_sensors_logic(canvas, tmpstr, sensors, "TEM %3.f\xb0", text_shift * id, y1, y2, move, cur_shift, shift, count, temp_tot_cur, temp_tot_max);
                 id++;
                 cur_shift += shift;
             }
@@ -703,7 +713,7 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int sh
         if ((have_fan) && (id < summary_rows)) {
             count = get_sensors(sensors, SCREEN_FAN, sensor_type_fan, sensor_lost_fan, sensor_fan_id);
             if ((count) && (have_fan)) {
-                draw_summary_sensors_logic(canvas, tmpstr, sensors, "RPM%5.f", y1, y2, cur_shift, shift, count, fan_tot_cur, fan_tot_max);
+                draw_summary_sensors_logic(canvas, tmpstr, sensors, "RPM%5.f", text_shift * id, y1, y2, move, cur_shift, shift, count, fan_tot_cur, fan_tot_max);
                 id++;
                 cur_shift += shift;
             }
@@ -719,10 +729,10 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int sh
         int swap_used = swap.used / 1024;
         int swap_total = swap.total / 1024;
 
-        drawAll_both(canvas, cur_shift + y1, cur_shift + y2, swap_used, swap_total, swap_total - swap_used, swap_total);
+        drawAll_both(canvas, cur_shift + y1 + move, cur_shift + y2 + move, swap_used, swap_total, swap_total - swap_used, swap_total);
 
         sprintf(tmpstr, "Swp %3i%%", (unsigned int) (((float) swap_used / (float) swap_total)*100));
-        print_label(canvas, tmpstr, cur_shift);
+        print_label(canvas, tmpstr, text_shift * id);
 
         id++;
         cur_shift += shift;
@@ -836,7 +846,8 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
     float result;
 
     int spacer = 1;
-    int height = 8;
+    int height = 9;
+    int move   = 0;
     switch (cycle) {
         case    SCREEN_FREQ    :
             if(ncpu > 11){
@@ -859,32 +870,37 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                 switch (ncpu) {
                     case 1  :
                     case 2  :
+                    case 3  :
+                    case 5  :
+                        move    = 1;
                         height  = 6;
                         shift   = 7;
                         shift2  = (2 * shift);
                         break;
-                    case 3  :
-                        height  = 6;
-                        shift   = height;
-                        shift2  = (2 * shift) -1;
+                    case 4  :
+                        height  = 8;
+                        shift   = 9;
+                        shift2  = (2 * shift);
                         break;
                     default :
-                        height  = 8;
-                        shift   = 7;
+                        height  = 7;
+                        shift   = height;
                         shift2  = (2 * shift)-1;
                         break;
                 }
             } else {
                 summary_rows = 4;
-                if (ncpu % 2){
-                    height  = 9;
-                    shift   = height;
-                    shift2  = (2 * shift)-1;
-                } else {
-                    height  = 9;
-                    shift   = height;
-                    shift2  = (2 * shift);
+                switch (ncpu) {
+                    case 3  :
+                    case 5  :
+                        move    = 1;
+                        break;
+                    default :
+                        break;
                 }
+                height  = 8;
+                shift   = 9;
+                shift2  = (2 * shift);
             }
 
             ncpumax = height;
@@ -931,7 +947,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
             case SCREEN_FREQ:
                 if ((!mode[SCREEN_FREQ]) && (have_freq)) {
                     freq_cur = get_cpu_freq_cur(core);
-                    if (ncpu < 6) {
+                    if (core < 6) {
                         result = ((float) (b_total - b_idle) / (float) b_total)*100;
                         if (result < 100.0) {
                             sprintf(tmpstr, "%2.f%% %s", result, show_hertz_short(freq_cur));
@@ -941,7 +957,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                         if (ncpu < 5) {
                             g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, y1 + 1);
                         } else {
-                            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 1, y1 + 1);
+                            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 1, core * 6);
                         }
                     }
                     freq_total = get_cpu_freq_max(core);
@@ -958,7 +974,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                         if (ncpu < 5) {
                             g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, y1 + 1);
                         } else {
-                            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 1, y1 + 1);
+                            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 1, core * 6);
                         }
                     }
                     current_value = b_total - b_idle;
@@ -992,13 +1008,13 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                 break;
             case SCREEN_SUMMARY:
                 current_value = b_total - b_idle;
-                drawBar_both(canvas, y1, y2, current_value, b_total, b_total - current_value, b_total);
+                drawBar_both(canvas, y1 + move, y2 + move, current_value, b_total, b_total - current_value, b_total);
 
                 if (have_freq) {
                     freq_cur = get_cpu_freq_cur(core);
                     freq_total = get_cpu_freq_max(core);
                     freq_sum = maxi(freq_sum, freq_cur);
-                    drawBar_both(canvas, shift + y1, shift + y2, freq_cur, freq_total, freq_total - freq_cur, freq_total);
+                    drawBar_both(canvas, shift + y1 + move, shift + y2 + move, freq_cur, freq_total, freq_total - freq_cur, freq_total);
                 }
 
                 y1 = 0;
@@ -1006,18 +1022,25 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
         }
     }
 
-    drawLine_both(canvas, y1, y2);
+    drawLine_both(canvas, y1 + move, y2 + move);
 
     if (cycle == SCREEN_SUMMARY) {
+        int text_shift;
+        if (summary_rows > 4) {
+            text_shift = 7;
+        } else {
+            text_shift = 9;
+        }
         if (have_freq) {
-            drawLine_both(canvas, shift + y1, shift + y2);
+            drawLine_both(canvas, shift + y1 + move, shift + y2 + move);
 
             sprintf(tmpstr, "FRQ %s", show_hertz_short((int) freq_sum));
-            print_label(canvas, tmpstr, shift);
 
-            draw_summary_screen(canvas, tmpstr, y1, y2, shift, 2);
+            print_label(canvas, tmpstr, text_shift);
+
+            draw_summary_screen(canvas, tmpstr, y1, y2, move, shift, text_shift, 2);
         } else {
-            draw_summary_screen(canvas, tmpstr, y1, y2, shift, 1);
+            draw_summary_screen(canvas, tmpstr, y1, y2, move, shift, text_shift, 1);
         }
     }
 }
