@@ -658,7 +658,7 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int mo
 
     int cur_shift = shift * id;
 
-    if (mode[SCREEN_SUMMARY]){
+    if (summary_rows > 4){
         if (shift > 7) {
             y2=4;
             shift=6;
@@ -789,7 +789,7 @@ void draw_cpu_screen_unicore_logic(g15canvas *canvas, glibtop_cpu cpu, char *tmp
 
         sprintf(tmpstr,"CPU %3.f%%",((float)(b_total-b_idle)/(float)b_total)*100);
         print_label(canvas, tmpstr, 0);
-    } else if ((cycle == SCREEN_FREQ) && (!mode[SCREEN_FREQ]) && (have_freq)) {
+    } else if ((cycle == SCREEN_FREQ) && (mode[SCREEN_FREQ]) && (have_freq)) {
         print_vert_label(canvas, "FREQ");
     } else {
         print_vert_label(canvas, "Idle");
@@ -865,27 +865,19 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
             break;
         case    SCREEN_SUMMARY :
             spacer = 0;
-            if (mode[SCREEN_SUMMARY]) {
+            if (!mode[SCREEN_SUMMARY]) {
                 summary_rows = 5;
                 switch (ncpu) {
                     case 1  :
                     case 2  :
                     case 3  :
                     case 5  :
+                    case 7  :
                         move    = 1;
                         height  = 6;
-                        shift   = 7;
-                        shift2  = (2 * shift);
-                        break;
-                    case 4  :
-                        height  = 8;
-                        shift   = 9;
-                        shift2  = (2 * shift);
                         break;
                     default :
-                        height  = 7;
-                        shift   = height;
-                        shift2  = (2 * shift)-1;
+                        height  = 8;
                         break;
                 }
             } else {
@@ -895,14 +887,12 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                     case 5  :
                         move    = 1;
                         break;
-                    default :
-                        break;
                 }
                 height  = 8;
-                shift   = 9;
-                shift2  = (2 * shift);
             }
 
+            shift   = height + 1;
+            shift2  = (2 * shift);
             ncpumax = height;
             break;
     }
@@ -945,7 +935,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
 
         switch (cycle) {
             case SCREEN_FREQ:
-                if ((!mode[SCREEN_FREQ]) && (have_freq)) {
+                if ((mode[SCREEN_FREQ]) && (have_freq)) {
                     freq_cur = get_cpu_freq_cur(core);
                     if (core < 6) {
                         result = ((float) (b_total - b_idle) / (float) b_total)*100;

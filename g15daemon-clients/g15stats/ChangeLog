@@ -44,13 +44,16 @@ SVN 514:
                     (the id should point to sysfs path /sys/class/hwmon/hwmon../device/temp[id]_input)
 - On the Fan / Temp Screen  Current sensor is controlled with the L4 key (on systems with more then one sensor only).
 - Every Screen has his own mode now (except Swap, Memory and Battery Screen)
-SVN 515:
+SVN 515 (1.90):
 - Fixed temperature / fan sensor lost
 - Fixed screen cycle
 SVN 516:
 - Refactored temperature and fan speed - share the logic
 SVN 517:
 - Improve Bat Screen deactivation logic (now is it similar to SVN 515: Fixed temperature / fan sensor lost)
-SVN 518:
+SVN 518 (1.91):
 - Fix Summary, Freq and CPU Screens for some variants of the cpu cores number
 - Improve Summary Screen
+SVN 519
+- Change default mode for Freq and Summary Screen
+- Improve Summary Screen for cpus with more then 7 cores
