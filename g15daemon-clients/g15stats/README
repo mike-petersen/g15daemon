@@ -39,6 +39,7 @@ Options:
         Default the sensor id is auto-detected.
 -gt id  Show temperature [id] in place of the maximal one on the Summary Screen with the option -gt id ie -gt 1
         The id should point to sysfs path /sys/class/hwmon/hwmon../device/temp[id]_input
+-df     Disable monitoring CPUs frequencies.
 
 Usage:
 $> g15stats

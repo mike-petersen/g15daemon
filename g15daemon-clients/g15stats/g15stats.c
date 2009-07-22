@@ -660,8 +660,13 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int mo
 
     if (summary_rows > 4){
         if (shift > 7) {
-            y2=4;
-            shift=6;
+            if (id == 2) {
+                y2      = 4;
+                shift   = 6;
+            } else {
+                y2      = 5;
+                shift   = 7;
+            }
         }
     }
 
@@ -860,8 +865,6 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                 spacer = 0;
             }
             height = 12;
-
-            ncpumax = height;
             break;
         case    SCREEN_SUMMARY :
             spacer = 0;
@@ -893,10 +896,10 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
 
             shift   = height + 1;
             shift2  = (2 * shift);
-            ncpumax = height;
             break;
     }
 
+    ncpumax = height;
     if (ncpumax < ncpu) {
         height = (height - ((ncpumax - 1) * spacer)) / (ncpumax);
     } else {
@@ -1649,6 +1652,10 @@ int main(int argc, char *argv[]){
             net_scale_absolute=1;
         }
 
+        if(0==strncmp(argv[i],"-df",3)||0==strncmp(argv[i],"--disable-freq",14)) {
+            have_freq=0;
+        }
+
         if(0==strncmp(argv[i],"-h",2)||0==strncmp(argv[i],"--help",6)) {
             printf("%s %s - (c) 2008-2009 Mike Lampard, Piotr Czarnecki\n",PACKAGE_NAME,VERSION);
             printf("Usage: %s [Options]\n", PACKAGE_NAME);
@@ -1665,7 +1672,8 @@ int main(int argc, char *argv[]){
             printf("--fan [id] (-f) monitor fans sensor [id] ie -f 1\n"
                     "\t[id] should point to sysfs path /sys/class/hwmon/hwmon[id]/device/fan1_input\n");
             printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n"
-                    "\tDefault is to scale fullsize, similar to apps like gkrellm.\n\n");
+                    "\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
+            printf("--disable-freq (-df) disable monitoring CPUs frequencies.\n\n");
             return 0;
         }
         if(0==strncmp(argv[i],"-i",2)||0==strncmp(argv[i],"--interface",11)) {
