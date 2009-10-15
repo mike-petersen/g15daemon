@@ -13,6 +13,7 @@ image_DATA = ${top_builddir}/g15macro.wbmp
 LIBS = -lg15daemon_client -lg15render -lX11 -lXtst 
 IMCLUDES = -I
 g15macro_LDFLAGS = -avoid-version
-g15macro_SOURCES =  g15macro.c
+g15macro_SOURCES =  g15macro.c fileHandling.c
 
 
+noinst_HEADERS = g15macro.h

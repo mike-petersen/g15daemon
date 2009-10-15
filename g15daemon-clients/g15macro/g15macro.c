@@ -60,159 +60,91 @@
 #define XK_LATIN2
 #include <X11/keysymdef.h>
 
-int g15screen_fd;
-int config_fd = 0;
-g15canvas *canvas;
-
-static Display *dpy;
-static Window root_win;
-
-pthread_mutex_t x11mutex;
-pthread_mutex_t config_mutex;
-pthread_mutex_t gui_select;
+#include "g15macro.h"
 
 int leaving = 0;
 int display_timeout=500;
-int have_xtest = False;
 int debug = 0;
-// This variable = G15 keyboard version -1
-// So G15v1 == (G15Version = 0)
-// G15v2 == (G15Version = 1)
-int G15Version = 0;
 
-char configpath[1024];
+int mmedia_codes[6] = {164, 162, 144, 153, 174, 176};
+const long mmedia_defaults[] = {
+	XF86XK_AudioStop,
+ XF86XK_AudioPlay,
+ XF86XK_AudioPrev,
+ XF86XK_AudioNext,
+ XF86XK_AudioLowerVolume,
+ XF86XK_AudioRaiseVolume
+};
 
-char configDir[1024];
-char GKeyCodeCfg[1024];
-// Sloopppyyy :(
+int gkeycodes[18] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
+const char *gkeystring[19] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16","G17","G18","Unknown"};
+/* because this is an X11 client, we can work around the kernel limitations on key numbers */
+const long gkeydefaults[54] = {
+	/* M1 palette */
+	XF86XK_Launch4,
+ XF86XK_Launch5,
+ XF86XK_Launch6,
+ XF86XK_Launch7,
+ XF86XK_Launch8,
+ XF86XK_Launch9,
+ XF86XK_LaunchA,
+ XF86XK_LaunchB,
+ XF86XK_LaunchC,
+ XF86XK_LaunchD,
+ XF86XK_LaunchE,
+ XF86XK_LaunchF,
+ XF86XK_iTouch,
+ XF86XK_Calculater,
+ XF86XK_Support,
+ XF86XK_Word,
+ XF86XK_Messenger,
+ XF86XK_WebCam,
+ /* M2 palette */
+ XK_F13,
+ XK_F14,
+ XK_F15,
+ XK_F16,
+ XK_F17,
+ XK_F18,
+ XK_F19,
+ XK_F20,
+ XK_F21,
+ XK_F22,
+ XK_F23,
+ XK_F24,
+ XK_F25,
+ XK_F26,
+ XK_F27,
+ XK_F28,
+ XK_F29,
+ XK_F30,
+ /* M3 palette */
+ XK_Tcedilla,
+ XK_racute,
+ XK_abreve,
+ XK_lacute,
+ XK_cacute,
+ XK_ccaron,
+ XK_eogonek,
+ XK_ecaron,
+ XK_dcaron,
+ XK_dstroke,
+ XK_nacute,
+ XK_ncaron,
+ XK_odoubleacute,
+ XK_udoubleacute,
+ XK_rcaron,
+ XK_uring,
+ XK_scaron,
+ XK_abovedot
+};
 
-#define MAX_CONFIGS 32
-unsigned int numConfigs = 0;
-unsigned int currConfig = 0;
-unsigned int gui_selectConfig = 0;
-
-// this is for keeping track of when to redraw
-unsigned int gui_oldConfig = MAX_CONFIGS+1; // To make sure it will be redrawn at first
-unsigned char was_recording = 1;
-
-char *configs[MAX_CONFIGS]; // Max possible configs are 32. Too lazy to create a struct for storing dynamically.
-
-unsigned char recstring[1024];
-
-static unsigned int mled_state = G15_LED_M1;
-static int mkey_state = 0;
-static int recording = 0;
-
-typedef struct keypress_s {
-    unsigned long keycode;
-    unsigned long time_ms;
-    unsigned char pressed;
-    unsigned long modifiers;
-    unsigned int mouse_x;
-    unsigned int mouse_y;
-    unsigned int buttons;
-}keypress_t;
-
-
-#define MAX_KEYSTEPS 1024
-
-typedef struct keysequence_s {
-    keypress_t recorded_keypress[MAX_KEYSTEPS];
-    unsigned int record_steps;
-} keysequence_t;
-
-typedef struct gkeys_s{
-    unsigned int recorded;
-    keysequence_t keysequence;
-}gkeys_t;
-
-typedef struct mstates_s {
-    gkeys_t gkeys[18];
-}mstates_t;
-
-mstates_t *mstates[3];
 
 struct current_recording {
-    keypress_t recorded_keypress[MAX_KEYSTEPS];
+	keypress_t recorded_keypress[MAX_KEYSTEPS];
 }current_recording;
 
 unsigned int rec_index=0;
-
-const char *gkeystring[] = { "G1","G2","G3","G4","G5","G6","G7","G8","G9","G10","G11","G12","G13","G14","G15","G16","G17","G18","Unknown" };
-
-int gkeycodes[] = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
-
-int mmedia_codes[6] = {164, 162, 144, 153, 174, 176};    // For G15 v1
-// 								{174, 172, 173, 171, 122, 123} };  // For G15 v2
-
-const long mmedia_defaults[] = {
-    XF86XK_AudioStop,
-    XF86XK_AudioPlay,
-    XF86XK_AudioPrev,
-    XF86XK_AudioNext,
-    XF86XK_AudioLowerVolume,
-    XF86XK_AudioRaiseVolume
-};
-/* because this is an X11 client, we can work around the kernel limitations on key numbers */
-const long gkeydefaults[] = {
-    /* M1 palette */
-    XF86XK_Launch4,
-    XF86XK_Launch5,
-    XF86XK_Launch6,
-    XF86XK_Launch7,
-    XF86XK_Launch8,
-    XF86XK_Launch9,
-    XF86XK_LaunchA,
-    XF86XK_LaunchB,
-    XF86XK_LaunchC,
-    XF86XK_LaunchD,
-    XF86XK_LaunchE,
-    XF86XK_LaunchF,
-    XF86XK_iTouch,
-    XF86XK_Calculater,
-    XF86XK_Support,
-    XF86XK_Word,
-    XF86XK_Messenger,
-    XF86XK_WebCam,
-    /* M2 palette */
-    XK_F13,
-    XK_F14,
-    XK_F15,
-    XK_F16,
-    XK_F17,
-    XK_F18,
-    XK_F19,
-    XK_F20,
-    XK_F21,
-    XK_F22,
-    XK_F23,
-    XK_F24,
-    XK_F25,
-    XK_F26,
-    XK_F27,
-    XK_F28,
-    XK_F29,
-    XK_F30,
-    /* M3 palette */
-    XK_Tcedilla,
-    XK_racute,
-    XK_abreve,
-    XK_lacute,
-    XK_cacute,
-    XK_ccaron,
-    XK_eogonek,
-    XK_ecaron,
-    XK_dcaron,
-    XK_dstroke,
-    XK_nacute,
-    XK_ncaron,
-    XK_odoubleacute,
-    XK_udoubleacute,
-    XK_rcaron,
-    XK_uring,
-    XK_scaron,
-    XK_abovedot
-};
 
 int map_gkey(keystate){
     int retval = -1;
@@ -329,16 +261,39 @@ void drawXBM(g15canvas* canvas, unsigned char* data, int width, int height ,int 
 	}
 }
 
-unsigned char* getConfigName(unsigned int id)
+int runFile(char* file)
 {
-	if (id < 0 || id > numConfigs)
-		return NULL;
+	pid_t pid;
 
-	if (id != 0)
-		return (unsigned char*)configs[id];
+	g15macro_log("Attempting to run %s\n",file);
+	/* Attempt to fork and check for errors */
+	if( (pid=fork()) == -1)
+	{
+		g15macro_log("Fork error\n");
+		return 1;
+	}
+
+	if(pid)
+	{
+		/* A positive (non-negative) PID indicates the parent process */
+		g15macro_log("Successfully forked. Child is %i\n", pid);
+	}
 	else
-		return (unsigned char*)"Default\0";
+	{
+		/* A zero PID indicates that this is the child process */
+		/* Replace the child fork with a new process */
+		if(execlp(file,file,NULL) == -1)
+		{
+			g15macro_log("Unable to execute %s\n", file);
+			return 1;
+		}
+	}
+
+
+	return 0;
 }
+
+
 void renderHelp()
 {
 	g15r_drawLine(canvas, G15_LCD_WIDTH-37, 16, G15_LCD_WIDTH, 16, G15_COLOR_BLACK);
@@ -383,12 +338,30 @@ void gui_selectChange(int change)
 
 	pthread_mutex_unlock(&gui_select);
 }
-
+void emptyMstates(int purge)
+{
+	int m = 0;
+	int g = 0;
+	for (m = 0; m < 3; ++m)
+	{
+		for (g = 0; g < 18; ++g)
+		{
+			if (mstates[m]->gkeys[g].execFile && purge)
+			{
+				free(mstates[m]->gkeys[g].execFile);
+			}
+			mstates[m]->gkeys[g].execFile = NULL;
+		}
+	}
+}
 //TODO: Make it so that if logitech ever makes fewer or more m states that it could iterate.
-void cleanMstates()
+void cleanMstates(int purge)
 {
 	pthread_mutex_lock(&config_mutex);
-	//TODO: Reduce memory usage
+
+	emptyMstates(purge);
+
+	//TODO: Reduce memory usage?
 	//printf("Cleaning mstates. Size of mstates[0]->gkeys = %i\n",sizeof(mstates[0]->gkeys));
 	//Cleaning mstates. Size of mstates[0]->gkeys = 516240
 	//That's alot of memory for an empty set of gkeys. And about 1.5 megabyte of memory for all 3.
@@ -414,127 +387,6 @@ int calc_mkey_offset() {
 			mkey_offset=0;
 	}
 	return mkey_offset;
-}
-// Various distributions have started giving
-// different keycodes to the special keys
-// Next 2 functions handles this
-// TODO: We got alot of config files for very little info in each now..
-// Also this is most likely systemwide, but get's written for each user.
-int writeKeyDefs(char *filename)
-{
-	FILE *f;
-	unsigned int i=0;
-	f = fopen(filename,"w");
-	if(!f)
-	{
-		printf("ERROR: Unable to open keycode definition file (%s). Aborting.\n",filename);
-		return False;
-	}
-	fprintf(f,"#Use this file to define what keycode each key has.\n");
-	fprintf(f,"#You can use the following command to get the keycodes:.\n");
-	fprintf(f,"#xev | grep 'keycode' --line-buffered | grep --line-buffered -o -E 'keycode [0-9]+' | cut -d' ' -f 2\n");
-	fprintf(f,"#Run the command and hit each key, remember in what order you pressed the keys,then write the number returned at the right place.\n");
-	fprintf(f,"#Keep in mind; each number will appear twice.\n");
-	fprintf(f,"#Format is Key:Keycode. Example: G1:138\n");
-	for (i = 0;i < 18;++i)
-	{
-		fprintf(f,"G%i:%i\n",i+1,gkeycodes[i]);
-	}
-	fprintf(f,"AudioStop:%i\n",mmedia_codes[0]);
-	fprintf(f,"AudioPlay:%i\n",mmedia_codes[1]);
-	fprintf(f,"AudioPrev:%i\n",mmedia_codes[2]);
-	fprintf(f,"AudioNext:%i\n",mmedia_codes[3]);
-	fprintf(f,"AudioLowerVolume:%i\n",mmedia_codes[4]);
-	fprintf(f,"AudioRaiseVolume:%i\n",mmedia_codes[5]);
-
-	fclose(f);
-	return True;
-}
-void getKeyDefs(char *filename)
-{
-	FILE *f = NULL;
-	char buf[1024];
-	unsigned int key=0;
-// 	unsigned int i=0;
-	unsigned int keycode=0;
-
-	while (!f)
-	{
-		f=fopen(filename,"r");
-		if (!f)
-		{
-			if (!writeKeyDefs(filename))
-				return;
-		}
-	}
-
-	printf("Reading keycodes for keys from %s\n",filename);
-	while (!feof(f))
-	{
-		memset(buf,0,sizeof(buf));
-		fgets(buf,sizeof(buf),f);
-
-		// Ignore comments and blanklines
-		if (buf[0] == '#' || strlen(buf) == 0)
-			continue;
-
-		if (sscanf(buf,"G%i:%i", &key,&keycode)){
-// 			printf("%i:%i\n",key,keycode);
-// 			printf("Gkeycode%i:%i\n",key,gkeycodes[key-1]);
-			gkeycodes[key-1] = keycode;
-// 			printf("Gkeycode%i:%i\n",key,gkeycodes[key-1]);
-		}
-		sscanf(buf,"AudioStop:%i",&mmedia_codes[0]);
-		sscanf(buf,"AudioPlay:%i",&mmedia_codes[1]);
-		sscanf(buf,"AudioPrev:%i",&mmedia_codes[2]);
-		sscanf(buf,"AudioNext:%i",&mmedia_codes[3]);
-		sscanf(buf,"AudioLowerVolume:%i",&mmedia_codes[4]);
-		sscanf(buf,"AudioRaiseVolume:%i",&mmedia_codes[5]);
-	}
-	fclose(f);
-}
-
-/* WARNING:  uses global mkey state */
-void dump_config(FILE *configfile)
-{
-	int i=0,gkey=0;
-	KeySym key;
-	pthread_mutex_lock(&config_mutex);
-	int orig_mkeystate=mkey_state;
-	for(mkey_state=0;mkey_state<3;mkey_state++){
-		if (mkey_state > 0)
-			fprintf(configfile,"\n\n");
-		fprintf(configfile,"Codes for MKey %i\n",mkey_state+1);
-		for(gkey=0;gkey<18;gkey++){
-			fprintf(configfile,"Key %s:",gkeystring[gkey]);
-			/* if no macro has been recorded for this key, dump the g15daemon default keycode */
-			if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
-				int mkey_offset=0;
-				mkey_offset = calc_mkey_offset();
-				fprintf(configfile,"\t%s\n",XKeysymToString(gkeydefaults[gkey+mkey_offset]));
-			}else{
-				fprintf(configfile,"\n");
-				for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
-					key = XKeycodeToKeysym(dpy,mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,0);
-					fprintf(configfile,"\t%s %s %u\n",XKeysymToString(key),mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].pressed?"Down":"Up",(unsigned int)mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].modifiers);
-				}
-			}
-		}
-	}
-	mkey_state=orig_mkeystate;
-	pthread_mutex_unlock(&config_mutex);
-}
-
-void save_macros(char *filename)
-{
-	printf("Saving macros to %s\n",filename);
-	FILE *configfile;
-	configfile=fopen(filename,"w");
-
-	dump_config(configfile);
-
-	fsync( fileno(configfile) );
-	fclose(configfile);
 }
 
 void fake_keyevent(int keycode,int keydown,unsigned long modifiers){
@@ -646,8 +498,11 @@ void macro_playback(unsigned long keystate)
     if(gkey<0)
       return;
 
-    /* if no macro has been recorded for this key, send the g15daemon default keycode */
-    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0){
+    /* if no macro has been recorded for this key,
+	and no program set to execute,
+	send the g15daemon default keycode */
+    if(mstates[mkey_state]->gkeys[gkey].keysequence.record_steps==0 &&
+	  mstates[mkey_state]->gkeys[gkey].execFile == NULL){
         int mkey_offset=0;
 
         mkey_offset = calc_mkey_offset();
@@ -663,6 +518,7 @@ void macro_playback(unsigned long keystate)
     }
     g15macro_log("Macro Playback: for key %s\n",gkeystring[gkey]);
     pthread_mutex_lock(&config_mutex);
+	runFile(mstates[mkey_state]->gkeys[gkey].execFile);
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
 
         fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
@@ -695,22 +551,69 @@ void macro_playback(unsigned long keystate)
     g15macro_log("Macro Playback Complete\n");
 }
 
-
-void restore_config(char *filename)
+int identify_configver(char *filename)
 {
-	pthread_mutex_lock(&config_mutex);
+	FILE *f;
+	char tmpstring[1024];
+
+	unsigned int configver = 0;
+
+	f=fopen(filename,"r");
+
+	do
+	{
+		memset(tmpstring,0,1024);
+		fgets(tmpstring,1024,f);
+
+		// We ignore parsing comments
+		// but next time this file is saved (like changing macro), they will be lost.
+		if(tmpstring[0]=='#')
+			continue;
+
+		if (!configver && strncmp(tmpstring,"G15Macro config version",23) == 0)
+		{
+			sscanf(tmpstring,"G15Macro config version %i\n",&configver);
+			if (G15MACRO_CONF_VER >= configver)
+			{
+				printf("Using config version %i. Highest supported is %i\n",configver,G15MACRO_CONF_VER);
+			}
+			else
+			{
+				printf("Config file is version %i. I support up to %i. Exiting.\n",configver,G15MACRO_CONF_VER);
+				fclose(f);
+				exit(1);
+			}
+		}
+
+	}while(!feof(f));
+
+	fclose(f);
+
+	return configver;
+}
+
+void restore_v1_config(char *filename)
+{
 	FILE *f;
 	char tmpstring[1024];
 	unsigned int key=0;
 	unsigned int mkey=0;
 	unsigned int i=0;
 	unsigned int keycode;
+
+
 	f=fopen(filename,"r");
 	printf("Restoring macros from %s\n",filename);
+
 	do
 	{
 		memset(tmpstring,0,1024);
 		fgets(tmpstring,1024,f);
+
+		// We ignore parsing comments
+		// but next time this file is saved (like changing macro), they will be lost.
+		if(tmpstring[0]=='#')
+			continue;
 
 		if(tmpstring[0]=='C'){
 			sscanf(tmpstring,"Codes for MKey %i\n",&mkey);
@@ -736,6 +639,94 @@ void restore_config(char *filename)
 	}while(!feof(f));
 
 	fclose(f);
+}
+void restore_v2_config(char *filename)
+{
+	FILE *f;
+	char tmpstring[1024];
+	unsigned int key=0;
+	unsigned int mkey=0;
+	unsigned int i=0;
+	unsigned int keycode;
+
+	f=fopen(filename,"r");
+	printf("Restoring macros from version 2 config: %s\n",filename);
+
+	do
+	{
+		memset(tmpstring,0,1024);
+		fgets(tmpstring,1024,f);
+
+		// We ignore parsing comments
+		// but next time this file is saved (like changing macro), they will be lost.
+		if(tmpstring[0]=='#')
+			continue;
+
+
+		if(tmpstring[0]=='C'){
+			sscanf(tmpstring,"Codes for MKey %i\n",&mkey);
+			mkey--;
+			i=0;
+		}
+		if(tmpstring[0]=='K'){
+			sscanf(tmpstring,"Key G%i:",&key);
+			key--;
+			i=0;
+		}
+		if(tmpstring[0]=='\t')
+		{
+			char* substring = &tmpstring[1];
+			if (strncmp(substring,"keypress",8) == 0)
+			{
+				char codestr[64];
+				char pressed[20];
+				unsigned int modifiers = 0;
+				sscanf(substring,"keypress %s %s %i\n",(char*)&codestr,(char*)&pressed,&modifiers);
+				keycode = XKeysymToKeycode(dpy,XStringToKeysym(codestr));
+				mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].keycode = keycode;
+				mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].pressed = strncmp(pressed,"Up",2)?1:0;
+				mstates[mkey]->gkeys[key].keysequence.recorded_keypress[i].modifiers = modifiers;
+				mstates[mkey]->gkeys[key].keysequence.record_steps=++i;
+			}
+			else if (strncmp(substring,"run",3) == 0)
+			{
+				char file[1024];
+				memset(&file,0,sizeof(file));
+// 				printf("Supposed to run from following line: %s",substring);
+				sscanf(substring,"run %s\n",(char*)&file);
+// 				printf("filename: %s\n",file);
+				if (mstates[mkey]->gkeys[key].execFile)
+				{
+					printf("But key already has %s as file, not changing.\n",mstates[mkey]->gkeys[key].execFile);
+					continue;
+				}
+				mstates[mkey]->gkeys[key].execFile = malloc(strlen(file)+1);
+				memset(mstates[mkey]->gkeys[key].execFile,0,strlen(file)+1);
+				strcpy(mstates[mkey]->gkeys[key].execFile,file);
+// 				printf("Stored filename %s\n",mstates[mkey]->gkeys[key].execFile);
+			}
+		}
+	}while(!feof(f));
+
+	fclose(f);
+}
+
+void restore_config(char *filename)
+{
+	pthread_mutex_lock(&config_mutex);
+	unsigned int configver = 0;
+	configver = identify_configver(filename);
+
+	if (configver == 0) // Original configuration
+	{
+		restore_v1_config(filename);
+	}
+	// Skipping V1 as i would call the original one for that.
+	else if (configver == 2)
+	{
+		restore_v2_config(filename);
+	}
+
 	pthread_mutex_unlock(&config_mutex);
 }
 
@@ -749,18 +740,23 @@ void loadMultiConfig()
 // 	unsigned int numConfigs = 0;
 	int i = 0;
 
-	// Initialize configs array
+	// Initialize configs array of structs
 	for (i = 0; i < MAX_CONFIGS; ++i)
 	{
 		configs[i] = NULL;
 	}
-	configs[0] = malloc(256);
-	memset(configs[0],0,sizeof(configs[0]));
-	strcpy(configs[0], "g15macro.conf");
+
+	configs[0] = malloc(sizeof(configs_t));
+
+	configs[0]->configfile = malloc(128);
+	memset(configs[0]->configfile,0,sizeof(configs[0]->configfile));
+	strcpy(configs[0]->configfile, "g15macro.conf");
+	configs[0]->confver = 0;
 	currConfig = 0;
 
-	strncpy(configPath,configDir,1024);
-	strncat(configPath,"multipleConfigs.cfg",1024-strlen(configPath));
+	printf("default: %s\n",configs[0]->configfile);
+	strncpy(configPath,configDir,sizeof(configPath));
+	strncat(configPath,"multipleConfigs.cfg",sizeof(configPath)-strlen(configPath));
 
 	f = fopen(configPath,"r");
 	// File not created yet
@@ -802,7 +798,7 @@ void loadMultiConfig()
 			printf("Too long line found when reading in configs. Offending config name is %s\n",buf);
 			continue;
 		}
-		i = strcspn(buf,"\n"); // i returns "the length of the initial segment of buf which consists entirely of characters not in reject."
+		i = strcspn(buf,"\n"); // strcspn returns "the length of the initial segment of buf which consists entirely of characters not in reject."
 		memset(cfgName,0,sizeof(cfgName));
 		strncpy(cfgName,buf,i);
 		trim(cfgName);
@@ -822,9 +818,11 @@ void loadMultiConfig()
 
 		// Add it to list of availible configurations
 		g15macro_log("Adding Config %i with length %i - name %s\n",numConfigs,(int)strlen(cfgName),cfgName);
-		configs[numConfigs] = malloc(strlen(cfgName)+1); //+1 for null termination
-		memset(configs[numConfigs],0,sizeof(configs[numConfigs]));
-		strcpy(configs[numConfigs],cfgName);
+		configs[numConfigs] = (configs_t*)malloc(sizeof(configs_t));
+		configs[numConfigs]->configfile = malloc(strlen(cfgName)+1); //+1 for null termination
+		memset(configs[numConfigs]->configfile,0,strlen(cfgName)+1/*sizeof(configs[numConfigs]->configfile)*/);
+		strcpy(configs[numConfigs]->configfile,cfgName);
+		configs[numConfigs]->confver = 0;
 
 	}
 	fclose(f);
@@ -854,7 +852,7 @@ void configure_mmediakeys(){
 	pthread_mutex_lock(&x11mutex);
 	for(i=0;i<6;i++){
 	newmap[0]=mmedia_defaults[i];
-		XChangeKeyboardMapping (dpy, mmedia_codes/*[G15Version]*/[i], 1, newmap, 1);
+		XChangeKeyboardMapping (dpy, mmedia_codes[i], 1, newmap, 1);
 	}
 	XFlush(dpy);
 	pthread_mutex_unlock(&x11mutex);
@@ -957,24 +955,26 @@ void *Lkeys_thread() {
 					char newConfig[1024];
 					memset(newConfig,0,sizeof(newConfig));
 					strcpy(newConfig,configDir);
-					strncat(newConfig,configs[currConfig],sizeof(newConfig)-strlen(newConfig));
+					strncat(newConfig,configs[currConfig]->configfile,sizeof(newConfig)-strlen(newConfig));
 					// Actually not the newConfig, it's the old, but didn't come up with a good name.
 					save_macros(newConfig);
 
 					// Purge all old data
-					cleanMstates();
+					cleanMstates(1);
 
 					// Now load the new config
 					currConfig = gui_selectConfig;
 					memset(newConfig,0,sizeof(newConfig));
 					strcpy(newConfig,configDir);
-					strncat(newConfig,configs[currConfig],sizeof(newConfig)-strlen(newConfig));
+					strncat(newConfig,configs[currConfig]->configfile,sizeof(newConfig)-strlen(newConfig));
+
 					restore_config(newConfig);
+
 
 					// Set the configpath to reflect the change
 					memset(configpath,0,sizeof(configpath));
 					strcpy(configpath,configDir);
-					strncat(configpath,configs[currConfig],sizeof(configpath)-strlen(configpath));
+					strncat(configpath,configs[currConfig]->configfile,sizeof(configpath)-strlen(configpath));
 					gui_oldConfig = MAX_CONFIGS+1;
 
 					break;
@@ -1196,6 +1196,23 @@ void helptext() {
 
 int main(int argc, char **argv)
 {
+	// init vars
+	have_xtest = False;
+	numConfigs = 0;
+	currConfig = 0;
+	gui_selectConfig = 0;
+	G15Version = 0;
+// 	mmedia_codes = {164, 162, 144, 153, 174, 176};
+// 	gkeycodes = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
+	config_fd = 0;
+	mled_state = G15_LED_M1;
+	mkey_state = 0;
+	recording = 0;
+	// this is for keeping track of when to redraw
+	gui_oldConfig = MAX_CONFIGS+1; // To make sure it will be redrawn at first
+	was_recording = 1;
+
+
     pthread_t Xkeys;
     pthread_t Lkeys;
 #ifdef USE_XTEST
@@ -1274,6 +1291,7 @@ int main(int argc, char **argv)
            else
              printf("Unable to run as user \"%s\" - you dont have permissions for that.\nRunning as \"%s\"\n",username->pw_name,getenv("USER"));
         }
+		printf("BEWARE: this program will run files WITHOUT dropping any kind of privilegies.\n");
     }
 
     canvas = (g15canvas *) malloc (sizeof (g15canvas));
@@ -1335,7 +1353,7 @@ int main(int argc, char **argv)
         convert = 1;
     }
 	else
-		cleanMstates();
+		cleanMstates(0); //0 - only null pointers
 
     /* new format */
     strncpy(configpath,getenv("HOME"),1024);
@@ -1358,14 +1376,14 @@ int main(int argc, char **argv)
 	{
 		if(!configs[i])
 			continue;
-		printf("%i:%s%s\n",i,configDir,configs[i]);
+		printf("%i:%s%s\n",i,configDir,configs[i]->configfile);
 	}
 
 	if(!convert)
 	{
 		memset(configpath,0,sizeof(configpath));
 		strcpy(configpath,configDir);
-		strncat(configpath,configs[currConfig],1024-strlen(configpath));
+		strncat(configpath,configs[currConfig]->configfile,1024-strlen(configpath));
 		restore_config(configpath);
 	}
 
@@ -1527,13 +1545,20 @@ int main(int argc, char **argv)
 
 	memset(configpath,0,sizeof(configpath));
 	strcpy(configpath,configDir);
-	strncat(configpath,configs[currConfig],sizeof(configpath)-strlen(configpath));
+	strncat(configpath,configs[currConfig]->configfile,sizeof(configpath)-strlen(configpath));
 	save_macros(configpath);
 
 	for (i = 0; i < MAX_CONFIGS; ++i)
 	{
 		if(configs[i])
+		{
+			if (configs[i]->configfile)
+			{
+				free(configs[i]->configfile);
+				configs[i]->configfile = NULL;
+			}
 			free(configs[i]);
+		}
 		configs[i] = NULL;
 	}
 
@@ -1548,9 +1573,11 @@ int main(int argc, char **argv)
     change_keymap(0);
     close(g15screen_fd);
 
+	emptyMstates(1);
 	free(mstates[0]);
 	free(mstates[1]);
 	free(mstates[2]);
+
 
 close_and_exit:
     /*    XCloseDisplay(dpy);  */
