@@ -183,6 +183,11 @@ void save_macros(char *filename)
 	printf("Saving macros to %s\n",filename);
 	FILE *configfile;
 	configfile=fopen(filename,"w");
+	if (!configfile)
+	{
+		printf("Unable to open %s\n",filename);
+		return;
+	}
 
 	dump_config(configfile);
 

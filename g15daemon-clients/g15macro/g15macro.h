@@ -146,6 +146,8 @@ int recording;
 
 //g15macro.c
 int calc_mkey_offset();
+void change_keymap();
+void emptyMstates(int purge);
 
 
 

@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -145,6 +146,9 @@ struct current_recording {
 }current_recording;
 
 unsigned int rec_index=0;
+
+pthread_t Xkeys;
+pthread_t Lkeys;
 
 int map_gkey(keystate){
     int retval = -1;
@@ -261,6 +265,58 @@ void drawXBM(g15canvas* canvas, unsigned char* data, int width, int height ,int 
 	}
 }
 
+void cleanup()
+{
+	int i;
+	if(recording){
+		recording = 0;
+		XUngrabKeyboard(dpy,CurrentTime);
+	}
+
+	memset(configpath,0,sizeof(configpath));
+	strcpy(configpath,configDir);
+	strncat(configpath,configs[currConfig]->configfile,sizeof(configpath)-strlen(configpath));
+	save_macros(configpath);
+
+	for (i = 0; i < MAX_CONFIGS; ++i)
+	{
+		if(configs[i])
+		{
+			if (configs[i]->configfile)
+			{
+				free(configs[i]->configfile);
+				configs[i]->configfile = NULL;
+			}
+			free(configs[i]);
+		}
+		configs[i] = NULL;
+	}
+
+	g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,0);
+
+	pthread_join(Xkeys,NULL);
+	pthread_join(Lkeys,NULL);
+	pthread_mutex_destroy(&x11mutex);
+	pthread_mutex_destroy(&config_mutex);
+	pthread_mutex_destroy(&gui_select);
+
+
+	/* revert the keymap to g15daemon default on exit */
+	change_keymap(0);
+	close(g15screen_fd);
+
+	emptyMstates(1);
+	free(mstates[0]);
+	free(mstates[1]);
+	free(mstates[2]);
+}
+
+void cleanupChildren (int signal_number)
+{
+	int status;
+	wait (&status);
+}
+
 int runFile(char* file)
 {
 	pid_t pid;
@@ -285,7 +341,8 @@ int runFile(char* file)
 		if(execlp(file,file,NULL) == -1)
 		{
 			g15macro_log("Unable to execute %s\n", file);
-			return 1;
+			cleanup();
+			exit(1);
 		}
 	}
 
@@ -518,7 +575,8 @@ void macro_playback(unsigned long keystate)
     }
     g15macro_log("Macro Playback: for key %s\n",gkeystring[gkey]);
     pthread_mutex_lock(&config_mutex);
-	runFile(mstates[mkey_state]->gkeys[gkey].execFile);
+	if (mstates[mkey_state]->gkeys[gkey].execFile)
+		runFile(mstates[mkey_state]->gkeys[gkey].execFile);
     for(i=0;i<mstates[mkey_state]->gkeys[gkey].keysequence.record_steps;i++){
 
         fake_keyevent(mstates[mkey_state]->gkeys[gkey].keysequence.recorded_keypress[i].keycode,
@@ -581,6 +639,7 @@ int identify_configver(char *filename)
 			{
 				printf("Config file is version %i. I support up to %i. Exiting.\n",configver,G15MACRO_CONF_VER);
 				fclose(f);
+				cleanup();
 				exit(1);
 			}
 		}
@@ -1194,6 +1253,8 @@ void helptext() {
   printf("--help (-h) this help text\n\n");
 }
 
+
+
 int main(int argc, char **argv)
 {
 	// init vars
@@ -1212,9 +1273,6 @@ int main(int argc, char **argv)
 	gui_oldConfig = MAX_CONFIGS+1; // To make sure it will be redrawn at first
 	was_recording = 1;
 
-
-    pthread_t Xkeys;
-    pthread_t Lkeys;
 #ifdef USE_XTEST
     int xtest_major_version = 0;
     int xtest_minor_version = 0;
@@ -1432,6 +1490,13 @@ int main(int argc, char **argv)
 	sigaction(SIGPIPE, &new_action, NULL);
 	sigaction(SIGHUP, &new_action, NULL);
 
+	// So that forked processes that die can actually die instead of going defunct.
+	struct sigaction act;
+	memset(&act,0,sizeof(act));
+	act.sa_handler = &cleanupChildren;
+	sigaction(SIGCHLD,&act,NULL);
+
+
     snprintf((char*)splashpath,1024,"%s/%s",DATADIR,"g15macro/splash/g15macro.wbmp");
     g15r_loadWbmpSplash(canvas, splashpath);
     g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
@@ -1538,46 +1603,7 @@ int main(int argc, char **argv)
 	}while( !leaving);
 	g15macro_log("Leaving mainloop\n");
 
-    if(recording){
-        recording = 0;
-        XUngrabKeyboard(dpy,CurrentTime);
-    }
-
-	memset(configpath,0,sizeof(configpath));
-	strcpy(configpath,configDir);
-	strncat(configpath,configs[currConfig]->configfile,sizeof(configpath)-strlen(configpath));
-	save_macros(configpath);
-
-	for (i = 0; i < MAX_CONFIGS; ++i)
-	{
-		if(configs[i])
-		{
-			if (configs[i]->configfile)
-			{
-				free(configs[i]->configfile);
-				configs[i]->configfile = NULL;
-			}
-			free(configs[i]);
-		}
-		configs[i] = NULL;
-	}
-
-    g15_send_cmd (g15screen_fd,G15DAEMON_MKEYLEDS,0);
-
-    pthread_join(Xkeys,NULL);
-    pthread_join(Lkeys,NULL);
-    pthread_mutex_destroy(&x11mutex);
-    pthread_mutex_destroy(&config_mutex);
-	pthread_mutex_destroy(&gui_select);
-    /* revert the keymap to g15daemon default on exit */
-    change_keymap(0);
-    close(g15screen_fd);
-
-	emptyMstates(1);
-	free(mstates[0]);
-	free(mstates[1]);
-	free(mstates[2]);
-
+	cleanup();
 
 close_and_exit:
     /*    XCloseDisplay(dpy);  */
