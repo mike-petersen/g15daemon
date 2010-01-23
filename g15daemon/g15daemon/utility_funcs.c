@@ -14,11 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with g15daemon; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-    
+
     (c) 2006-2007 Mike Lampard, Philip Lawatsch, and others
 
     $Revision$ -  $Date$ $Author$
-        
+
     This daemon listens on localhost port 15550 for client connections,
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
@@ -58,7 +58,7 @@ unsigned int connected_clients = 0;
 #endif
 
 void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned int lastkeys){
-    
+
 
     /* 'G' keys */
     if(!client_handles_keys) {
@@ -191,7 +191,7 @@ void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned
         			displaylist->current = displaylist->head;
         		else
         			displaylist->current = displaylist->current->prev;
-        	} 
+        	}
         	while (current_screen != displaylist->current);
             if(displaylist->tail == displaylist->current) {
                 displaylist->current = displaylist->head;
@@ -200,19 +200,20 @@ void g15_process_keys(lcdlist_t *displaylist, unsigned int currentkeys, unsigned
             }
             displaylist->current->lcd->usr_foreground = 1;
             displaylist->current->lcd->state_changed = 1;
+			daemon_log(LOG_INFO,"L1 pressed. state_changed=1 for current->lcd");
             displaylist->current->last_priority =  displaylist->current;
             pthread_mutex_unlock(&lcdlist_mutex);
         }
     }
-    
+
     /* 'L' keys...  */
-    if(cycle_key!=G15_KEY_L1) {    
+    if(cycle_key!=G15_KEY_L1) {
       if((currentkeys & G15_KEY_L1) && !(lastkeys & G15_KEY_L1))
         keydown(LKEY_OFFSET);
       else if(!(currentkeys & G15_KEY_L1) && (lastkeys & G15_KEY_L1))
         keyup(LKEY_OFFSET);
     }
-    
+
     if((currentkeys & G15_KEY_L2) && !(lastkeys & G15_KEY_L2))
         keydown(LKEY_OFFSET+1);
     else if(!(currentkeys & G15_KEY_L2) && (lastkeys & G15_KEY_L2))
@@ -257,7 +258,7 @@ void convert_buf(lcd_t *lcd, unsigned char * orig_buf)
         for(y=0;y<43;y++)
             setpixel(lcd,x,y,orig_buf[x+(y*160)]);
 }
-                                        
+
 
 /* wrap the libg15 function */
 void write_buf_to_g15(lcd_t *lcd)
@@ -291,7 +292,7 @@ void pthread_sleep(int seconds) {
 
 /* millisecond sleep routine. */
 int pthread_msleep(int milliseconds) {
-    
+
     struct timespec timeout;
     if(milliseconds>999)
         milliseconds=999;
@@ -309,25 +310,25 @@ void lcdclock(lcd_t *lcd)
     int narrows=0;
     int totalwidth=0;
     char buf[10];
-    
+
     time_t currtime = time(NULL);
-    
-    if(lcd->ident < currtime - 60) {	
+
+    if(lcd->ident < currtime - 60) {
         memset(lcd->buf,0,1024);
         memset(buf,0,10);
         strftime(buf,6,"%H:%M",localtime(&currtime));
 
-        if(buf[0]==49) 
+        if(buf[0]==49)
             narrows=1;
 
-        len = strlen(buf); 
+        len = strlen(buf);
 
         if(narrows)
             totalwidth=(len*20)+(15);
         else
             totalwidth=len*20;
 
-        for (col=0;col<len;col++) 
+        for (col=0;col<len;col++)
         {
             draw_bignum (lcd, (80-(totalwidth)/2)+col*20, 1,(80-(totalwidth)/2)+(col+1)*20, LCD_HEIGHT, BLACK, buf[col]);
 
@@ -338,10 +339,10 @@ void lcdclock(lcd_t *lcd)
 
 
 /* the client must send 6880 bytes for each lcd screen.  This thread will continue to copy data
-* into the clients LCD buffer for as long as the connection remains open. 
+* into the clients LCD buffer for as long as the connection remains open.
 * so, the client should open a socket, check to ensure that the server is a g15daemon,
-* and send multiple 6880 byte packets (1 for each screen update) 
-* once the client disconnects by closing the socket, the LCD buffer is 
+* and send multiple 6880 byte packets (1 for each screen update)
+* once the client disconnects by closing the socket, the LCD buffer is
 * removed and will no longer be displayed.
 */
 void *lcd_client_thread(void *display) {
@@ -355,11 +356,15 @@ void *lcd_client_thread(void *display) {
     int client_sock = client_lcd->connection;
     char helo[]=SERV_HELO;
     unsigned char *tmpbuf=g15_xmalloc(6880);
-    
-    if(!connected_clients)
-        setLEDs(G15_LED_MR); /* turn on the MR backlight to show that it's now being used for lcd-switching */
+
+//     if(!connected_clients)
+// 	{
+// 		daemon_log(LOG_INFO,"Seting LEDs to MR");
+// 		setLEDs(G15_LED_MR); /*
+// 	turn on the MR backlight to show that it's now being used for lcd-switching */
+// 	}
     connected_clients++;
-    
+
     if(g15_send(client_sock, (char*)helo, strlen(SERV_HELO))<0){
         goto exitthread;
     }
@@ -375,7 +380,7 @@ void *lcd_client_thread(void *display) {
                 break;
             }
             pthread_mutex_lock(&lcdlist_mutex);
-            memset(client_lcd->buf,0,1024);      
+            memset(client_lcd->buf,0,1024);
             convert_buf(client_lcd,tmpbuf);
             client_lcd->ident = random();
             pthread_mutex_unlock(&lcdlist_mutex);
@@ -383,8 +388,12 @@ void *lcd_client_thread(void *display) {
     }
     else if (tmpbuf[0]=='R') { /* libg15render buffer */
         while(!leaving) {
+			daemon_log(LOG_INFO,"loop: libg15render lcd thread");
             retval = g15_recv(g15node, client_sock, (char *)tmpbuf, 1048);
-            if(retval != 1048) {
+			daemon_log(LOG_INFO,"loop: libg15render lcd thread2");
+            if(retval != 1048)
+			{
+				daemon_log(LOG_INFO,"libg15render lcd thread exiting");
                 break;
             }
             pthread_mutex_lock(&lcdlist_mutex);
@@ -408,18 +417,18 @@ void *lcd_client_thread(void *display) {
                 height = tmpbuf[3];
                 header = 4;
             }
-            
+
             buflen = (width/8)*height;
 
             if(buflen>860){ /* grab the remainder of the image and discard excess bytes */
                 /*  retval=g15_recv(client_sock,(char*)tmpbuf+865,buflen-860);  */
-                retval=g15_recv(g15node, client_sock,NULL,buflen-860); 
+                retval=g15_recv(g15node, client_sock,NULL,buflen-860);
                 buflen = 860;
             }
-            
+
             if(width!=160) /* FIXME - we ought to scale images I suppose */
                 goto exitthread;
-            
+
             pthread_mutex_lock(&lcdlist_mutex);
             memcpy(client_lcd->buf,tmpbuf+header,buflen+header);
             client_lcd->ident = random();
@@ -478,7 +487,7 @@ int g15_clientconnect (lcdlist_t **g15daemon, int listening_socket) {
             }
 
         }
-        
+
         pthread_detach(client_connection);
     }
     return 0;
