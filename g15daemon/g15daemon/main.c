@@ -14,11 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with g15daemon; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
+    
     (c) 2006-2007 Mike Lampard, Philip Lawatsch, and others
-
+    
     $Revision$ -  $Date$ $Author$
-
+    
     This daemon listens on localhost port 15550 for client connections,
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
@@ -59,20 +59,20 @@ lcd_t *keyhandler = NULL;
 extern unsigned int connected_clients;
 
 static void *keyboard_watch_thread(void *lcdlist){
-
+    
     lcdlist_t *displaylist = (lcdlist_t*)(lcdlist);
-
+    
     static unsigned int lastkeypresses = 0;
     unsigned int keypresses = 0;
     int retval = 0;
     current_key_state = 0;
-
+    
     while (!leaving) {
-
+        
         pthread_mutex_lock(&g15lib_mutex);
           retval = getPressedKeys(&keypresses, 40);
         pthread_mutex_unlock(&g15lib_mutex);
-
+        
         if(retval == G15_NO_ERROR){
             if(keypresses != lastkeypresses){
                 current_key_state = keypresses;
@@ -82,22 +82,15 @@ static void *keyboard_watch_thread(void *lcdlist){
                 lastkeypresses = keypresses;
             }
         }
-		if(retval == -ENODEV && LIBG15_VERSION>=1200)
-		{
-			pthread_mutex_lock(&g15lib_mutex);
-			while((retval=re_initLibG15() != G15_NO_ERROR) && !leaving)
-			{
-				daemon_log(LOG_ERR,"Keyboard went away! retrying...");
-				sleep(1);
-			}
-			if(!leaving)
-			{
-				displaylist->current->lcd->state_changed=1;
-				daemon_log(LOG_INFO,"keyboard_watch_thread. state_changed=1 and ident=random()");
-				displaylist->current->lcd->ident=random();
-			}
-			pthread_mutex_unlock(&g15lib_mutex);
-		}
+        if(retval == -ENODEV && LIBG15_VERSION>=1200) {
+          pthread_mutex_lock(&g15lib_mutex);
+          while((retval=re_initLibG15() != G15_NO_ERROR) && !leaving){
+           daemon_log(LOG_ERR,"Keyboard went away! retrying...");
+           sleep(1);
+          }
+          if(!leaving) { displaylist->current->lcd->state_changed=1; displaylist->current->lcd->ident=random();}
+          pthread_mutex_unlock(&g15lib_mutex); 
+        }
 
         pthread_msleep(10);
     }
@@ -108,63 +101,57 @@ static void *lcd_draw_thread(void *lcdlist){
 
     lcdlist_t *displaylist = (lcdlist_t*)(lcdlist);
     static long int lastlcd = 1;
-
+    
     lcd_t *displaying = displaylist->tail->lcd;
     memset(displaying->buf,0,1024);
-
+    
     writePixmapToLCD(logo_data);
     pthread_sleep(2);
-
+    
     while (!leaving) {
         pthread_mutex_lock(&lcdlist_mutex);
-
+        
         displaying = displaylist->current->lcd;
-
+        
         if(displaylist->tail == displaylist->current){
             lcdclock(displaying);
             displaying->mkey_state = 0;
         }
-
+        
         if(displaying->ident != lastlcd){
-		   daemon_log(LOG_INFO,"ident changed is true, updating LCD contents");
            write_buf_to_g15(displaying);
            lastlcd = displaying->ident;
         }
-
+        
         if(displaying->state_changed ){
-			daemon_log(LOG_INFO,"state_changed is true, updating all LEDs and LCD");
             setLCDContrast(displaying->contrast_state);
-//             if(connected_clients)
-// 			{
-//                 displaying->mkey_state = displaying->mkey_state | G15_LED_MR;
-// 				daemon_log(LOG_INFO,"Adding G15_LED_MR to LEDS shown.");
-// 			}
+            if(connected_clients)
+                displaying->mkey_state = displaying->mkey_state | G15_LED_MR;
             setLEDs(displaying->mkey_state);
             setLCDBrightness(displaying->backlight_state);
             displaying->state_changed = 0;
-			daemon_log(LOG_INFO,"Done updating. state_changed=0");
         }
-
+            
         pthread_mutex_unlock(&lcdlist_mutex);
-
+        
         pthread_msleep(100);
     }
     return NULL;
 }
 
-/* this thread only listens for new connections.
+/* this thread only listens for new connections. 
  * sockserver_accept will spawn a new thread for each connected client
  */
 static void *lcdserver_thread(void *lcdlist){
 
     lcdlist_t *displaylist = (lcdlist_t*) lcdlist ;
     int g15_socket=-1;
-
+    
     if((g15_socket = init_sockserver())<0){
         daemon_log(LOG_ERR,"Unable to initialise the server at port %i",LISTEN_PORT);
         return NULL;
     }
-
+    
     if (fcntl(g15_socket, F_SETFL, O_NONBLOCK) <0 ) {
         daemon_log(LOG_ERR,"Unable to set socket to nonblocking");
     }
@@ -172,7 +159,7 @@ static void *lcdserver_thread(void *lcdlist){
     while ( !leaving ) {
         g15_clientconnect(&displaylist,g15_socket);
     }
-
+    
     close(g15_socket);
     return NULL;
 }
@@ -184,22 +171,22 @@ int main (int argc, char *argv[])
     int retval;
     int i;
     int g15daemon_debug = 0;
-
+        
     pthread_t keyboard_thread;
     pthread_t lcd_thread;
     pthread_t server_thread;
 
-    daemon_pid_file_ident =
-            daemon_log_ident =
+    daemon_pid_file_ident = 
+            daemon_log_ident = 
             daemon_ident_from_argv0(argv[0]);
 
-
+    
     for (i=0;i<argc;i++) {
         char daemonargs[20];
         memset(daemonargs,0,20);
         strncpy(daemonargs,argv[i],19);
         if (!strncmp(daemonargs, "-k",2) || !strncmp(daemonargs, "--kill",6)) {
-#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
+#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
             if ((retval = daemon_pid_file_kill_wait(SIGINT, 15)) != 0)
 #else
                 if ((retval = daemon_pid_file_kill(SIGINT)) != 0)
@@ -208,7 +195,7 @@ int main (int argc, char *argv[])
             return retval < 0 ? 1 : 0;
         }
         if (!strncmp(daemonargs, "-K",2) || !strncmp(daemonargs, "--KILL",6)) {
-#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
+#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE 
             if ((retval = daemon_pid_file_kill_wait(SIGUSR1, 15)) != 0)
 #else
                 if ((retval = daemon_pid_file_kill(SIGUSR1)) != 0)
@@ -221,8 +208,8 @@ int main (int argc, char *argv[])
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
             printf("compiled with libg15 version %.3f\n\n",lg15ver/1000);
             exit(0);
-        }
-
+        }    
+        
         if (!strncmp(daemonargs, "-h",2) || !strncmp(daemonargs, "--help",6)) {
             printf("G15Daemon version %s - %s\n",VERSION,daemon_pid_file_is_running() >= 0 ?"Loaded & Running":"Not Running");
             printf("%s -h (--help) or -k (--kill) or -s (--switch) or -d (--debug) or -v (--version)\n\n -k will kill a previous incarnation",argv[0]);
@@ -241,9 +228,6 @@ int main (int argc, char *argv[])
         }else{
             cycle_key = G15_KEY_MR;
         }
-
-// Uncomment when debugging if you want L1 as switch key (which I think is the only sane option)
-//	cycle_key = G15_KEY_L1;
 
         if (!strncmp(daemonargs, "-d",2) || !strncmp(daemonargs, "--debug",7)) {
             g15daemon_debug = 1;
@@ -269,7 +253,7 @@ int main (int argc, char *argv[])
           return 1;
       }
     }
-
+      
     if (daemonpid && !g15daemon_debug){
         retval=0;
         char * g15_errors[] = {	"No Error",
@@ -277,13 +261,13 @@ int main (int argc, char *argv[])
                                 "Unable to initialise keyboard",
                                 "Unable to configure the linux kernel UINPUT driver",
                                 "Unable to register signal handler",
-                                "Unable to create new keyboard thread",
+                                "Unable to create new keyboard thread", 
                                 "Unable to create new display thread",
                                 "Unable to create server thread",
 #ifdef OSTYPE_DARWIN
                                 "Unable to load USB shield kext",
                                 "Unable to launch kextload",
-#endif
+#endif                                
                                 NULL };
           if((retval = daemon_retval_wait(20)) !=0) {
             if(retval)
@@ -292,9 +276,9 @@ int main (int argc, char *argv[])
                  daemon_log(LOG_ERR,"A library error occurred.  Please file a bug report stating the g15daemon version, your kernel version, libdaemon version and your distribution name.");
               return 255;
           }
-
+    
         return retval;
-
+    
     }else{ /* daemonised now */
 
         int fd;
@@ -302,13 +286,13 @@ int main (int argc, char *argv[])
         lcdlist_t *lcdlist;
         pthread_attr_t attr;
         struct passwd *nobody;
-        int disable_kb_backlight_onexit = 0;
-
+        int disable_kb_backlight_onexit = 0;      
+        
         nobody = getpwnam("nobody");
-
+            
         if(daemon_pid_file_create() !=0){
             daemon_log(LOG_ERR,"Unable to create PID File! Exiting");
-            daemon_retval_send(1);
+            daemon_retval_send(1);   
             goto exitnow;
         }
 
@@ -317,10 +301,10 @@ int main (int argc, char *argv[])
           libg15Debug(g15daemon_debug);
 
 #ifdef OSTYPE_DARWIN
-
+		  
 		/* OS X: load codeless kext */
 		retval = system("/sbin/kextload " "/System/Library/Extensions/libusbshield.kext");
-
+		
 		if (WIFEXITED(retval)){
 			if (WEXITSTATUS(retval) !=0){
 				daemon_log(LOG_ERR,"Unable to load USB shield kext");
@@ -339,9 +323,9 @@ int main (int argc, char *argv[])
             goto exitnow;
         }
 
-        setLCDContrast(1);
+        setLCDContrast(1); 
         setLEDs(0);
-        setLCDBrightness(1);
+        setLCDBrightness(1);        
         #ifdef LIBG15_VERSION
         #if LIBG15_VERSION >= 1200
             setKBBrightness(1);
@@ -358,7 +342,7 @@ int main (int argc, char *argv[])
             daemon_retval_send(3);
             goto exitnow;
         }
-
+    
         if(daemon_signal_init(SIGINT,SIGQUIT,SIGHUP,SIGPIPE,SIGUSR1,0) <0){
             daemon_log(LOG_ERR,"Unable to register signal handler. Exiting");
             daemon_retval_send(4);
@@ -382,7 +366,7 @@ int main (int argc, char *argv[])
             daemon_retval_send(5);
             goto exitnow;
         }
-        pthread_attr_setstacksize(&attr,128*1024);
+        pthread_attr_setstacksize(&attr,128*1024); 
 
         if (pthread_create(&lcd_thread, &attr, lcd_draw_thread, lcdlist) != 0) {
             daemon_log(LOG_ERR,"Unable to create display thread.  Exiting");
@@ -399,14 +383,14 @@ int main (int argc, char *argv[])
         daemon_log(LOG_INFO,"%s loaded\n",PACKAGE_STRING);
         FD_ZERO(&fds);
         FD_SET(fd=daemon_signal_fd(),&fds);
-
+    
         do {
             fd_set myfds = fds;
             if(select(FD_SETSIZE,&myfds,0,0,0) <0){
                 if(errno == EINTR) continue;
                 break;
             }
-
+        
             if(FD_ISSET(fd,&fds)){
                 int sig;
                 sig = daemon_signal_next();
@@ -423,7 +407,7 @@ int main (int argc, char *argv[])
                 }
             }
         } while ( leaving == 0 );
-
+        
         daemon_signal_done();
         pthread_join(server_thread,NULL);
         pthread_join(lcd_thread,NULL);
@@ -433,7 +417,7 @@ int main (int argc, char *argv[])
         memset(blank,0,G15_BUFFER_LEN);
         writePixmapToLCD(blank);
         free(blank);
-        setLCDBrightness(0);
+        setLCDBrightness(0);                
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1200
         if(disable_kb_backlight_onexit)
@@ -446,7 +430,7 @@ int main (int argc, char *argv[])
 #endif
 #ifdef LIBG15_VERSION
 #if LIBG15_VERSION >= 1100
-        exitLibG15();
+        exitLibG15(); 
 #endif
 #endif
         lcdlist_destroy(&lcdlist);
