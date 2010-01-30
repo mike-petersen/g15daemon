@@ -16,9 +16,9 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
     (c) 2006-2008 Mike Lampard, Philip Lawatsch, and others
-    
+
     $Revision$ -  $Date$ $Author$
-        
+
     This daemon listens on localhost port 15550 for client connections,
     and arbitrates LCD display.  Allows for multiple simultaneous clients.
     Client screens can be cycled through by pressing the 'L1' key.
@@ -86,7 +86,7 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         pthread_mutex_unlock(&lcdlist_mutex);
         send(sock,msgbuf,1,MSG_OOB);
         break;
-    } 
+    }
     case CLIENT_CMD_IS_USER_SELECTED: { /* client wants to know if it was set to foreground by the user */
         pthread_mutex_lock(&lcdlist_mutex);
         if(lcdnode->lcd->usr_foreground==1)  /* user manually selected this lcd */
@@ -96,39 +96,39 @@ static void process_client_cmds(lcdnode_t *lcdnode, int sock, unsigned int *msgb
         pthread_mutex_unlock(&lcdlist_mutex);
         send(sock,msgbuf,1,MSG_OOB);
         break;
-    } 
+    }
     default:
-       if(msgbuf[0] & CLIENT_CMD_MKEY_LIGHTS) 
+       if(msgbuf[0] & CLIENT_CMD_MKEY_LIGHTS)
        { /* client wants to change the M-key backlights */
           lcdnode->lcd->mkey_state = msgbuf[0]-0x20;
           lcdnode->lcd->state_changed = 1;
           //if the client is the keyhandler, allow full, direct control over the mled status
           if(lcdnode->lcd->masterlist->remote_keyhandler_sock==lcdnode->lcd->connection)
             setLEDs(msgbuf[0]-0x20);
-       } else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER) 
-      { 
+       } else if (msgbuf[0] & CLIENT_CMD_KEY_HANDLER)
+      {
         g15daemon_log(LOG_WARNING, "Client is taking over keystate");
-        
+
         lcdnode->list->remote_keyhandler_sock = sock;
         g15daemon_log(LOG_WARNING, "Client has taken over keystate");
       }
-      else if (msgbuf[0] & CLIENT_CMD_BACKLIGHT) 
+      else if (msgbuf[0] & CLIENT_CMD_BACKLIGHT)
       {
         unsigned char retval = lcdnode->lcd->backlight_state;
         send(sock,&retval,1,MSG_OOB);
         lcdnode->lcd->backlight_state = msgbuf[0]-0x80;
         lcdnode->lcd->state_changed = 1;
       }
-      else if (msgbuf[0] & CLIENT_CMD_KB_BACKLIGHT) 
+      else if (msgbuf[0] & CLIENT_CMD_KB_BACKLIGHT)
       {
         setKBBrightness((unsigned int)msgbuf[0]-0x8);
       }
-      else if (msgbuf[0] & CLIENT_CMD_CONTRAST) 
-      { 
+      else if (msgbuf[0] & CLIENT_CMD_CONTRAST)
+      {
         send(sock,&lcdnode->lcd->contrast_state,1,MSG_OOB);
         lcdnode->lcd->contrast_state = msgbuf[0]-0x40;
         lcdnode->lcd->state_changed = 1;
-      } 
+      }
     }
 }
 
@@ -138,7 +138,7 @@ static int init_sockserver(){
     int yes=1;
     int tos = 0x18;
 
-    struct    sockaddr_in servaddr; 
+    struct    sockaddr_in servaddr;
 
     if ((listening_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
         g15daemon_log(LOG_WARNING, "Unable to create socket.\n");
@@ -147,7 +147,7 @@ static int init_sockserver(){
 
     setsockopt(listening_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     setsockopt(listening_socket, SOL_SOCKET, SO_PRIORITY, &tos, sizeof(tos));
-    
+
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     inet_aton (LISTEN_ADDR, &servaddr.sin_addr);
@@ -173,7 +173,7 @@ static int g15_send(int sock, char *buf, unsigned int len)
     int retval = 0;
     int bytesleft = len;
     struct pollfd pfd[1];
-    
+
     while(total < len && !leaving) {
         memset(pfd,0,sizeof(pfd));
         pfd[0].fd = sock;
@@ -181,8 +181,8 @@ static int g15_send(int sock, char *buf, unsigned int len)
         if(poll(pfd,1,500)>0) {
             if(pfd[0].revents & POLLOUT && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) {
                 retval = send(sock, buf+total, bytesleft, 0);
-                if (retval == -1) { 
-                    break; 
+                if (retval == -1) {
+                    break;
                 }
                 bytesleft -= retval;
                 total += retval;
@@ -194,55 +194,90 @@ static int g15_send(int sock, char *buf, unsigned int len)
         }
     }
     return retval==-1?-1:0;
-} 
+}
 
 
 static int g15_recv(lcdnode_t *lcdnode, int sock, char *buf, unsigned int len)
 {
-    int total = 0;
-    int retval = 0;
-    int msgret = 0;
-    int bytesleft = len; 
-    struct pollfd pfd[1];
-    unsigned int msgbuf[20];
+	int total = 0;
+	int retval = 0;
+	int msgret = 0;
+	int bytesleft = len;
+	struct pollfd pfd[1];
+	unsigned int msgbuf[20];
 
-    while(total < len  && !leaving) {
-        memset(pfd,0,sizeof(pfd));
-        pfd[0].fd = sock;
-        pfd[0].events = POLLIN | POLLPRI | POLLERR | POLLHUP | POLLNVAL;
-        if(poll(pfd,1,500)>0){
-            if(pfd[0].revents & POLLPRI && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)) { /* receive out-of-band request from client and deal with it */
-                memset(msgbuf,0,20);
-                msgret = recv(sock, msgbuf, 10 , MSG_OOB);
-                if (msgret < 1) {
-                    break;
-                }
-           	process_client_cmds(lcdnode, sock, msgbuf,len);
-            }
-            else if(pfd[0].revents & POLLIN && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL || pfd[0].revents & POLLPRI)) {
+	int flags = 0;
+	flags = fcntl(sock,F_GETFL,0);
+	if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) <0 )
+	{
+		g15daemon_log(LOG_ERR,"Unable to set lcd-client socket to nonblocking. Light updates might need a screencontent update to go through.");
+	}
+	while(total < len  && !leaving) {
+		memset(pfd,0,sizeof(pfd));
+		pfd[0].fd = sock;
+		pfd[0].events = POLLIN | POLLPRI | POLLERR | POLLHUP | POLLNVAL;
+		if(poll(pfd,1,500)>0)
+		{
+			if(pfd[0].revents & POLLPRI && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL))
+			{
+				/* receive out-of-band request from client and deal with it */
+				memset(msgbuf,0,20);
+				g15daemon_log(LOG_INFO, "Receiving OOB dataupdate.");
+				msgret = recv(sock, msgbuf, 10 , MSG_OOB);
+				g15daemon_log(LOG_INFO, "Received OOB dataupdate.");
+				if (msgret < 1)
+				{
+					break;
+				}
+				process_client_cmds(lcdnode, sock, msgbuf,len);
+			}
+			else if(pfd[0].revents & POLLIN && !(pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL || pfd[0].revents & POLLPRI))
+			{
 
-                retval = recv(sock, buf+total, bytesleft, 0);
-                if (retval < 1) { 
-                    break; 
-                }
-                total += retval;
-                bytesleft -= retval;
-            }
-            if((pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL)){
-               retval=-1;
-               break;
-            }
-        }
-    }
-    return total;
-} 
+				g15daemon_log(LOG_INFO, "Receiving normal dataupdate.");
+				retval = recv(sock, buf+total, bytesleft, 0);
+				g15daemon_log(LOG_INFO, "Received normal dataupdate.");
+				if (retval == 0)
+				{
+					break;
+				}
+				else if (retval == -1)
+				{
+
+					if ( !(errno == EAGAIN || errno == EWOULDBLOCK) )
+					{
+						g15daemon_log(LOG_ERR,"Socket error in recv: %s", strerror(errno));
+						break;
+					}
+					continue;
+				}
+
+				total += retval;
+				bytesleft -= retval;
+			}
+			if((pfd[0].revents & POLLERR || pfd[0].revents & POLLHUP || pfd[0].revents & POLLNVAL))
+			{
+				// Should not happen due to polling
+				// But read should also not have been called when there is no data
+				// Which it got on my machine after an upgrade, and likely on others
+				if ( !(errno == EAGAIN || errno == EWOULDBLOCK) )
+				{
+					g15daemon_log(LOG_ERR,"Socket error in poll: %s", strerror(errno));
+					retval=-1;
+					break;
+				}
+			}
+		}
+	}
+	return total;
+}
 
 
 /* the client must send 6880 bytes for each lcd screen.  This thread will continue to copy data
-* into the clients LCD buffer for as long as the connection remains open. 
+* into the clients LCD buffer for as long as the connection remains open.
 * so, the client should open a socket, check to ensure that the server is a g15daemon,
-* and send multiple 6880 byte packets (1 for each screen update) 
-* once the client disconnects by closing the socket, the LCD buffer is 
+* and send multiple 6880 byte packets (1 for each screen update)
+* once the client disconnects by closing the socket, the LCD buffer is
 * removed and will no longer be displayed.
 */
 static void *lcd_client_thread(void *display) {
@@ -255,7 +290,7 @@ static void *lcd_client_thread(void *display) {
     int client_sock = client_lcd->connection;
     char helo[]=SERV_HELO;
     unsigned char *tmpbuf=g15daemon_xmalloc(6880);
-    
+
     if(g15_send(client_sock, (char*)helo, strlen(SERV_HELO))<0){
         goto exitthread;
     }
@@ -271,7 +306,7 @@ static void *lcd_client_thread(void *display) {
                 break;
             }
             pthread_mutex_lock(&lcdlist_mutex);
-            memset(client_lcd->buf,0,1024);      
+            memset(client_lcd->buf,0,1024);
             g15daemon_convert_buf(client_lcd,tmpbuf);
             g15daemon_send_refresh(client_lcd);
             pthread_mutex_unlock(&lcdlist_mutex);
@@ -309,7 +344,7 @@ static void *lcd_client_thread(void *display) {
 
             if(buflen>860){ /* grab the remainder of the image and discard excess bytes */
                 /*  retval=g15_recv(client_sock,(char*)tmpbuf+865,buflen-860);  */
-                retval=g15_recv(g15node, client_sock,NULL,buflen-860); 
+                retval=g15_recv(g15node, client_sock,NULL,buflen-860);
                 buflen = 860;
             }
 
@@ -328,7 +363,7 @@ exitthread:
     close(client_sock);
     free(tmpbuf);
     g15daemon_lcdnode_remove(display);
-    
+
     pthread_exit(NULL);
 }
 
@@ -380,7 +415,7 @@ static int g15_clientconnect (g15daemon_t **g15daemon, int listening_socket) {
     return 0;
 }
 
-/* this thread only listens for new connections. 
+/* this thread only listens for new connections.
 * sockserver_accept will spawn a new thread for each connected client
 */
 static void lcdserver_thread(void *lcdlist){
@@ -413,7 +448,7 @@ static int server_events(plugin_event_t *event) {
     {
         case G15_EVENT_KEYPRESS:{
             if(lcd->connection && lcd->masterlist->remote_keyhandler_sock!=lcd->connection) { /* server client */
-                if((send(lcd->connection,(void *)&event->value,sizeof(event->value),0))<0) 
+                if((send(lcd->connection,(void *)&event->value,sizeof(event->value),0))<0)
                     g15daemon_log(LOG_WARNING,"Error in send: %s\n",strerror(errno));
             }
             break;
