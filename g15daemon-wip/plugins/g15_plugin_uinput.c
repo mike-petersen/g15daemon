@@ -125,6 +125,14 @@ static void g15_uinput_keydown(unsigned char code)
     event.value = G15KEY_DOWN;
     
     write (uinp_fd, &event, sizeof(event));
+
+    /* Need to write sync event */
+    memset(&event, 0, sizeof(event));
+    event.type = EV_SYN;
+    event.code = SYN_REPORT;
+    event.value = 0;
+    write(uinp_fd, &event, sizeof(event));
+
 }
 
 static void g15_uinput_keyup(unsigned char code)
@@ -137,6 +145,13 @@ static void g15_uinput_keyup(unsigned char code)
     event.value = G15KEY_UP;
     
     write (uinp_fd, &event, sizeof(event));
+
+    /* Need to write sync event */
+    memset(&event, 0, sizeof(event));
+    event.type = EV_SYN;
+    event.code = SYN_REPORT;
+    event.value = 0;
+    write(uinp_fd, &event, sizeof(event));
 }
 
     void (*keyup)(unsigned char code) = &g15_uinput_keyup;
