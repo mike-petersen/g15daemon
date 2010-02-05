@@ -173,6 +173,8 @@ allow clients use of all 'L' keys.
 	to set the backlight level for the currently shown screen only.  Default is
 	now to disallow clients changing backlight, and to set backlight globally
 	via the button.
-SVN:
+1.9.5.4:
 - Bugfix: Clock plugin can now be disabled.
- 
+- Bugfix: g15_send_cmd() can now be used without needing to call g15_send()
+	first
+- Bugfix: Fix event queue issue with G-keys and newer versions of Xorg

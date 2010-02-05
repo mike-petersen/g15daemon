@@ -1,3 +1,12 @@
+g15daemon 1.9.5.4 karmic; urgency=low
+1.9.5.4:
+- Bugfix: Clock plugin can now be disabled.
+- Bugfix: g15_send_cmd() can now be used without needing to call g15_send()
+	first
+- Bugfix: Fix event queue issue with G-keys and newer versions of Xorg
+
+ -- Anthony Mirabella <aneurysm9@users.sourceforge.net> Thu, 04 Feb 2010 22:39:55 -0500
+
 g15daemon 1.9.5.3 edgy; urgency=low
  * BugFix: plugins/g15daemon_net.c: ensure that OOB traffic is not mixed with
            normal image buffers.

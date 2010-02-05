@@ -4,7 +4,7 @@
 
 
 AC_PREREQ(2.59)
-AC_INIT(g15daemon, [1.9.5.3], [mlampard@users.sf.net])
+AC_INIT(g15daemon, [1.9.5.4], [mlampard@users.sf.net])
 AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_HOST()
