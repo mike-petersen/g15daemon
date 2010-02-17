@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with g15daemon; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-(c) 2008-2009 Mike Lampard
+(c) 2008-2010 Mike Lampard
 
 $Revision$ -  $Date$ $Author$
 
@@ -62,7 +62,7 @@ int info_cycle  = 0;
 /** Holds the mode type variable of the application running */
 int mode[MAX_SCREENS];
 /** Holds the sub mode type variable of the application running */
-int submode     = 0;
+int submode     = 1;
 
 int info_cycle_timer    = -1;
 
@@ -74,6 +74,7 @@ _Bool have_temp = 1;
 _Bool have_fan  = 1;
 _Bool have_bat  = 1;
 _Bool have_nic  = 0;
+_Bool variable_cpu = 0;
 
 _Bool sensor_type_temp[MAX_SENSOR];
 _Bool sensor_type_fan[MAX_SENSOR];
@@ -305,8 +306,7 @@ int daemonise(int nochdir, int noclose) {
 }
 
 void init_cpu_count(void) {
-    // initialize cpu count once
-    if (!ncpu) {
+    if ((variable_cpu) || (!ncpu)) {
         const glibtop_sysinfo *cpuinfo = glibtop_get_sysinfo();
 
         if(cpuinfo->ncpu == 0) {
@@ -548,7 +548,7 @@ void print_freq_info(g15canvas *canvas, char *tmpstr) {
     for (core = 0; (core < ncpu) && (core < 6); core++) {
         sprintf(proc, "C%d ", core);
         strcat(tmpstr,proc);
-        if (ncpu < 5) {
+        if (ncpu < 4) {
             strcat(tmpstr, show_hertz(get_cpu_freq_cur(core)));
         } else {
             strcat(tmpstr, show_hertz_short(get_cpu_freq_cur(core)));
@@ -1656,8 +1656,16 @@ int main(int argc, char *argv[]){
             have_freq=0;
         }
 
+        if(0==strncmp(argv[i],"-rc",3)||0==strncmp(argv[i],"--info-rotate",13)) {
+            submode = 0;
+        }
+
+        if(0==strncmp(argv[i],"-vc",3)||0==strncmp(argv[i],"--variable-cpu",14)) {
+            variable_cpu = 1;
+        }
+
         if(0==strncmp(argv[i],"-h",2)||0==strncmp(argv[i],"--help",6)) {
-            printf("%s %s - (c) 2008-2009 Mike Lampard, Piotr Czarnecki\n",PACKAGE_NAME,VERSION);
+            printf("%s %s - (c) 2008-2010 Mike Lampard, Piotr Czarnecki\n",PACKAGE_NAME,VERSION);
             printf("Usage: %s [Options]\n", PACKAGE_NAME);
             printf("Options:\n");
             printf("--daemon (-d) run in background\n");
@@ -1673,6 +1681,8 @@ int main(int argc, char *argv[]){
                     "\t[id] should point to sysfs path /sys/class/hwmon/hwmon[id]/device/fan1_input\n");
             printf("--net-scale-absolute (-nsa) scale net graphs against maximum speed seen.\n"
                     "\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
+            printf("--info-rotate (-ir) enable the bottom info bar content rotate.\n");
+            printf("--variable-cpu (-vc) the cpu cores will be calculated every time (for systems with the cpu hotplug).\n");
             printf("--disable-freq (-df) disable monitoring CPUs frequencies.\n\n");
             return 0;
         }

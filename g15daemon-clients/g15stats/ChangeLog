@@ -60,3 +60,8 @@ SVN 519
 SVN 520 (1.9.2)
 - Disable monitoring CPUs frequencies with the option -df
 - Improve Summary Screen without CPUs frequencies
+SVN 530 (1.9.3)
+- Activate the bottom info bar content rotate with the option -ir
+- Change bottom info bar content to the component default one
+- Activate variable CPUs count with the option -vc
+- Improve Fan bottom info

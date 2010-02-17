@@ -40,6 +40,8 @@ Options:
 -gt id  Show temperature [id] in place of the maximal one on the Summary Screen with the option -gt id ie -gt 1
         The id should point to sysfs path /sys/class/hwmon/hwmon../device/temp[id]_input
 -df     Disable monitoring CPUs frequencies.
+-ir     enable the bottom info bar content rotate cycle over all available sensors
+-vc     The cpu cores will be calculated every time (for systems with the cpu hotplug)
 
 Usage:
 $> g15stats
