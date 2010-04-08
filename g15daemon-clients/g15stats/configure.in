@@ -1,7 +1,7 @@
-AC_INIT(g15stats,[1.9.3], [mlampard@users.sf.net])
+AC_INIT(g15stats,[1.9.4], [mlampard@users.sf.net])
 
 PACKAGE=g15stats
-VERSION=1.9.3
+VERSION=1.9.4
 AC_PREFIX_DEFAULT(/usr)
 AC_CONFIG_AUX_DIR(config)
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)

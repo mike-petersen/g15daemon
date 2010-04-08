@@ -566,6 +566,7 @@ void print_time_info(g15canvas *canvas, char *tmpstr){
     time(&now);
 
     sprintf(tmpstr,"%s",ctime(&now));
+    tmpstr[(strlen(tmpstr) - 1)] = '\0';
     g15r_renderString (canvas, (unsigned char*)tmpstr, 0, G15_TEXT_SMALL, 80-(strlen(tmpstr)*4)/2, INFO_ROW);
 }
 
@@ -627,17 +628,23 @@ void draw_summary_sensors_logic(g15canvas *canvas, char *tmpstr, g15_stats_info 
 
     if (count) {
         int j = 0;
-        int rest;
-        int step = (int) (y2 / count);
+        int rest, step;
+        step = y2 / count;
         rest = y2 - (step * count);
         int y = cur_shift + y1;
         int last_y;
         for (j = 0; j < count; j++) {
             last_y = y;
+            if( j ) last_y++;
             y += step;
             if (rest > 0) {
-                rest--;
-                y++;
+                if ((j+1) < count) {
+                    y++;
+                    rest--;
+                } else {
+                    y += rest;
+                    rest = 0;
+                }
             }
             drawBar_both(canvas, last_y + move, y + move, sensors[j].cur + 1, tot_max, tot_max - sensors[j].cur, tot_max);
         }
@@ -687,10 +694,9 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int mo
         y = y2 / 2;
 
         drawLine_both(canvas, cur_shift + y1 + move, cur_shift + y2 + move);
-        drawBar_both(canvas, cur_shift + y1 + move, cur_shift + y + move, net_cur_in + 1, net_max_in, net_max_in - net_cur_in, net_max_in);
 
-        
-        drawBar_both(canvas, cur_shift + y + move, cur_shift + y2 + move, net_cur_out + 1, net_max_out, net_max_out - net_cur_out, net_max_out);
+        drawBar_both(canvas, cur_shift + y1 + move, cur_shift + y + move, net_cur_in + 1, net_max_in, net_max_in - net_cur_in, net_max_in);
+        drawBar_both(canvas, cur_shift + y + move + 1, cur_shift + y2 + move, net_cur_out + 1, net_max_out, net_max_out - net_cur_out, net_max_out);
 
         if (net_cur_in > net_cur_out) {
             sprintf(tmpstr, "IN %s", show_bytes_short((int) net_cur_in));
@@ -1266,36 +1272,56 @@ void  draw_g15_stats_info_screen_logic(g15canvas *canvas, char *tmpstr, int all,
 
     int j = 0;
 
-    int shift;
-    shift = 32 / count;
+    if (all) {
+        int shift;
+        int info_shift;
 
-    if (count) {
-        if (all) {
-            g15r_clearScreen(canvas, G15_COLOR_WHITE);
-            print_vert_label(canvas, vert_label);
+        shift = BAR_BOTTOM / count;
 
-            for (j = 0; j < count; j++) {
-                register int bar_top = (j * shift) + 1 + j;
-                register int bar_bottom = ((j + 1)*shift) + j;
-                sprintf(tmpstr, format_main, j + 1, probes[j].cur);
-                g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, bar_top + 1);
-                drawBar_both(canvas, bar_top, bar_bottom, probes[j].cur + 1, tot_max, tot_max - probes[j].cur, tot_max);
-            }
-            drawLine_both(canvas, 1, ((j*shift) + j-1));
+        switch (count) {
+            case    1:
+                info_shift = 14;
+                shift = 33;
+                break;
+            case    2:
+                info_shift = 5;
+                break;
+            case    3:
+                info_shift = 2;
+                shift = 10;
+                break;
+            default:
+                info_shift = 1;
+                break;
         }
 
-        if ((!all) || (info_cycle == screen_type)) {
-            char extension[16];
-            tmpstr[0] = '\0';
-            for (j = 0; j < count; j++) {
-                sprintf(extension, format_bottom, j + 1, probes[j].cur);
-                if (j) {
-                    strcat(tmpstr, "| ");
-                }
-                strcat(tmpstr, extension);
-            }
-            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 80 - (strlen(tmpstr)*4) / 2, INFO_ROW);
+        g15r_clearScreen(canvas, G15_COLOR_WHITE);
+        print_vert_label(canvas, vert_label);
+
+        int bar_top, bar_bottom;
+        bar_bottom = BAR_BOTTOM;
+        for (j = 0; j < count; j++) {
+            bar_top = (j * shift) + 1 + j;
+            bar_bottom = ((j + 1)*shift) + j;
+
+            sprintf(tmpstr, format_main, j + 1, probes[j].cur);
+            g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, bar_top + info_shift);
+            drawBar_both(canvas, bar_top, bar_bottom, probes[j].cur + 1, tot_max, tot_max - probes[j].cur, tot_max);
         }
+        drawLine_both(canvas, 1, bar_bottom);
+    }
+
+    if ((!all) || (info_cycle == screen_type)) {
+        char extension[16];
+        tmpstr[0] = '\0';
+        for (j = 0; j < count; j++) {
+            sprintf(extension, format_bottom, j + 1, probes[j].cur);
+            if (j) {
+                strcat(tmpstr, "| ");
+            }
+            strcat(tmpstr, extension);
+        }
+        g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 80 - (strlen(tmpstr)*4) / 2, INFO_ROW);
     }
 }
 
