@@ -39,6 +39,7 @@ This is a simple stats client showing graphs for CPU, MEM & Swap usage, Network 
 #include <libg15render.h>
 #include <sched.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h> 
 #include <time.h>
@@ -70,6 +71,9 @@ int info_cycle_timer    = -1;
 int summary_rows    = 4;
 
 int have_freq   = 2;
+
+int wait_seconds = 1;
+
 _Bool have_temp = 1;
 _Bool have_fan  = 1;
 _Bool have_bat  = 1;
@@ -635,18 +639,23 @@ void draw_summary_sensors_logic(g15canvas *canvas, char *tmpstr, g15_stats_info 
         int last_y;
         for (j = 0; j < count; j++) {
             last_y = y;
-            if( j ) last_y++;
-            y += step;
-            if (rest > 0) {
-                if ((j+1) < count) {
-                    y++;
-                    rest--;
-                } else {
-                    y += rest;
-                    rest = 0;
+            if( j ) {
+                last_y++;
+                if (rest > 0) {
+                    if ((j+1) < count) {
+                        y++;
+                        last_y++;
+                        rest--;
+                    } else {
+                        y += rest;
+                        last_y += rest;
+                        rest = 0;
+                    }
                 }
             }
+            y += step;
             drawBar_both(canvas, last_y + move, y + move, sensors[j].cur + 1, tot_max, tot_max - sensors[j].cur, tot_max);
+
         }
         drawLine_both(canvas, cur_shift + y1 + move, y + move);
 
@@ -752,8 +761,8 @@ void draw_summary_screen(g15canvas *canvas, char *tmpstr, int y1, int y2, int mo
 /* draw cpu screen.  if drawgraph = 0 then no graph is drawn */
 void draw_cpu_screen_unicore_logic(g15canvas *canvas, glibtop_cpu cpu, char *tmpstr, int drawgraph, int printlabels, int cpuandmemory) {
     int total,user,nice,sys,idle;
-    int b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
-    static int last_total,last_user,last_nice,last_sys,last_idle,last_iowait,last_irq;
+    static int last_total,last_user,last_nice,last_sys,last_idle,last_iowait,
+            last_irq,b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
 
     g15r_clearScreen (canvas, G15_COLOR_WHITE);
 
@@ -763,21 +772,26 @@ void draw_cpu_screen_unicore_logic(g15canvas *canvas, glibtop_cpu cpu, char *tmp
     sys   = ((unsigned long) cpu.sys)   ? ((double) cpu.sys)   : 1.0;
     idle  = ((unsigned long) cpu.idle)  ? ((double) cpu.idle)  : 1.0;
 
-    b_total = total - last_total;
-    b_user  = user  - last_user;
-    b_nice  = nice  - last_nice;
-    b_sys   = sys   - last_sys;
-    b_idle  = idle  - last_idle;
-    b_irq   = cpu.irq - last_irq;
-    b_iowait= cpu.iowait - last_iowait;
+    if ((total - last_total) > 0) {
+        b_total = total - last_total;
+        b_user  = user  - last_user;
+        b_nice  = nice  - last_nice;
+        b_sys   = sys   - last_sys;
+        b_idle  = idle  - last_idle;
+        b_irq   = cpu.irq - last_irq;
+        b_iowait= cpu.iowait - last_iowait;
 
-    last_total  = total;
-    last_user   = user;
-    last_nice   = nice;
-    last_sys    = sys;
-    last_idle   = idle;
-    last_irq    = cpu.irq;
-    last_iowait = cpu.iowait;
+        last_total  = total;
+        last_user   = user;
+        last_nice   = nice;
+        last_sys    = sys;
+        last_idle   = idle;
+        last_irq    = cpu.irq;
+        last_iowait = cpu.iowait;
+    } else if (b_total == 0) {
+        b_total = 100;
+        b_idle  = 100;
+    }
 
     if(printlabels) {
         sprintf(tmpstr,"Usr %2.f%%",((float)b_user/(float)b_total)*100);
@@ -820,10 +834,12 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
     int divider = 0;
         
     int total,user,nice,sys,idle;
-    int b_total,b_user,b_nice,b_sys,b_idle,b_irq,b_iowait;
     int sub_val;
     static int last_total[GLIBTOP_NCPU],last_user[GLIBTOP_NCPU],last_nice[GLIBTOP_NCPU],
-            last_sys[GLIBTOP_NCPU],last_idle[GLIBTOP_NCPU],last_iowait[GLIBTOP_NCPU],last_irq[GLIBTOP_NCPU];
+            last_sys[GLIBTOP_NCPU],last_idle[GLIBTOP_NCPU],last_iowait[GLIBTOP_NCPU],
+            last_irq[GLIBTOP_NCPU],b_total[GLIBTOP_NCPU],b_user[GLIBTOP_NCPU],
+            b_nice[GLIBTOP_NCPU],b_sys[GLIBTOP_NCPU],b_idle[GLIBTOP_NCPU],
+            b_irq[GLIBTOP_NCPU],b_iowait[GLIBTOP_NCPU];
 
     init_cpu_count();
 
@@ -923,21 +939,26 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
         sys   = ((unsigned long) cpu.xcpu_sys[core])   ? ((double) cpu.xcpu_sys[core])   : 1.0;
         idle  = ((unsigned long) cpu.xcpu_idle[core])  ? ((double) cpu.xcpu_idle[core])  : 1.0;
 
-        b_total     = total - last_total[core];
-        b_user      = user  - last_user[core];
-        b_nice      = nice  - last_nice[core];
-        b_sys       = sys   - last_sys[core];
-        b_idle      = idle  - last_idle[core];
-        b_irq       = cpu.xcpu_irq[core]    - last_irq[core];
-        b_iowait    = cpu.xcpu_iowait[core] - last_iowait[core];
+        if ((total - last_total[core]) > 0) {
+            b_total[core]   = total - last_total[core];
+            b_user[core]    = user  - last_user[core];
+            b_nice[core]    = nice  - last_nice[core];
+            b_sys[core]     = sys   - last_sys[core];
+            b_idle[core]    = idle  - last_idle[core];
+            b_irq[core]     = cpu.xcpu_irq[core]    - last_irq[core];
+            b_iowait[core]  = cpu.xcpu_iowait[core] - last_iowait[core];
 
-        last_total[core]	= total;
-        last_user[core] 	= user;
-        last_nice[core] 	= nice;
-        last_sys[core] 		= sys;
-        last_idle[core] 	= idle;
-        last_irq[core] 		= cpu.xcpu_irq[core];
-        last_iowait[core] 	= cpu.xcpu_iowait[core];
+            last_total[core]	= total;
+            last_user[core] 	= user;
+            last_nice[core] 	= nice;
+            last_sys[core] 	= sys;
+            last_idle[core] 	= idle;
+            last_irq[core] 	= cpu.xcpu_irq[core];
+            last_iowait[core] 	= cpu.xcpu_iowait[core];
+        } else if (b_total[core] == 0){
+            b_total[core] = 100;
+            b_idle[core]  = 100;
+        }
 
         y1 = (core * height) + (core * spacer);
         y2 = y1 + height - 1;
@@ -947,7 +968,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                 if ((mode[SCREEN_FREQ]) && (have_freq)) {
                     freq_cur = get_cpu_freq_cur(core);
                     if (core < 6) {
-                        result = ((float) (b_total - b_idle) / (float) b_total)*100;
+                        result = ((float) (b_total[core] - b_idle[core]) / (float) b_total[core])*100;
                         if (result < 100.0) {
                             sprintf(tmpstr, "%2.f%% %s", result, show_hertz_short(freq_cur));
                         } else {
@@ -966,9 +987,9 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                     if (core < 6) {
                         if (have_freq) {
                             freq_cur = get_cpu_freq_cur(core);
-                            sprintf(tmpstr, "%s%3.f%%", show_hertz_short(freq_cur), ((float) (b_total - b_idle) / (float) b_total)*100);
+                            sprintf(tmpstr, "%s%3.f%%", show_hertz_short(freq_cur), ((float) (b_total[core] - b_idle[core]) / (float) b_total[core])*100);
                         } else {
-                            sprintf(tmpstr, "CPU%.f%3.f%%", (float) core, ((float) (b_total - b_idle) / (float) b_total)*100);
+                            sprintf(tmpstr, "CPU%.f%3.f%%", (float) core, ((float) (b_total[core] - b_idle[core]) / (float) b_total[core])*100);
                         }
                         if (ncpu < 5) {
                             g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_MED, 1, y1 + 1);
@@ -976,8 +997,8 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                             g15r_renderString(canvas, (unsigned char*) tmpstr, 0, G15_TEXT_SMALL, 1, core * 6);
                         }
                     }
-                    current_value = b_total - b_idle;
-                    drawBar_both(canvas, y1, y2, current_value, b_total, b_total - current_value, b_total);
+                    current_value = b_total[core] - b_idle[core];
+                    drawBar_both(canvas, y1, y2, current_value, b_total[core], b_total[core] - current_value, b_total[core]);
                     y1 = 0;
                 }
                 break;
@@ -985,29 +1006,29 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                 if (mode[SCREEN_CPU]) {
                     divider = 9 / ncpu;
                     sub_val = divider * core;
-                    g15r_drawBar(canvas, BAR_START, sub_val, BAR_END, divider + sub_val, G15_COLOR_BLACK, b_user + 1, b_total, 4);
-                    g15r_drawBar(canvas, BAR_START, shift + sub_val, BAR_END, shift + divider + sub_val, G15_COLOR_BLACK, b_sys + 1, b_total, 4);
+                    g15r_drawBar(canvas, BAR_START, sub_val, BAR_END, divider + sub_val, G15_COLOR_BLACK, b_user[core] + 1, b_total[core], 4);
+                    g15r_drawBar(canvas, BAR_START, shift + sub_val, BAR_END, shift + divider + sub_val, G15_COLOR_BLACK, b_sys[core] + 1, b_total[core], 4);
                     y1 = 0;
                     y2 = shift2 + divider + sub_val;
-                    g15r_drawBar(canvas, BAR_START, shift2 + sub_val, BAR_END, y2, G15_COLOR_BLACK, b_nice + 1, b_total, 4);
+                    g15r_drawBar(canvas, BAR_START, shift2 + sub_val, BAR_END, y2, G15_COLOR_BLACK, b_nice[core] + 1, b_total[core], 4);
 
                     divider = y2 / ncpu;
-                    drawBar_reversed(canvas, BAR_START, sub_val, BAR_END, y2, G15_COLOR_BLACK, b_idle + 1, b_total, 5);
+                    drawBar_reversed(canvas, BAR_START, sub_val, BAR_END, y2, G15_COLOR_BLACK, b_idle[core] + 1, b_total[core], 5);
                 } else {
-                    current_value = b_total - b_idle;
-                    drawBar_both(canvas, y1, y2, current_value, b_total, b_total - current_value, b_total);
+                    current_value = b_total[core] - b_idle[core];
+                    drawBar_both(canvas, y1, y2, current_value, b_total[core], b_total[core] - current_value, b_total[core]);
 
-                    drawBar_both(canvas, shift + y1, shift + y2, b_sys + 1, b_total, b_total - b_sys, b_total);
+                    drawBar_both(canvas, shift + y1, shift + y2, b_sys[core] + 1, b_total[core], b_total[core] - b_sys[core], b_total[core]);
 
                     y2 += shift2;
-                    drawBar_both(canvas, shift2 + y1, y2, b_nice + 1, b_total, b_total - b_nice, b_total);
+                    drawBar_both(canvas, shift2 + y1, y2, b_nice[core] + 1, b_total[core], b_total[core] - b_nice[core], b_total[core]);
 
                     y1 = 0;
                 }
                 break;
             case SCREEN_SUMMARY:
-                current_value = b_total - b_idle;
-                drawBar_both(canvas, y1 + move, y2 + move, current_value, b_total, b_total - current_value, b_total);
+                current_value = b_total[core] - b_idle[core];
+                drawBar_both(canvas, y1 + move, y2 + move, current_value, b_total[core], b_total[core] - current_value, b_total[core]);
 
                 if (have_freq) {
                     freq_cur = get_cpu_freq_cur(core);
@@ -1641,18 +1662,24 @@ void network_watch(void *iface) {
 /* wait for a max of <seconds> seconds.. if condition &wake_now is received leave immediately */
 void g15stats_wait(int seconds) {
     pthread_mutex_t dummy_mutex;
+    pthread_mutexattr_t   mta;
     struct timespec timeout;
       /* Create a dummy mutex which doesn't unlock for sure while waiting. */
-    pthread_mutex_init(&dummy_mutex, NULL);
+    pthread_mutexattr_init(&mta);
+
+    pthread_mutex_init(&dummy_mutex, &mta);
     pthread_mutex_lock(&dummy_mutex);
 
-    time(&timeout.tv_sec);
+    if (clock_gettime(CLOCK_REALTIME, &timeout) != 0) {
+        perror("clock_gettime");
+    }
+
     timeout.tv_sec += seconds;
-    timeout.tv_nsec = 0L;
 
     pthread_cond_timedwait(&wake_now, &dummy_mutex, &timeout);
     pthread_mutex_unlock(&dummy_mutex);
     pthread_mutex_destroy(&dummy_mutex);
+    pthread_mutexattr_destroy(&mta);
 }
 
 int main(int argc, char *argv[]){
@@ -1709,6 +1736,7 @@ int main(int argc, char *argv[]){
                     "\tDefault is to scale fullsize, similar to apps like gkrellm.\n");
             printf("--info-rotate (-ir) enable the bottom info bar content rotate.\n");
             printf("--variable-cpu (-vc) the cpu cores will be calculated every time (for systems with the cpu hotplug).\n");
+            printf("--refresh [seconds] (-r) set the refresh interval to [seconds] The seconds must be between 1 and 300. ie -r 15\n");
             printf("--disable-freq (-df) disable monitoring CPUs frequencies.\n\n");
             return 0;
         }
@@ -1742,6 +1770,16 @@ int main(int argc, char *argv[]){
             sensor_fan_id = atoi(argv[i]);
             if (sensor_fan_id >= MAX_SENSOR) {
                 sensor_fan_id = 0;
+            }
+          }
+        }
+
+        if(0==strncmp(argv[i],"-r",2)||0==strncmp(argv[i],"--refresh",9)) {
+          if(argv[i+1]!=NULL) {
+            i++;
+            wait_seconds = atoi(argv[i]);
+            if ((wait_seconds < 1) || (wait_seconds > MAX_INTERVAL)) {
+                wait_seconds = 1;
             }
           }
         }
@@ -1885,7 +1923,7 @@ int main(int argc, char *argv[]){
         canvas->mode_xor = 0;
 
         g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-        g15stats_wait(1);
+        g15stats_wait(wait_seconds);
     }
     glibtop_close();
 

@@ -9,6 +9,8 @@
 #define MAX_MODE        1
 #define MAX_SUB_MODE    1
 
+#define MAX_INTERVAL    300
+
 #define PAUSE           6
 #define RETRY_COUNT     10
 

@@ -30,6 +30,7 @@ Options:
 -nsa		Scale network graphs against highest speed recorded.  The
 		default is to scale against the highest peak in the current graph.
 -h		Show help
+-r seconds      Set the refresh interval to seconds The seconds must be between 1 and 300. ie -r 15
 -u      Display unicore graphs only on the CPU screen
 -t id   Force to monitor temperature sensor id on start (ie -t 1)
         The id should point to sysfs path /sys/class/hwmon/hwmon[id]/device/temp1_input

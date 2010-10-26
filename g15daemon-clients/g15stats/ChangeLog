@@ -70,3 +70,9 @@ SVN 531 (1.9.4)
 - Improve Fan / Temperature Screens leading labels position
 - Improve Fan / Temperature Screens height calculation
 - Improve Summary Screen multi bar (temperature and network)
+SVN 532 (1.9.5)
+- Improve Summary Screen multi bar (temperature and network)
+- Fix compilation with the never version of the glibc
+- Improve refresh interval causing -nan error with the never kernel on very fast machines due to too often glibtop probing
+- Fix possible -nan error on the fast screens switch
+- Change refresh interval with the option -r seconds (The seconds must be between 1 and 300)
