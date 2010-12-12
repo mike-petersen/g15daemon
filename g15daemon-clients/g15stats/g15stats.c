@@ -902,7 +902,7 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                         break;
                     case 3  :
                     case 6  :
-                        height  =6;
+                        height  = 6;
                         break;
                     default :
                         height  = 8;
