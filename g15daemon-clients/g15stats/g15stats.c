@@ -895,11 +895,14 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                 switch (ncpu) {
                     case 1  :
                     case 2  :
-                    case 3  :
                     case 5  :
                     case 7  :
                         move    = 1;
                         height  = 6;
+                        break;
+                    case 3  :
+                    case 6  :
+                        height  =6;
                         break;
                     default :
                         height  = 8;
@@ -913,9 +916,9 @@ void draw_cpu_screen_multicore(g15canvas *canvas, char *tmpstr, int unicore) {
                         move    = 1;
                         break;
                 }
-                height  = 8;
-            }
-
+                        height  = 8;
+                }
+                
             shift   = height + 1;
             shift2  = (2 * shift);
             break;
