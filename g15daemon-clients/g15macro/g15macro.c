@@ -184,6 +184,7 @@ static int g15macro_log (const char *fmt, ...) {
         va_start (argp, fmt);
         vprintf(fmt,argp);
         va_end (argp);
+        fflush(stdout);
     }
 
     return 0;
@@ -232,6 +233,17 @@ char *trim(char *str)
 
 
 	return str;
+}
+
+// Trims a string to a specific length
+// Caller needs to free the data.
+char* stringTrim(const char* source, const unsigned int len)
+{
+	char* dest = malloc(len);
+	memset(dest,0,len);
+	strncpy(dest,source,len-1);
+
+	return dest;
 }
 
 //TODO: Put into libg15render instead
@@ -353,6 +365,7 @@ int runFile(char* file)
 
 void renderHelp()
 {
+	// Draws the helpbox in the bottom right corner.
 	g15r_drawLine(canvas, G15_LCD_WIDTH-37, 16, G15_LCD_WIDTH, 16, G15_COLOR_BLACK);
 	g15r_drawLine(canvas, G15_LCD_WIDTH-37, 16, G15_LCD_WIDTH-37, G15_LCD_HEIGHT, G15_COLOR_BLACK);
 	g15r_renderString (canvas, (unsigned char *)"1:Default\0", 3, G15_TEXT_SMALL, G15_LCD_WIDTH-35, 0);
@@ -361,15 +374,81 @@ void renderHelp()
 	g15r_renderString (canvas, (unsigned char *)"4:     OK\0", 6, G15_TEXT_SMALL, G15_LCD_WIDTH-35, 0);
 }
 
-// Trims a string to a specific length
-// Caller needs to free the data.
-char* stringTrim(const char* source, const unsigned int len)
+void renderSelectionList()
 {
-	char* dest = malloc(len);
-	memset(dest,0,len);
-	strncpy(dest,source,len-1);
+	// Draws the three presets in the list (Selected-1,Selected,Selected+1)
+	// Find config id to render
+	pthread_mutex_lock(&gui_select);
+	/*static*/ int tmpRenderConfID = 0;
 
-	return dest;
+	// Render first entry
+	if (gui_selectConfig > 0)
+		tmpRenderConfID = gui_selectConfig-1;
+	else
+		tmpRenderConfID = numConfigs;
+
+	char* renderLine = stringTrim((char*)getConfigName(tmpRenderConfID),25);
+	g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 17);
+	free(renderLine);
+	renderLine = NULL;
+
+
+	// Render middle entry available for selection
+	renderLine = stringTrim((char*)getConfigName(gui_selectConfig),25);
+
+	g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 26);
+	free(renderLine);
+	renderLine = NULL;
+
+	// Render third (last) entry
+	if (gui_selectConfig < numConfigs)
+		tmpRenderConfID = gui_selectConfig+1;
+	else
+		tmpRenderConfID = 0;
+	pthread_mutex_unlock(&gui_select);
+
+	renderLine = stringTrim((char*)getConfigName(tmpRenderConfID),25);
+	g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 35);
+	free(renderLine);
+	renderLine = NULL;
+
+	// Make middle look selected by inverting colours
+	g15r_pixelReverseFill(canvas, 0, 24, 121, 33, 0,G15_COLOR_BLACK);
+
+	g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
+	was_recording = 0;
+	pthread_mutex_lock(&gui_select);
+	gui_oldConfig = gui_selectConfig;
+	pthread_mutex_unlock(&gui_select);
+}
+
+void renderFull()
+{
+	char currPreset[1024];
+
+	g15macro_log("Redrawing whole screen.\n");
+
+	g15r_clearScreen(canvas,G15_COLOR_WHITE);
+	drawXBM(canvas, (unsigned char*)g15macro_small_bits, g15macro_small_width, g15macro_small_height, 0, 0); // Logo
+	renderHelp(); // Help box to the right
+	// Draw indicator of currently selected preset
+	memset(currPreset,0,sizeof(currPreset));
+	snprintf(currPreset,1024,"Current:%s",getConfigName(currConfig));
+	g15r_drawLine(canvas, 50, 2, 50, 11, G15_COLOR_BLACK); // Line separating logo from Current: <config>
+	g15r_renderString (canvas, (unsigned char *)currPreset, 0, G15_TEXT_MED, 53, 4); // Current: <config>
+
+	// Draw selection list
+	renderSelectionList();
+}
+
+void renderSelection()
+{
+	g15macro_log("Redrawing only selection box.\n");
+	//Clear only the selection box, since that's the only thing updated
+	g15r_pixelBox(canvas,0,15,G15_LCD_WIDTH-38,G15_LCD_HEIGHT,G15_COLOR_WHITE,0,1);
+
+	// Draw selection list
+	renderSelectionList();
 }
 
 void gui_selectChange(int change)
@@ -390,6 +469,8 @@ void gui_selectChange(int change)
 		gui_selectConfig += change;
 		if (gui_selectConfig > numConfigs)
 			gui_selectConfig = 0;
+		else if (gui_selectConfig < 0)
+			gui_selectConfig = numConfigs;
 
 	}
 
@@ -531,6 +612,7 @@ void record_complete(unsigned long keystate)
 
     }else{
         strcpy(tmpstr,"From Key ");
+		printf("%lu\n",keystate);
         strcat(tmpstr,gkeystring[map_gkey(keystate)]);
         g15macro_log("Macro deleted %s\n",tmpstr);
         g15r_renderString (canvas, (unsigned char *)"Macro", 0, G15_TEXT_LARGE, 80-((strlen("Macro")/2)*8), 4);
@@ -1039,6 +1121,7 @@ void *Lkeys_thread() {
 					break;
 				}
                 case G15_KEY_MR: {
+					g15macro_log("Key pressed is MR\n");
                     if(!recording) {
                       if(0==g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, foo)){
                         usleep(1000);
@@ -1064,12 +1147,15 @@ void *Lkeys_thread() {
                   }
                 case G15_KEY_M1:
                     handle_mkey_switch(G15_KEY_M1);
+					g15macro_log("Key pressed is M1\n");
                     break;
                 case G15_KEY_M2:
                     handle_mkey_switch(G15_KEY_M2);
+					g15macro_log("Key pressed is M2\n");
                     break;
                 case G15_KEY_M3:
                     handle_mkey_switch(G15_KEY_M3);
+					g15macro_log("Key pressed is M3\n");
                     break;
                 default:
                     if(keystate >=G15_KEY_G1 && keystate <=G15_KEY_G18){
@@ -1253,6 +1339,50 @@ void helptext() {
   printf("--help (-h) this help text\n\n");
 }
 
+void mainLoop()
+{
+	do
+	{
+		if(display_timeout >= 0)
+			--display_timeout;
+
+		if(recording)
+		{
+			was_recording = 1;
+			display_timeout=500;
+		}
+
+		if(display_timeout<=0 && (was_recording || gui_oldConfig != gui_selectConfig))
+		{
+			g15macro_log("Display timeout is 0, and we were recording OR selected a new config.\n");
+			if (was_recording || gui_oldConfig == MAX_CONFIGS+1)
+			{
+				renderFull();
+			}
+			else
+			{
+				// Only need to update selection,
+				renderSelection();
+			}
+
+// 			printf("NumConfigs is %i\n",numConfigs);
+
+//             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
+//             if (fg_check==1) { // foreground
+//                     do {
+//                       g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
+//                     } while(g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy)==1);
+//             }
+
+			usleep(500*1000);
+		}
+		usleep(1000);
+
+	} while( !leaving);
+	// Told to exit.
+	g15macro_log("Leaving mainloop\n");
+}
+
 
 
 int main(int argc, char **argv)
@@ -1286,7 +1416,6 @@ int main(int argc, char **argv)
     unsigned int keysonly = 0;
     FILE *config;
     unsigned int convert = 0;
-	char currPreset[1024];
 
 	memset(configDir,0,sizeof(configDir));
 	strncpy(configDir,getenv("HOME"),1024);
@@ -1411,7 +1540,7 @@ int main(int argc, char **argv)
         convert = 1;
     }
 	else
-		cleanMstates(0); //0 - only null pointers
+		cleanMstates(0); //0 = only NULL the pointers
 
     /* new format */
     strncpy(configpath,getenv("HOME"),1024);
@@ -1519,89 +1648,9 @@ int main(int argc, char **argv)
 
     pthread_create(&Xkeys, &attr, xevent_thread, NULL);
     pthread_create(&Lkeys, &attr, Lkeys_thread, NULL);
-	do
-	{
-		if(display_timeout >= 0)
-			--display_timeout;
 
-		if(recording)
-		{
-			was_recording = 1;
-			display_timeout=500;
-		}
 
-		if(display_timeout<=0 && (was_recording || gui_oldConfig != gui_selectConfig))
-		{
-			if (was_recording || gui_oldConfig == MAX_CONFIGS+1)
-			{
-				g15r_clearScreen(canvas,G15_COLOR_WHITE);
-				drawXBM(canvas, (unsigned char*)g15macro_small_bits, g15macro_small_width, g15macro_small_height, 0, 0);
-				renderHelp();
-				// Draw indicator of currently selected preset
-				memset(currPreset,0,sizeof(currPreset));
-				snprintf(currPreset,1024,"Current:%s",getConfigName(currConfig));
-				g15r_drawLine(canvas, 50, 2, 50, 11, G15_COLOR_BLACK);
-				g15r_renderString (canvas, (unsigned char *)currPreset, 0, G15_TEXT_MED, 53, 4);
-			}
-			else
-			{
-				//Clear only the selection box, since that's the only thing updated
-				g15r_pixelBox(canvas,0,15,G15_LCD_WIDTH-38,G15_LCD_HEIGHT,G15_COLOR_WHITE,0,1);
-			}
-
-			// Draws the Selected-1,Selected,Selected+1 presets
-			// Find config id to render
-			pthread_mutex_lock(&gui_select);
-			static int tmpRenderConfID = 0;
-			if (gui_selectConfig > 0)
-				tmpRenderConfID = gui_selectConfig-1;
-			else
-				tmpRenderConfID = numConfigs;
-
-			char* renderLine = stringTrim((char*)getConfigName(tmpRenderConfID),25);
-			g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 17);
-			free(renderLine);
-			renderLine = NULL;
-
-			renderLine = stringTrim((char*)getConfigName(gui_selectConfig),25);
-
-			g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 26);
-			free(renderLine);
-			renderLine = NULL;
-
-			if (gui_selectConfig < numConfigs)
-				tmpRenderConfID = gui_selectConfig+1;
-			else
-				tmpRenderConfID = 0;
-			pthread_mutex_unlock(&gui_select);
-
-			renderLine = stringTrim((char*)getConfigName(tmpRenderConfID),25);
-			g15r_renderString(canvas, (unsigned char*)renderLine, 0, G15_TEXT_MED, 1, 35);
-			free(renderLine);
-			renderLine = NULL;
-
-			// Make middle look selected by inverting colours
-			g15r_pixelReverseFill(canvas, 0, 24, 121, 33, 0,G15_COLOR_BLACK);
-
-			g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-			was_recording = 0;
-			pthread_mutex_lock(&gui_select);
-			gui_oldConfig = gui_selectConfig;
-			pthread_mutex_unlock(&gui_select);
-// 			printf("NumConfigs is %i\n",numConfigs);
-
-//             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
-//             if (fg_check==1) { // foreground
-//                     do {
-//                       g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
-//                     } while(g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy)==1);
-//             }
-
-			usleep(500*1000);
-		}
-	usleep(1000);
-	}while( !leaving);
-	g15macro_log("Leaving mainloop\n");
+	mainLoop();
 
 	cleanup();
 
