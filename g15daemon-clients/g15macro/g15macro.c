@@ -416,7 +416,6 @@ void renderSelectionList()
 	g15r_pixelReverseFill(canvas, 0, 24, 121, 33, 0,G15_COLOR_BLACK);
 
 	g15_send(g15screen_fd,(char *)canvas->buffer,G15_BUFFER_LEN);
-	was_recording = 0;
 	pthread_mutex_lock(&gui_select);
 	gui_oldConfig = gui_selectConfig;
 	pthread_mutex_unlock(&gui_select);
@@ -1093,6 +1092,7 @@ void *Lkeys_thread() {
 						break;
 
 					// Change to selected
+
 					char newConfig[1024];
 					memset(newConfig,0,sizeof(newConfig));
 					strcpy(newConfig,configDir);
@@ -1364,15 +1364,7 @@ void mainLoop()
 				// Only need to update selection,
 				renderSelection();
 			}
-
-// 			printf("NumConfigs is %i\n",numConfigs);
-
-//             int fg_check = g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy);
-//             if (fg_check==1) { // foreground
-//                     do {
-//                       g15_send_cmd (g15screen_fd, G15DAEMON_SWITCH_PRIORITIES, dummy);
-//                     } while(g15_send_cmd (g15screen_fd, G15DAEMON_IS_FOREGROUND, dummy)==1);
-//             }
+			was_recording = 0;
 
 			usleep(500*1000);
 		}
@@ -1393,8 +1385,6 @@ int main(int argc, char **argv)
 	currConfig = 0;
 	gui_selectConfig = 0;
 	G15Version = 0;
-// 	mmedia_codes = {164, 162, 144, 153, 174, 176};
-// 	gkeycodes = { 177,152,190,208,129,130,231,209,210,136,220,143,246,251,137,138,133,183 };
 	config_fd = 0;
 	mled_state = G15_LED_M1;
 	mkey_state = 0;
