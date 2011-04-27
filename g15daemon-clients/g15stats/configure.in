@@ -1,4 +1,4 @@
-AC_INIT(g15stats,[1.9.6], [mlampard@users.sf.net])
+AC_INIT(g15stats,[1.9.7], [mlampard@users.sf.net])
 
 PACKAGE=g15stats
 VERSION=1.9.6

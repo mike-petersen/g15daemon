@@ -78,3 +78,5 @@ SVN 532 (1.9.5)
 - Change refresh interval with the option -r seconds (The seconds must be between 1 and 300)
 SVN 534 (1.9.6)
 - Improve Summary Screen with 3 and 6 core CPU
+SVN 538 (1.9.7)
+- Improve Summary Screen Fan / Temperature sensors bar calculation

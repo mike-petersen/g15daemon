@@ -644,11 +644,9 @@ void draw_summary_sensors_logic(g15canvas *canvas, char *tmpstr, g15_stats_info 
                 if (rest > 0) {
                     if ((j+1) < count) {
                         y++;
-                        last_y++;
                         rest--;
                     } else {
                         y += rest;
-                        last_y += rest;
                         rest = 0;
                     }
                 }
